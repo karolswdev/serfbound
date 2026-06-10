@@ -1,7 +1,7 @@
 # Phase 24 — Repository Independence
 
 **Last updated:** 2026-06-10.
-**Status:** in progress — SB-24-01 done.
+**Status:** complete — see final-summary.md. The roadmap is authoritative in karolswdev/serfbound from the cutover onward.
 
 ## Goal
 
@@ -44,12 +44,12 @@ The old repository becomes the archive it always was.
 - [x] The extraction and licensing decision record ships: inventory of
   what moves/stays, GPL-3.0 + derivation notice, fresh-history
   rationale. (SB-24-01)
-- [ ] The standalone repository exists and holds the complete
+- [x] The standalone repository exists and holds the complete
   browser-native workspace with standalone docs; the full local gate
   set passes in the export tree. (SB-24-02)
-- [ ] CI and the Pages release path run green in the new repository.
+- [x] CI and the Pages release path run green in the new repository.
   (SB-24-03)
-- [ ] The zero-.NET guard enforces independence mechanically; the old
+- [x] The zero-.NET guard enforces independence mechanically; the old
   repository carries the handoff note; phase close. (SB-24-04)
 
 ## Story status
@@ -57,15 +57,17 @@ The old repository becomes the archive it always was.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-24-01 | Extraction and licensing decision record | done | story-01-extraction-licensing.md | evidence-story-01.md |
-| SB-24-02 | Create and populate the standalone repository | backlog | story-02-standalone-repository.md | — |
-| SB-24-03 | CI and Pages in the new repository | backlog | story-03-ci-pages-new-repo.md | — |
-| SB-24-04 | Independence gate and handoff | backlog | story-04-independence-gate.md | — |
+| SB-24-02 | Create and populate the standalone repository | done | story-02-standalone-repository.md | evidence-story-02.md |
+| SB-24-03 | CI and Pages in the new repository | done | story-03-ci-pages-new-repo.md | evidence-story-03.md |
+| SB-24-04 | Independence gate and handoff | done | story-04-independence-gate.md | evidence-story-04.md |
 
 ## Where we are
 
-SB-24-01 shipped: the extraction inventory, GPL-3.0 + derivation
-posture, fresh-history strategy, and citation rules are on record
-(extraction-decision.md). Next: SB-24-02 executes the move.
+The phase is closed and the cutover is done:
+https://github.com/karolswdev/serfbound is Serfbound's home (GPL-3.0,
+zero .NET enforced by the CI guard, Pages serving the build); this
+repository is the archive, with the handoff note up top and its
+serfbound workflows retired. See final-summary.md.
 
 ## Active risks
 

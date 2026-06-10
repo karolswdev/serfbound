@@ -12,7 +12,7 @@
     "build": "tsc -b packages/engine packages/assets packages/test-support packages/app",
     "build:web": "npm run build && vite build",
     "capture:local:screenshots": "npm run build:web && node scripts/capture-local-screenshots.mjs",
-    "ci:release": "npm test && npm run check:boundaries && npm run test:release:static && npm run test:docs && npm run test:local:assets",
+    "ci:release": "npm test && npm run check:boundaries && npm run check:independence && npm run test:release:static && npm run test:docs",
     "clean": "tsc -b --clean packages/engine packages/assets packages/test-support packages/app",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:release-artifact": "node scripts/check-release-artifact.mjs",
@@ -27,7 +27,8 @@
     "test:release:static": "npm run release:static && node scripts/test-static-hosting.mjs",
     "test:unit": "npm run build && node --test tests/ci/*.test.mjs",
     "test:local:assets": "node scripts/test-local-assets.mjs",
-    "measure:scale": "node scripts/measure-scale.mjs"
+    "measure:scale": "node scripts/measure-scale.mjs",
+    "check:independence": "node scripts/check-independence.mjs"
   },
   "workspaces": [
     "packages/*"
