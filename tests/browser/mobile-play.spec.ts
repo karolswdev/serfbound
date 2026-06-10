@@ -7,6 +7,9 @@ import { createDecodableGeneratedPaArchive } from "@serfbound/test-support";
 // screen, the castle founding, and the panel bar.
 test.use({
   ...devices["iPhone 13"],
+  // The device profile defaults to WebKit; CI installs Chromium only,
+  // and the suite runs everything on one engine.
+  browserName: "chromium",
   hasTouch: true,
 });
 
