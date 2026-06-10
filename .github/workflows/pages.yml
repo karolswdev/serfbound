@@ -1,0 +1,54 @@
+# Public release: build the static artifact and publish it to GitHub
+# Pages. Versioned releases come from tags (v*); the original-data
+# boundary holds — only the app shell is ever published.
+name: pages
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Data-free release gates
+        run: npm test && npm run check:boundaries && npm run test:release:static && npm run test:docs
+      - name: Build release artifact
+        run: npm run build:web
+      - name: Stamp version
+        run: |
+          echo "{\"version\": \"${GITHUB_REF_NAME:-dev}\", \"commit\": \"${GITHUB_SHA}\"}" > dist/version.json
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

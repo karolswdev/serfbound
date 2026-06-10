@@ -1,0 +1,18 @@
+# Dependencies and build outputs
+node_modules/
+dist/
+packages/*/dist/
+*.tsbuildinfo
+
+# Test outputs
+test-results/
+playwright-report/
+
+# Scratch
+.tmp/
+
+# The asset boundary: original game data is user-provided and never
+# committed, hosted, bundled, or cached. Keep your purchased files here
+# (or anywhere outside the repo) and point the opt-in test env vars at
+# them.
+serfbound-local-data/
