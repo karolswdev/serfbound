@@ -33,7 +33,11 @@ jobs:
         run: >-
           docker run --rm -v "$PWD/deploy:/deploy:ro"
           ghcr.io/yannh/kubeconform:v0.7.0-alpine
-          -strict -summary /deploy
+          -strict -summary
+          -schema-location default
+          -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+          -ignore-filename-pattern 'patches/.*'
+          /deploy
 
   publish-images:
     name: Publish service images to GHCR

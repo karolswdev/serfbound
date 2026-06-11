@@ -1,0 +1,44 @@
+[
+  {
+    "op": "add",
+    "path": "/spec/listeners/-",
+    "value": {
+      "name": "serfbound-api-https",
+      "hostname": "api.serfbound.com",
+      "port": 443,
+      "protocol": "HTTPS",
+      "tls": {
+        "mode": "Terminate",
+        "certificateRefs": [
+          { "group": "", "kind": "Secret", "name": "serfbound-api-tls" }
+        ]
+      },
+      "allowedRoutes": {
+        "namespaces": {
+          "from": "Selector",
+          "selector": {
+            "matchLabels": { "catalyst.io/gateway-access": "true" }
+          }
+        }
+      }
+    }
+  },
+  {
+    "op": "add",
+    "path": "/spec/listeners/-",
+    "value": {
+      "name": "serfbound-api-http",
+      "hostname": "api.serfbound.com",
+      "port": 80,
+      "protocol": "HTTP",
+      "allowedRoutes": {
+        "namespaces": {
+          "from": "Selector",
+          "selector": {
+            "matchLabels": { "catalyst.io/gateway-access": "true" }
+          }
+        }
+      }
+    }
+  }
+]

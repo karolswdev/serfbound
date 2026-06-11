@@ -1,0 +1,23 @@
+# TLS for api.serfbound.com (SB-29-03). Lives in the gateway's
+# namespace because the Gateway's certificateRefs are same-namespace —
+# the exact pattern the other tenants on this gateway use. Issuance is
+# HTTP-01 through the gateway's ACME solver and completes only once
+# DNS for api.serfbound.com points at the gateway's LoadBalancer.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: serfbound-api-tls
+  namespace: catalyst-api-gateway
+  labels:
+    app.kubernetes.io/part-of: serfbound
+spec:
+  dnsNames:
+    - api.serfbound.com
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  secretName: serfbound-api-tls
+  usages:
+    - digital signature
+    - key encipherment

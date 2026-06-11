@@ -6,3 +6,6 @@ metadata:
   name: serfbound
   labels:
     app.kubernetes.io/part-of: serfbound
+    # Grants HTTPRoute attachment to the shared catalyst-gateway
+    # (its allowedRoutes selector), per the SB-29-03 ingress decision.
+    catalyst.io/gateway-access: "true"

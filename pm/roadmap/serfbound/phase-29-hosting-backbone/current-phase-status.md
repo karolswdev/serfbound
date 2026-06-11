@@ -59,7 +59,7 @@ Serverless, accountless play remains first-class forever.
 |---|---|---|---|---|
 | SB-29-01 | Infrastructure decision and secrets boundary | done | story-01-infrastructure-decision.md | evidence-story-01.md |
 | SB-29-02 | Service containers and manifests | done | story-02-service-containers-manifests.md | evidence-story-02.md |
-| SB-29-03 | Cluster deployment, DNS, TLS | backlog | story-03-cluster-deploy-dns-tls.md | — |
+| SB-29-03 | Cluster deployment, DNS, TLS | in-progress | story-03-cluster-deploy-dns-tls.md | — |
 | SB-29-04 | Online surface and hosting gate | backlog | story-04-online-surface-hosting-gate.md | — |
 
 ## Where we are
@@ -74,8 +74,14 @@ own namespace, reuses the platform TLS/ingress, and the resilience
 criterion is pod-restart + backup/restore. SB-29-02 shipped: images
 on GHCR (public, digests in evidence), kubeconform-valid manifests
 under `deploy/`, and the contract suites proven against containers
-including a store-survives-restart check. Next: SB-29-03 (deploy,
-DNS, TLS at `api.serfbound.com`).
+including a store-survives-restart check. SB-29-03 in progress:
+services deployed to the cluster (contract suites green via
+port-forward), listeners for `api.serfbound.com` on the shared
+catalyst-gateway (maintainer-approved), Certificate cleanly pending
+on ACME, pod-restart persistence and a backup/restore drill proven,
+runbook updated. Blocked on the Cloudflare A record
+(`api.serfbound.com → 172.234.209.38`); rate-limiting approach to be
+decided with the DNS mode (proxied vs DNS-only).
 
 ## Active risks
 

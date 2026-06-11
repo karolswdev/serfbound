@@ -1,0 +1,78 @@
+# Routes for api.serfbound.com (SB-29-03), attached to the shared
+# catalyst-gateway listeners added by
+# patches/catalyst-gateway-listeners.json. Path-split: the identity
+# service lives under /identity, the mailbox under /mailbox, each
+# rewritten to the service root so the Phase 25 service code is
+# unchanged.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: serfbound-api
+  namespace: serfbound
+  labels:
+    app.kubernetes.io/part-of: serfbound
+spec:
+  hostnames:
+    - api.serfbound.com
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: catalyst-gateway
+      namespace: catalyst-api-gateway
+      sectionName: serfbound-api-https
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /identity
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: identity
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mailbox
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: mailbox
+          port: 80
+---
+# HTTP→HTTPS. ACME solver routes match their specific token path and
+# win over this prefix redirect during issuance.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: serfbound-api-redirect
+  namespace: serfbound
+  labels:
+    app.kubernetes.io/part-of: serfbound
+spec:
+  hostnames:
+    - api.serfbound.com
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: catalyst-gateway
+      namespace: catalyst-api-gateway
+      sectionName: serfbound-api-http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
