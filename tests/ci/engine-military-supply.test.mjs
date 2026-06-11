@@ -69,8 +69,12 @@ test("the weaponsmith forges a sword, then a shield for free, per resource pair"
 
   const inventory = world.inventoryForPlayer(0);
   // Isolate forging: keep the castle from recruiting the preset weapons
-  // into knights while we count the smith's output.
+  // into knights while we count the smith's output, and empty the
+  // castle's own coal/steel so the inventory re-export sweep
+  // (SB-35-03) cannot feed the smith extra pairs.
   world.players[0].castleKnightsWanted = 0;
+  inventory.resources[resourceType.coal] = 0;
+  inventory.resources[resourceType.steel] = 0;
   const swordsBefore = inventory.resources[resourceType.sword];
   const shieldsBefore = inventory.resources[resourceType.shield];
 

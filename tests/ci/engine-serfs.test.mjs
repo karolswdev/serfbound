@@ -534,3 +534,113 @@ test("workers pass through the door: enter to settle, leave to harvest (SB-35-02
   assert.equal(enteredBeforeWorking, true, "the worker settled in THROUGH the door");
   assert.equal(leftThroughDoor, true, "the worker walked OUT through the door to harvest");
 });
+
+test("the tree falls in visible stages under the axe (SB-35-03)", async () => {
+  const engineModule = await import("@serfbound/engine");
+  const {
+    SerfboundCommandRouter,
+    SerfboundSerfEngine,
+    startSerfboundLocalGame,
+  } = engineModule;
+  const started = startSerfboundLocalGame({
+    data: {
+      kind: "imported-dos-pa-catalog",
+      archiveName: "SPAU.PA",
+      byteLength: 1_282_805,
+      entryCount: 4000,
+      definedArchiveEntries: 3805,
+      fixupCount: 252,
+    },
+  });
+  const world = started.game.world();
+  const router = new SerfboundCommandRouter(started.game.state, world);
+  const tileFor = (position) => ({
+    column: position & world.geometry.columnMask,
+    row: (position >>> world.geometry.rowShift) & world.geometry.rowMask,
+    position,
+  });
+  let castlePosition = -1;
+  for (let position = 0; position < world.tileCount; position += 1) {
+    if (world.canBuildCastle(position, 0)) {
+      castlePosition = position;
+      break;
+    }
+  }
+  router.dispatch({ type: "game.build-castle", source: "pointer", tile: tileFor(castlePosition) });
+  const castleFlag = world.move(castlePosition, "DownRight");
+  let building = null;
+  for (let offset = 0; offset < 250 && building === null; offset += 1) {
+    const candidate = world.positionAddSpirally(castlePosition, offset);
+    if (!world.canBuildBuilding(candidate, 2, 0)) {
+      continue;
+    }
+
+    const result = router.dispatch({
+      type: "game.build-building",
+      source: "pointer",
+      tile: tileFor(candidate),
+      buildingKind: "lumberjack",
+    });
+    if (result.status !== "accepted") {
+      continue;
+    }
+
+    building = [...world.buildings.values()].reduce((a, b) => (a.index > b.index ? a : b));
+    const road = router.dispatch({
+      type: "game.build-road",
+      source: "pointer",
+      tile: tileFor(castleFlag),
+      toTile: tileFor(world.flags.get(building.flagIndex).position),
+    });
+    if (road.status !== "accepted") {
+      building = null;
+    }
+  }
+  assert.notEqual(building, null);
+
+  const engine = new SerfboundSerfEngine(world);
+  engine.dispatchConstructionLogistics(building, started.game.state.tick);
+  let tick = started.game.state.tick;
+  let worker = null;
+  const observedObjects = new Set();
+  let target = -1;
+  for (let step = 0; step < 60000; step += 1) {
+    tick += 8;
+    engine.update(tick);
+    if (worker === null) {
+      for (const serf of engine.serfs.values()) {
+        if (serf.workBuildingIndex === building.index) {
+          worker = serf;
+        }
+      }
+
+      continue;
+    }
+
+    if (worker.state === 11 && worker.workPhase === 2) {
+      target = worker.workTargetPosition;
+      observedObjects.add(world.objectAt(target));
+    }
+
+    if (target !== -1 && worker.workPhase === 3) {
+      break;
+    }
+  }
+
+  assert.notEqual(target, -1, "the worker chopped at a tree");
+  // Felled stages: pine 93..97, tree 98..102. The fall must pass
+  // through at least two visible stages — never tree -> gone in one
+  // step — and end lying as the final felled trunk.
+  const felledStages = [...observedObjects].filter((value) => value >= 93 && value <= 102);
+  assert.equal(
+    felledStages.length >= 2,
+    true,
+    `the tree fell in visible stages (saw ${[...observedObjects].join(",")})`,
+  );
+  const finalObject = world.objectAt(target);
+  assert.equal(
+    finalObject === 97 || finalObject === 102,
+    true,
+    `the trunk lies felled (${finalObject})`,
+  );
+});

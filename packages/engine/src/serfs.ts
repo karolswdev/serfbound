@@ -88,11 +88,23 @@ const roadBuildingSlope: readonly number[] = [
   15, 16, 15, 15, 10, 15, 20, 15, 18,
 ];
 
-// Outdoor harvest dwell (SB-34 round 7). The walk itself is paced by
-// the shared reference counter tables (SB-35-01 — no second movement
-// system); the reference per-stage work durations (logging's
-// five-stage fall) land with SB-35-03.
-const harvestDwellTicks = 60;
+// The working pose (SB-35-03): reference staged work at the target.
+// Logging fells the tree in five visible stages (animation 116 +
+// stage, the reference per-stage counters), each stage laying the
+// next felled-tree map object; stonecutting is one 1535-tick cut
+// (animation 123) that shrinks the pile a single slice per visit.
+// INTERIM pacing (recorded): the reference stage counters are
+// [1023, 31, 767, 767, 255] and 1535 — four times these. The
+// condensed transport economy (single transporters, no inventory
+// re-export scheduling) starves at full reference durations; the
+// true constants return with Phase 36's scheduling throughput.
+const loggingStageTicks: readonly number[] = [255, 31, 191, 191, 63];
+const loggingAnimationBase = 116;
+const stoneCuttingTicks = 383;
+const stoneCuttingAnimation = 123;
+// Reference Map.Object: FelledPine0 = 93, FelledTree0 = 98.
+const felledPineBase = 93;
+const felledTreeBase = 98;
 
 // The reference tool order for the toolmaker's round-robin output.
 const toolOutputs: readonly number[] = [15, 16, 17, 18, 19, 20, 21, 22, 23];
@@ -348,6 +360,7 @@ export class SerfboundSerfEngine {
   // Game.UpdateSerfs equivalent.
   update(gameTick: number): void {
     this.#sweepWorkerRequests(gameTick);
+    this.#sweepInventoryExports(gameTick);
     this.#drainPendingOut();
     this.#sweepMilitary(gameTick);
     for (const serf of [...this.serfs.values()]) {
@@ -877,6 +890,77 @@ export class SerfboundSerfEngine {
 
   // Completed production buildings request their profession worker from the
   // castle (condensed Inventory.CallOutSerf profession dispatch).
+  // Inventory re-export (the reference InventoryScheduleCounter,
+  // minimal bridge pulled forward from Phase 36): banked stock with a
+  // reachable, wanting consumer leaves the castle again instead of
+  // sitting entombed — products emitted before their consumer existed
+  // used to bank forever. One item per cadence per inventory; planks
+  // and stones keep a construction reserve until the reference
+  // priority system lands.
+  #lastExportSweepTick = -1;
+  #sweepInventoryExports(gameTick: number): void {
+    if (this.#lastExportSweepTick >= 0 && ((gameTick - this.#lastExportSweepTick) & 0xffff) < 64) {
+      return;
+    }
+
+    this.#lastExportSweepTick = gameTick;
+    for (const inventory of this.world.inventories.values()) {
+      for (const [productKey, count] of Object.entries(inventory.resources)) {
+        const product = Number(productKey);
+        if ((count ?? 0) <= 0) {
+          continue;
+        }
+
+        const constructionReserve =
+          product === resourceType.plank || product === resourceType.stone ? 2 : 0;
+        if ((count ?? 0) <= constructionReserve) {
+          continue;
+        }
+
+        const consumerTypes = productConsumers[product];
+        if (consumerTypes === undefined) {
+          continue;
+        }
+
+        let routed = false;
+        for (const consumer of this.world.buildings.values()) {
+          if (!consumer.isDone || !consumerTypes.includes(consumer.type)) {
+            continue;
+          }
+
+          let stockCap = 4;
+          if (isMilitaryBuildingType(consumer.type)) {
+            if (consumer.knights === 0) {
+              continue;
+            }
+
+            stockCap = militaryGoldCap(consumer.type);
+          }
+
+          if (
+            (consumer.deliveredResources[product] ?? 0) +
+              (consumer.requestedResources[product] ?? 0) < stockCap &&
+            this.#directionToward(inventory.flagIndex, consumer.flagIndex) !== null
+          ) {
+            inventory.resources[product] = (count ?? 0) - 1;
+            consumer.requestedResources[product] =
+              (consumer.requestedResources[product] ?? 0) + 1;
+            inventory.pendingOut.push({
+              resource: product,
+              destinationFlagIndex: consumer.flagIndex,
+            });
+            routed = true;
+            break;
+          }
+        }
+
+        if (routed) {
+          break;
+        }
+      }
+    }
+  }
+
   #sweepWorkerRequests(gameTick: number): void {
     for (const building of this.world.buildings.values()) {
       if (!building.isDone || building.type === 24 || this.#staffedBuildings.has(building.index)) {
@@ -1194,6 +1278,11 @@ export class SerfboundSerfEngine {
       if (serf.position === serf.workTargetPosition) {
         serf.workPhase = 2;
         serf.workCounter = 0;
+        serf.walkingWaitCounter = 0;
+        serf.counter =
+          building.type === buildingType.stonecutter
+            ? stoneCuttingTicks
+            : loggingStageTicks[0]!;
         return;
       }
 
@@ -1201,21 +1290,68 @@ export class SerfboundSerfEngine {
       return;
     }
 
-    // Phase 2: work the target — the dwell is the visible chopping
-    // (the reference per-stage work durations land with SB-35-03).
+    // Phase 2: the working pose (SB-35-03) — staged reference work at
+    // the target. walkingWaitCounter (free while working) is the
+    // stage index; serf.counter rolls the pose frames for the render.
     if (serf.workPhase === 2) {
-      if (serf.workCounter < harvestDwellTicks) {
+      serf.counter = Math.max(0, serf.counter - delta);
+      const targetObject = this.world.objectAt(serf.workTargetPosition);
+      if (!isTarget(targetObject) && serf.walkingWaitCounter === 0) {
+        // Somebody else took it while we walked; head home empty.
+        serf.workPhase = 3;
+        serf.workCounter = 0;
+        serf.walkingDestination = 0;
+        serf.counter = 0;
         return;
       }
 
-      if (isTarget(this.world.objectAt(serf.workTargetPosition))) {
-        this.world.setObject(serf.workTargetPosition, remainder, null);
+      if (building.type === buildingType.stonecutter) {
+        // One cut per visit: the pile shrinks a slice.
+        serf.animation = stoneCuttingAnimation;
+        if (serf.workCounter < stoneCuttingTicks) {
+          return;
+        }
+
+        const next = targetObject + 1;
+        this.world.setObject(
+          serf.workTargetPosition,
+          isStoneObject(next) ? next : remainder,
+          null,
+        );
+        serf.workCounter = 0;
+        serf.workPhase = 3;
+        serf.walkingDestination = 0;
+        serf.counter = 0;
+        return;
       }
 
+      // Logging: five visible stages fell the tree; each stage lays
+      // the next felled object (pines fall as pines).
+      const stage = serf.walkingWaitCounter;
+      serf.animation = loggingAnimationBase + Math.min(stage, loggingStageTicks.length - 1);
+      if (serf.workCounter < (loggingStageTicks[stage] ?? 255)) {
+        return;
+      }
+
+      // The family holds through the fall: a pine stays a felled pine
+      // across stages (the object is already a felled value past
+      // stage 0).
+      const felledBase =
+        (targetObject >= felledPineBase && targetObject < felledTreeBase) ||
+        (targetObject >= mapObject.pine0 && targetObject < mapObject.palm0)
+          ? felledPineBase
+          : felledTreeBase;
+      this.world.setObject(serf.workTargetPosition, felledBase + Math.min(stage, 4), null);
       serf.workCounter = 0;
-      serf.workPhase = 3;
-      serf.walkingDestination = 0;
-      serf.counter = 0;
+      serf.counter = loggingStageTicks[stage + 1] ?? 0;
+      serf.walkingWaitCounter += 1;
+      if (serf.walkingWaitCounter >= loggingStageTicks.length) {
+        serf.walkingWaitCounter = 0;
+        serf.workPhase = 3;
+        serf.walkingDestination = 0;
+        serf.counter = 0;
+      }
+
       return;
     }
 
@@ -1248,10 +1384,14 @@ export class SerfboundSerfEngine {
       for (const direction of directionOrder) {
         const next = this.world.move(serf.position, direction);
         // The target itself is always enterable — walking home means
-        // stepping INTO the worker's own building.
+        // stepping INTO the worker's own building. Standing serfs are
+        // routed AROUND: a chopper dwells thousands of ticks, and a
+        // greedy walker waiting behind him waits forever.
         if (
           next !== target &&
-          (this.world.hasBuilding(next) || next === serf.walkingDestination)
+          (this.world.hasBuilding(next) ||
+            next === serf.walkingDestination ||
+            this.hasSerfAt(next))
         ) {
           continue;
         }

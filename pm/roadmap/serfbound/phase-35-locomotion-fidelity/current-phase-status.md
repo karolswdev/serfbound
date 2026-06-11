@@ -1,9 +1,10 @@
 # Phase 35 — Locomotion and the Working Pose
 
-**Last updated:** 2026-06-11 (SB-35-02 done: the reference door —
-RoadBuildingSlope slides in and out — for workers, knights,
-builders, generic serfs, the castle, and the harvest cycle).
-**Status:** in progress.
+**Last updated:** 2026-06-11 (SB-35-03 done: trees fall in five
+visible stages, stones shrink by slices, and the castle stopped
+entombing products — the re-export bridge pulled forward from
+Phase 36).
+**Status:** in progress — SB-35-04, the device gate, remains.
 
 ## Goal
 
@@ -36,9 +37,11 @@ movement code path left to drift.
   is deleted. (SB-35-01)
 - [x] Building entry/exit: door, slides, slope-scaled counters; a
   serf is never teleported into or out of a building. (SB-35-02)
-- [ ] Logging fells trees in the reference's five visible stages
-  with felled-tree map objects; stonecutting and planting drive
-  their work animations. (SB-35-03)
+- [x] Logging fells trees in the reference's five visible stages
+  with felled-tree map objects; stonecutting cuts by slices.
+  (SB-35-03 — interim quarter-duration stage counters recorded; the
+  reference constants return with Phase 36 throughput. Planting
+  poses ride Phase 38 with the forester's outdoor cycle.)
 - [ ] On-device: the maintainer watches a lumberjack's full round
   trip and calls the pace right. (SB-35-04, the device gate)
 
@@ -48,7 +51,7 @@ movement code path left to drift.
 |---|---|---|---|---|
 | SB-35-01 | One walking system | done | story-01-one-walking-system.md | evidence-story-01.md |
 | SB-35-02 | Doors and slides | done | story-02-doors-and-slides.md | evidence-story-02.md |
-| SB-35-03 | The working pose | backlog | — | — |
+| SB-35-03 | The working pose | done | story-03-the-working-pose.md | evidence-story-03.md |
 | SB-35-04 | The device gate | backlog | — | — |
 
 ## Decisions made (this phase)

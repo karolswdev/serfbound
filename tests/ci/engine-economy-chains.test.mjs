@@ -349,7 +349,10 @@ test("every chain runs concurrently in one settlement without deadlock", () => {
   let planksAfterConstruction = 0;
   let breadReachedMiners = false;
   let economyAlive = false;
-  for (let tick = 0; tick < 4000000 && !economyAlive; tick += 16) {
+  // Horizon calibrated to staged work pacing (SB-35-03): logging
+  // fells in five visible stages and stonecutting cuts one slice per
+  // visit, so chains mature later than under instant harvest.
+  for (let tick = 0; tick < 6000000 && !economyAlive; tick += 16) {
     engine.update(tick);
     if (!allDone) {
       allDone = buildings.every((building) => building.isDone);
@@ -362,7 +365,13 @@ test("every chain runs concurrently in one settlement without deadlock", () => {
 
     // The mine's food is never seeded here, so any bread at the mine came
     // from the farm-mill-baker chain over the road network.
-    breadReachedMiners = breadReachedMiners || (mine.deliveredResources[5] ?? 0) > 0;
+    // Bread en route (requested) or on site (delivered) both count:
+    // a hungry miner eats the loaf the same update it arrives, so
+    // sampling delivered alone races the consumption.
+    breadReachedMiners =
+      breadReachedMiners ||
+      (mine.deliveredResources[5] ?? 0) > 0 ||
+      (mine.requestedResources[5] ?? 0) > 0;
 
     // No iron mine stands here, so ore arrives by hand; everything else --
     // bread to the miners, coal and steel through the refiners -- must
