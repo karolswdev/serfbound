@@ -15,6 +15,7 @@
     "ci:release": "npm test && npm run check:boundaries && npm run check:independence && npm run test:release:static && npm run test:docs",
     "clean": "tsc -b --clean packages/engine packages/assets packages/test-support packages/app",
     "check:boundaries": "node scripts/check-boundaries.mjs",
+    "check:manifests": "kubeconform -strict -summary deploy/",
     "check:release-artifact": "node scripts/check-release-artifact.mjs",
     "measure:performance": "node scripts/measure-performance.mjs",
     "preview": "vite preview --host 127.0.0.1",
@@ -27,6 +28,7 @@
     "test:release:static": "npm run release:static && node scripts/test-static-hosting.mjs",
     "test:unit": "npm run build && node --test tests/ci/*.test.mjs",
     "test:local:assets": "node scripts/test-local-assets.mjs",
+    "test:services:containers": "node scripts/test-services-containers.mjs",
     "measure:scale": "node scripts/measure-scale.mjs",
     "check:independence": "node scripts/check-independence.mjs"
   },

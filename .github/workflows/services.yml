@@ -1,0 +1,77 @@
+name: Services
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - services/**
+      - deploy/**
+      - .github/workflows/services.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - services/**
+      - deploy/**
+      - .github/workflows/services.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate-manifests:
+    name: Validate deployment manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: kubeconform (strict)
+        run: >-
+          docker run --rm -v "$PWD/deploy:/deploy:ro"
+          ghcr.io/yannh/kubeconform:v0.7.0-alpine
+          -strict -summary /deploy
+
+  publish-images:
+    name: Publish service images to GHCR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: validate-manifests
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        run: >-
+          echo "${{ secrets.GITHUB_TOKEN }}" |
+          docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and push images
+        run: |
+          for service in identity mailbox; do
+            image="ghcr.io/${{ github.repository_owner }}/serfbound-${service}"
+            docker build \
+              -t "${image}:latest" \
+              -t "${image}:${{ github.sha }}" \
+              "services/${service}"
+            docker push --all-tags "${image}"
+          done
+
+      - name: Summarize digests
+        run: |
+          {
+            echo "## Serfbound service images"
+            echo ""
+            for service in identity mailbox; do
+              image="ghcr.io/${{ github.repository_owner }}/serfbound-${service}"
+              digest="$(docker inspect --format '{{index .RepoDigests 0}}' "${image}:latest")"
+              echo "- \`${digest}\` (tags: latest, ${{ github.sha }})"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

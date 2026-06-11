@@ -44,6 +44,13 @@ let serviceUrl;
 let storeDir;
 
 before(async () => {
+  // SB-29-02: with SERFBOUND_MAILBOX_URL set, the same contract suite
+  // targets an externally running (e.g. containerized) instance.
+  if (process.env.SERFBOUND_MAILBOX_URL) {
+    serviceUrl = process.env.SERFBOUND_MAILBOX_URL;
+    return;
+  }
+
   storeDir = mkdtempSync(join(tmpdir(), "serfbound-mailbox-"));
   process.env.SERFBOUND_MAILBOX_AUTOSTART = "0";
   process.env.SERFBOUND_MAILBOX_STORE = join(storeDir, "matches.json");
@@ -54,7 +61,9 @@ before(async () => {
 
 after(() => {
   server?.close();
-  rmSync(storeDir, { recursive: true, force: true });
+  if (storeDir) {
+    rmSync(storeDir, { recursive: true, force: true });
+  }
 });
 
 function gameFromTerms() {

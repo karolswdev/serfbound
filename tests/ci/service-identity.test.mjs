@@ -25,6 +25,13 @@ let serviceUrl;
 let storeDir;
 
 before(async () => {
+  // SB-29-02: with SERFBOUND_IDENTITY_URL set, the same contract suite
+  // targets an externally running (e.g. containerized) instance.
+  if (process.env.SERFBOUND_IDENTITY_URL) {
+    serviceUrl = process.env.SERFBOUND_IDENTITY_URL;
+    return;
+  }
+
   storeDir = mkdtempSync(join(tmpdir(), "serfbound-identity-"));
   process.env.SERFBOUND_IDENTITY_AUTOSTART = "0";
   process.env.SERFBOUND_IDENTITY_STORE = join(storeDir, "accounts.json");
@@ -35,7 +42,9 @@ before(async () => {
 
 after(() => {
   server?.close();
-  rmSync(storeDir, { recursive: true, force: true });
+  if (storeDir) {
+    rmSync(storeDir, { recursive: true, force: true });
+  }
 });
 
 test("register, fetch, rename, and delete flow end to end, signed", async () => {

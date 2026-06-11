@@ -1,0 +1,93 @@
+# Identity service (SB-29-02). One replica over an RWO volume —
+# Recreate strategy, single-node cluster posture per the
+# hosting-infrastructure decision record. Probes are TCP so the
+# service code stays byte-for-byte what Phase 25 shipped.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: identity-store
+  namespace: serfbound
+  labels:
+    app.kubernetes.io/part-of: serfbound
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity
+  namespace: serfbound
+  labels:
+    app.kubernetes.io/name: identity
+    app.kubernetes.io/part-of: serfbound
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: identity
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: identity
+        app.kubernetes.io/part-of: serfbound
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: identity
+          image: ghcr.io/karolswdev/serfbound-identity:latest
+          ports:
+            - name: http
+              containerPort: 4310
+          env:
+            - name: SERFBOUND_IDENTITY_STORE
+              value: /data/accounts.json
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          volumeMounts:
+            - name: store
+              mountPath: /data
+      volumes:
+        - name: store
+          persistentVolumeClaim:
+            claimName: identity-store
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity
+  namespace: serfbound
+  labels:
+    app.kubernetes.io/name: identity
+    app.kubernetes.io/part-of: serfbound
+spec:
+  selector:
+    app.kubernetes.io/name: identity
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
