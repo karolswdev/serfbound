@@ -103,6 +103,9 @@ not contain .NET runtime code, desktop-shell code, or a desktop deliverable.
 - `pm/roadmap/serfbound/adoption/hosting-infrastructure-decision.md` - Phase 29
   hosting baseline: domain plan, shared LKE cluster posture, secrets boundary,
   backups, cost ceiling.
+- `pm/roadmap/serfbound/adoption/social-identity-decision.md` - the 2026-06-11
+  product evolution: opt-in social Serfbound with familiar sign-in; supersedes
+  the Phase 25 identity decision by maintainer direction; the two unbreakables.
 - `pm/roadmap/serfbound/reference-tools/` - isolated Phase 1 reference capture
   tooling that may inspect source behavior but is not Serfbound product code.
 - `pm/roadmap/serfbound/reference-fixtures/ci/` - committed CI-safe oracle
@@ -151,6 +154,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 30 | Rankings and gamification: leaderboard, profiles, achievements | complete | [phase-30-rankings-gamification](./phase-30-rankings-gamification/) |
 | 31 | Licensed asset delivery: documented permission, hosted converted assets | scaffolded | [phase-31-licensed-asset-delivery](./phase-31-licensed-asset-delivery/) |
 | 32 | Product experience: design standard, shell redesign, first-run, platform feel | scaffolded | [phase-32-product-experience](./phase-32-product-experience/) |
+| 33 | The social realm: familiar sign-in, identity v2, the opt-in social game | scaffolded | [phase-33-social-realm](./phase-33-social-realm/) |
 
 ## Delivery Gates
 
@@ -209,6 +213,9 @@ when the previous phase has evidence:
 - Phase 32 proves the product looks like we care: a written design
   standard, the shell rebuilt to it, and the maintainer's own eyes as
   the gate.
+- Phase 33 proves the social door opens without closing anything:
+  familiar sign-in for those who want it, and accountless play
+  untouched — the unbreakables, proven at the gate.
 
 Phases 11 onward inherit the Phase 10 standing rule: a phase gates on something
 a player can see or play, captured from real local data via the visual gate —
