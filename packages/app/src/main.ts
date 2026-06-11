@@ -888,6 +888,15 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
           : "pre-import";
     if (root.dataset.serfboundChrome !== chrome) {
       root.dataset.serfboundChrome = chrome;
+      // The game must be ON SCREEN when it starts: on the stacked
+      // mobile layout the start button lives below the fold, and a
+      // freshly running game out of view is unplayable (SB-34 punch
+      // list — the root of "taps do nothing").
+      if (chrome === "running") {
+        root
+          .querySelector<HTMLElement>("[data-testid='terrain-preview']")
+          ?.scrollIntoView({ block: "start" });
+      }
     }
   };
   syncChromeState();
@@ -3485,6 +3494,8 @@ function attachPointerMapInteraction(
   let touchTap:
     | { readonly pointerId: number; readonly x: number; readonly y: number; consumed: boolean }
     | undefined;
+  // The touch founding confirmation (SB-34-02).
+  let pendingCastleTile: { readonly column: number; readonly row: number } | undefined;
   let longPressTimer: ReturnType<typeof setTimeout> | undefined;
   const cancelLongPress = (): void => {
     if (longPressTimer !== undefined) {
@@ -3510,9 +3521,30 @@ function attachPointerMapInteraction(
       return;
     }
 
-    // Castle placement mode: the first click of a fresh world game places
-    // the castle (the original founding act).
+    // Castle placement mode: the founding act. Mouse founds on click
+    // (the original behavior, hover-previewed); touch requires a
+    // confirming second tap on the same tile (SB-34-02 — a thumb must
+    // never found a realm by accident).
     if (handlers.worldCastlePending()) {
+      const sameTile =
+        pendingCastleTile !== undefined &&
+        pendingCastleTile.column === interaction.tile.column &&
+        pendingCastleTile.row === interaction.tile.row;
+      if (event.pointerType === "touch" && !sameTile) {
+        pendingCastleTile = { column: interaction.tile.column, row: interaction.tile.row };
+        root.dataset.serfboundCastleConfirm = `${interaction.tile.column},${interaction.tile.row}`;
+        const state = root.querySelector<HTMLElement>("[data-testid='command-state']");
+        const detail = root.querySelector<HTMLElement>("[data-testid='command-detail']");
+        if (state !== null && detail !== null) {
+          state.textContent = "Found your castle here?";
+          detail.textContent = "Tap the same tile again to confirm.";
+        }
+
+        applyPointerSelectionState(root, interaction);
+        handlers.onSelection(interaction);
+        return;
+      }
+
       const castleResult = handlers.commandRouter().dispatch({
         type: "game.build-castle",
         source: "pointer",
@@ -3520,7 +3552,14 @@ function attachPointerMapInteraction(
       });
       applyCommandResultState(root, castleResult);
       if (castleResult.status === "accepted") {
+        pendingCastleTile = undefined;
+        root.dataset.serfboundCastleConfirm = "confirmed";
         handlers.onWorldChanged();
+      } else if (event.pointerType === "touch") {
+        // The confirmed site was invalid: release the pending state so
+        // the next tap proposes a fresh site instead of stranding.
+        pendingCastleTile = undefined;
+        delete root.dataset.serfboundCastleConfirm;
       }
 
       handlers.onSelection(interaction);
@@ -3623,7 +3662,14 @@ function attachPointerMapInteraction(
     performInteraction(event);
   });
 
-  canvas.addEventListener("pointerleave", () => {
+  canvas.addEventListener("pointerleave", (event) => {
+    // Touch pointers "leave" after every lift — wiping the state then
+    // erases the player's own selection an instant after they made it
+    // (SB-34 punch 2). Only a departing mouse clears the hover.
+    if (event.pointerType === "touch") {
+      return;
+    }
+
     root.dataset.serfboundPointerState = "idle";
     getPointerStateElement(root).textContent = "No map target";
     getPointerDetailElement(root).textContent = "Move over the map.";

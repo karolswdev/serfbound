@@ -155,6 +155,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 31 | Licensed asset delivery: documented permission, hosted converted assets | scaffolded | [phase-31-licensed-asset-delivery](./phase-31-licensed-asset-delivery/) |
 | 32 | Product experience: design standard, shell redesign, first-run, platform feel | scaffolded | [phase-32-product-experience](./phase-32-product-experience/) |
 | 33 | The social realm: familiar sign-in, identity v2, the opt-in social game | scaffolded | [phase-33-social-realm](./phase-33-social-realm/) |
+| 34 | Touch playability: real-touch gates, founding confirm, DPR-3 truth, the device gate | in progress | [phase-34-touch-playability](./phase-34-touch-playability/) |
 
 ## Delivery Gates
 

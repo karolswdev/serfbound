@@ -77,6 +77,10 @@ test("a phone founds a settlement through the authentic UI by touch", async ({ p
   for (let attempt = 0; attempt < probeColumns * probeRows; attempt += 1) {
     const x = 24 + (attempt % probeColumns) * probeStepX;
     const y = 70 + Math.floor(attempt / probeColumns) * probeStepY;
+    // SB-34-02: founding by touch is a two-tap confirm — the first tap
+    // asks, the second tap on the same tile founds (or releases on an
+    // invalid site).
+    await quickTap(x, y);
     await quickTap(x, y);
     const hasCastle = await page
       .locator("#app")
