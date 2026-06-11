@@ -128,6 +128,15 @@ inventory first). Each component defines **all of its states**;
   the three explicitly: empty (moss copy + the relevant action),
   loading (a quiet "…" pulse, no spinners), error (banner-red tint,
   plain-language copy, a retry affordance).
+- **Lobby card** (`.lobby-card`, SB-32-04): surface fill, radius-md,
+  card shadow; the challenger's name in parchment-bright black
+  weight, the terms in moss small, one action. The empty lobby is a
+  designed state (`.lobby-empty`: dashed line border, moss copy).
+- **Match strip** (`.match-strip`, SB-32-04): a left-accent bar
+  narrating the correspondence — steel at rest, meadow when it is
+  your moment, banner-red on failure; one label, one line, always in
+  the product voice; carries the closing ceremony when the match
+  ends.
 
 ## 4. Layout
 

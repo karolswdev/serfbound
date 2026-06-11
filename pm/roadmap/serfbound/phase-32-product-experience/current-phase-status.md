@@ -1,6 +1,6 @@
 # Phase 32 — Product Experience
 
-**Last updated:** 2026-06-11 (after SB-32-03).
+**Last updated:** 2026-06-11 (after SB-32-04).
 **Status:** in progress.
 
 ## Goal
@@ -65,7 +65,7 @@ mechanically encouraged.
   (SB-32-02)
 - [x] First-run is a designed journey: a stranger lands, understands,
   imports, and plays — captured end to end. (SB-32-03)
-- [ ] The competitive surfaces (sign-in, lobby, your-turn, attest,
+- [x] The competitive surfaces (sign-in, lobby, your-turn, attest,
   profile) read as a platform — all states designed, captured.
   (SB-32-04)
 - [ ] The experience gate: full-journey before/after captures, the
@@ -79,7 +79,7 @@ mechanically encouraged.
 | SB-32-01 | The design standard and its enforcement | done | story-01-design-standard.md | evidence-story-01.md |
 | SB-32-02 | Shell chrome rebuilt to the standard | done | story-02-shell-chrome-redesign.md | evidence-story-02.md |
 | SB-32-03 | First-run and import as a designed journey | done | story-03-first-run-experience.md | evidence-story-03.md |
-| SB-32-04 | Competitive surfaces styled as a platform | backlog | story-04-competitive-surfaces.md | — |
+| SB-32-04 | Competitive surfaces styled as a platform | done | story-04-competitive-surfaces.md | evidence-story-04.md |
 | SB-32-05 | Experience gate | backlog | story-05-experience-gate.md | — |
 
 ## Where we are
@@ -107,7 +107,7 @@ lands straight on the title — three new first-run tests, all tokens
 consumed (43/43, reserved list empty), ci:release exit 0 captured
 directly. The first overlay design stole the preview's pointer
 contract and static-shell.spec caught it — the app yielded (in-flow
-welcome), the test stood. Next: SB-32-04 (competitive surfaces).
+welcome), the test stood. SB-32-04 shipped: the lobby is challenge cards with a designed quiet state, the sign-in moment presents the device-key model, the match strip narrates the correspondence through its closing ceremony, the badge pulses once on arrival, and the Chronicle row joins the company group — online suites green unchanged, ci:release exit 0. Next: SB-32-05, the maintainer gate.
 
 ## Active risks
 

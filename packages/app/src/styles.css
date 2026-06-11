@@ -305,13 +305,88 @@ h1 {
   overflow-wrap: anywhere;
 }
 
-/* The attention badge — the one element allowed a voice of its own. */
+/* The attention badge — the one element allowed a voice of its own:
+   a single pulse when a turn arrives, silenced by reduced motion
+   (the duration tokens collapse to 0). */
 .online-badge {
+  margin: 0;
   border-radius: var(--sb-radius-sm);
   padding: var(--sb-space-2) var(--sb-space-3);
   color: var(--sb-meadow);
   background: var(--sb-meadow-veil);
   font-weight: var(--sb-weight-bold);
+}
+
+.online-badge.is-fresh {
+  animation: sb-badge-pulse calc(var(--sb-dur-slow) * 2) var(--sb-ease) 1;
+}
+
+@keyframes sb-badge-pulse {
+  50% {
+    background: var(--sb-meadow);
+    color: var(--sb-on-gold);
+  }
+}
+
+/* ── The competitive surfaces (SB-32-04) ──────────────────────── */
+
+.online-lobby {
+  display: grid;
+  gap: var(--sb-space-2);
+}
+
+.online-lobby:empty {
+  display: none;
+}
+
+.lobby-card {
+  display: grid;
+  gap: var(--sb-space-2);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-md);
+  padding: var(--sb-space-3);
+  background: var(--sb-surface);
+  box-shadow: var(--sb-shadow-card);
+}
+
+.lobby-card__name {
+  margin: 0;
+  color: var(--sb-parchment-bright);
+  font-weight: var(--sb-weight-black);
+}
+
+.lobby-card__terms {
+  margin: 0;
+  color: var(--sb-moss);
+  font-size: var(--sb-text-sm);
+}
+
+.lobby-empty {
+  margin: 0;
+  padding: var(--sb-space-3);
+  border: 1px dashed var(--sb-line);
+  border-radius: var(--sb-radius-md);
+  color: var(--sb-moss);
+  font-size: var(--sb-text-sm);
+  text-align: center;
+}
+
+.match-strip {
+  display: grid;
+  gap: var(--sb-space-1);
+  border-left: 3px solid var(--sb-steel);
+  border-radius: var(--sb-radius-sm);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  background: var(--sb-parchment-veil);
+}
+
+[data-serfbound-cor-mode="your-window"] .match-strip,
+[data-serfbound-cor-mode="move-arrived"] .match-strip {
+  border-left-color: var(--sb-meadow);
+}
+
+[data-serfbound-cor-mode="failed"] .match-strip {
+  border-left-color: var(--sb-banner-red);
 }
 
 /* ── Controls ─────────────────────────────────────────────────── */

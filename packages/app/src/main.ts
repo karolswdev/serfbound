@@ -318,6 +318,13 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     if (input !== null && input.value !== currentProfile.name) {
       input.value = currentProfile.name;
     }
+
+    const chronicle = root.querySelector<HTMLElement>("[data-testid='profile-chronicle']");
+    if (chronicle !== null) {
+      const count = currentProfile.history.length;
+      chronicle.textContent =
+        count === 0 ? "No matches yet" : `${count} ${count === 1 ? "match" : "matches"} recorded`;
+    }
   };
   const saveProfile = (next: StoredSerfboundProfile) => {
     currentProfile = next;
@@ -538,6 +545,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         </section>
         <section class="panel-group panel-group--company">
           <h2 class="panel-group__title">Play with someone</h2>
+          <div>
+            <p class="status-panel__label">Chronicle</p>
+            <p class="status-panel__value" data-testid="profile-chronicle">No matches yet</p>
+          </div>
           <div class="panel-group__actions">
             <input
               class="secondary-action"
@@ -581,7 +592,12 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             <p class="status-panel__value" data-testid="online-state">Signed out</p>
           </div>
           <p class="status-panel__detail" data-testid="online-detail">Optional: play correspondence matches over the internet. Local play never needs this.</p>
+          <p class="status-panel__detail">An account is a key born on this device — no email, no password, nothing to leak. Your moves travel signed; the service stores them but can never alter them.</p>
           <p class="online-badge" data-testid="online-your-turn" hidden>Your turn in 0 matches</p>
+          <div class="match-strip" data-testid="online-match-strip" hidden>
+            <p class="status-panel__label">Current match</p>
+            <p class="status-panel__value" data-testid="online-match-line">—</p>
+          </div>
           <div class="panel-group__actions">
             <button
               class="secondary-action"
@@ -599,7 +615,8 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
               type="button"
               disabled
             >Post online challenge</button>
-            <div class="panel-group__actions" data-testid="online-lobby"></div>
+            <div class="online-lobby" data-testid="online-lobby"></div>
+            <p class="status-panel__label" data-testid="online-seal-label" hidden>Seal the result</p>
             <button
               class="secondary-action"
               data-testid="online-attest-win-button"
@@ -2075,6 +2092,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   const onlineAttestLossButton = root.querySelector<HTMLButtonElement>(
     "[data-testid='online-attest-loss-button']",
   );
+  const onlineMatchStrip = root.querySelector<HTMLElement>("[data-testid='online-match-strip']");
+  const onlineMatchLine = root.querySelector<HTMLElement>("[data-testid='online-match-line']");
+  const onlineSealLabel = root.querySelector<HTMLElement>("[data-testid='online-seal-label']");
+  let lastYourTurnCount = 0;
   const syncOnlineState = () => {
     root.dataset.serfboundOnlineStatus = onlineSurface.status;
     root.dataset.serfboundOnlineYourTurn = String(onlineSurface.yourTurnCount);
@@ -2102,10 +2123,18 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     }
 
     if (onlineBadgeElement !== null) {
-      onlineBadgeElement.hidden = onlineSurface.yourTurnCount === 0;
-      onlineBadgeElement.textContent = `Your turn in ${onlineSurface.yourTurnCount} ${
-        onlineSurface.yourTurnCount === 1 ? "match" : "matches"
-      }`;
+      const count = onlineSurface.yourTurnCount;
+      onlineBadgeElement.hidden = count === 0;
+      onlineBadgeElement.textContent = `Your turn in ${count} ${count === 1 ? "match" : "matches"}`;
+      // The badge may pulse once when a turn arrives (standard §3) —
+      // and never under reduced motion (tokens collapse durations).
+      if (count > lastYourTurnCount) {
+        onlineBadgeElement.classList.remove("is-fresh");
+        void onlineBadgeElement.offsetWidth;
+        onlineBadgeElement.classList.add("is-fresh");
+      }
+
+      lastYourTurnCount = count;
     }
 
     if (onlineLobbyElement !== null) {
@@ -2113,18 +2142,30 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         onlineSurface.status === "signed-in" &&
         currentImportedDataSource !== undefined &&
         currentWorld === undefined;
-      onlineLobbyElement.innerHTML = onlineSurface.lobby
-        .map(
-          (entry) => `
-            <button
-              class="secondary-action"
-              data-testid="online-accept-button"
-              data-challenge-id="${entry.challengeId}"
-              type="button"
-              ${canAccept ? "" : "disabled"}
-            >Accept challenge from ${entry.challengerName}</button>`,
-        )
-        .join("");
+      if (onlineSurface.lobby.length === 0) {
+        // The empty lobby is a designed state, not an absence.
+        onlineLobbyElement.innerHTML =
+          onlineSurface.status === "signed-in"
+            ? `<p class="lobby-empty">The lobby is quiet. Post a challenge and let the realm know.</p>`
+            : "";
+      } else {
+        onlineLobbyElement.innerHTML = onlineSurface.lobby
+          .map(
+            (entry) => `
+            <div class="lobby-card">
+              <p class="lobby-card__name">${entry.challengerName}</p>
+              <p class="lobby-card__terms">Map size ${entry.terms.mapSize} · ${entry.terms.windowTicks}-tick windows</p>
+              <button
+                class="secondary-action"
+                data-testid="online-accept-button"
+                data-challenge-id="${entry.challengeId}"
+                type="button"
+                ${canAccept ? "" : "disabled"}
+              >Accept challenge from ${entry.challengerName}</button>
+            </div>`,
+          )
+          .join("");
+      }
     }
   };
   const syncOnlineMatchState = () => {
@@ -2166,6 +2207,37 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
     if (onlineAttestLossButton !== null) {
       onlineAttestLossButton.hidden = !canAttest;
+    }
+
+    if (onlineSealLabel !== null) {
+      onlineSealLabel.hidden = !canAttest;
+    }
+
+    // The match strip: the whole correspondence at a glance, in the
+    // product's voice — and the closing ceremony when it ends.
+    if (onlineMatchStrip !== null && onlineMatchLine !== null) {
+      onlineMatchStrip.hidden = false;
+      const opponent = status.opponentName ?? "your opponent";
+      onlineMatchLine.textContent =
+        status.mode === "ended"
+          ? status.serviceState === "disputed"
+            ? "Disputed — quarantined, unrated"
+            : status.serviceState === "forfeited"
+              ? status.winnerSeat === status.localPlayer
+                ? `${opponent} forfeited — victory, rated`
+                : "Forfeited — defeat, rated"
+              : status.winnerSeat === status.localPlayer
+                ? "Victory — sealed and rated"
+                : "Defeat — sealed and rated"
+          : status.mode === "your-window"
+            ? `Your window, against ${opponent}`
+            : status.mode === "move-arrived"
+              ? `${opponent} moved — press Enter to watch`
+              : status.mode === "recap"
+                ? `Verifying ${opponent}'s window`
+                : status.mode === "failed"
+                  ? "The match failed verification"
+                  : `Waiting on ${opponent}`;
     }
   };
   const startOnlineMatch = (view: MailboxMatchView, seat: number) => {
