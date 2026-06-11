@@ -1,4 +1,4 @@
-import type { MapPoint, MapTile } from "./index.js";
+import type { Direction, MapPoint, MapTile } from "./index.js";
 import type { SerfboundGameWorld } from "./game-world.js";
 import { findShortestRoad } from "./pathfinder.js";
 import { SerfboundGameState, type SerfboundBuiltStructure } from "./simulation.js";
@@ -38,6 +38,10 @@ export type SerfboundWorldCommand = {
   readonly tile: MapTile;
   // Road target flag (game.build-road paths from tile to toTile).
   readonly toTile?: MapTile;
+  // An explicit road path (game.build-road, SB-34-08): the player's
+  // drawn segments, validated by the world like any road. When absent
+  // the pathfinder picks the route between tile and toTile.
+  readonly directions?: readonly Direction[];
   // Building kind name for game.build-building (e.g. "lumberjack").
   readonly buildingKind?: string;
   readonly source?: SerfboundCommandSource;
@@ -302,6 +306,18 @@ export class SerfboundCommandRouter {
         action = { kind: "build-flag", position: command.tile.position, player: this.localPlayer };
         break;
       case "game.build-road": {
+        // An explicit drawn path (SB-34-08, the road builder) skips the
+        // pathfinder; the world validates it like any road.
+        if (command.directions !== undefined && command.directions.length > 0) {
+          action = {
+            kind: "build-road",
+            start: command.tile.position,
+            directions: [...command.directions],
+            player: this.localPlayer,
+          };
+          break;
+        }
+
         if (command.toTile === undefined) {
           return reject("invalid-command", "Road commands need a target tile.");
         }

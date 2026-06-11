@@ -232,3 +232,64 @@ test("construction is serf-driven: builder + materials complete the building", (
   assert.equal(done, true, "the building completes through builder work + materials");
   assert.equal(building.consumedMaterials, 2, "the lumberjack consumed its two planks");
 });
+
+test("an explicit drawn road path builds exactly as drawn (SB-34-08)", () => {
+  const { world, router, castlePosition } = startedGameWithCastle();
+  const castleFlagPosition = world.move(castlePosition, "DownRight");
+
+  // Walk a short valid path from the castle flag, then flag its end.
+  const directions = [];
+  let end = castleFlagPosition;
+  for (const candidate of ["Right", "DownRight", "Down", "Left", "UpLeft", "Up"]) {
+    const probe = [];
+    let walker = castleFlagPosition;
+    let valid = true;
+    for (let step = 0; step < 2; step += 1) {
+      walker = world.move(walker, candidate);
+      if (!world.canBuildFlag(walker, 0) && step === 1) {
+        valid = false;
+      }
+
+      probe.push(candidate);
+    }
+
+    if (valid && world.canBuildFlag(walker, 0)) {
+      directions.push(...probe);
+      end = walker;
+      break;
+    }
+  }
+  assert.equal(directions.length, 2, "a straight two-segment path exists");
+
+  assert.equal(
+    router.dispatch({ type: "game.build-flag", source: "pointer", tile: tileFor(world, end) })
+      .status,
+    "accepted",
+  );
+
+  const result = router.dispatch({
+    type: "game.build-road",
+    source: "pointer",
+    tile: tileFor(world, castleFlagPosition),
+    toTile: tileFor(world, end),
+    directions,
+  });
+  assert.equal(result.status, "accepted", result.message ?? "");
+  assert.equal(result.effect, "road-built");
+  // The drawn segments exist on the map, direction for direction.
+  let walker = castleFlagPosition;
+  for (const direction of directions) {
+    assert.equal(world.hasPath(walker, direction), true, `segment ${direction} laid`);
+    walker = world.move(walker, direction);
+  }
+
+  // An invalid drawn path (not ending at a flag) is rejected wholesale.
+  const bad = router.dispatch({
+    type: "game.build-road",
+    source: "pointer",
+    tile: tileFor(world, castleFlagPosition),
+    toTile: tileFor(world, world.move(end, "Right")),
+    directions: [...directions, "Right", "Right"],
+  });
+  assert.equal(bad.status, "rejected");
+});

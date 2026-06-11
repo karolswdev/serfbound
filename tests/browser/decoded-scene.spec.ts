@@ -184,7 +184,10 @@ test("importing a decodable archive renders the decoded sprite scene", async ({ 
   }
   expect(flagBuilt).toBe(true);
 
-  // Connect the castle flag to the new flag with the panel's road slot.
+  // Connect the castle flag to the new flag with the panel's road slot
+  // (the road builder: arm, tap the start flag, tap the target flag —
+  // cancel rides the starred slot 0 while building, SB-34-08).
+  const cancelSlotPos = { x: panelX + 64 * 2 + 32, y: panelY + 4 * 2 + 32 };
   let roadBuilt = false;
   for (let fromAttempt = 0; fromAttempt < 9 && !roadBuilt; fromAttempt += 1) {
     const fromX = castleClick.x + 16 + ((fromAttempt % 3) - 1) * 12;
@@ -195,7 +198,7 @@ test("importing a decodable archive renders the decoded sprite scene", async ({ 
     const effect = await page.locator("#app").getAttribute("data-serfbound-last-effect");
     roadBuilt = effect === "road-built";
     if (!roadBuilt && (await page.locator("#app").getAttribute("data-serfbound-road-mode")) !== "idle") {
-      await canvas.click({ position: roadSlotPos, force: true });
+      await canvas.click({ position: cancelSlotPos, force: true });
     }
   }
   expect(roadBuilt).toBe(true);
@@ -236,25 +239,24 @@ test("importing a decodable archive renders the decoded sprite scene", async ({ 
     .getAttribute("data-serfbound-military-summary");
   expect(militarySummary).toMatch(/^sword:\d+,shield:\d+,knight:[1-9]\d*,morale:\d+$/);
 
-  // The authentic panel bar renders and drives road mode: clicking the
-  // road slot toggles it on and off (reference button behavior).
+  // The authentic panel bar renders and drives road mode: the road
+  // slot arms it; while armed the bar shows the reference road-builder
+  // layout (BuildRoadStarred 24 — the last panel_button the DOS data
+  // carries — and inactive slots), and the starred slot 0 cancels.
   const panelButtons = await page
     .locator("#app")
     .getAttribute("data-serfbound-panel-buttons");
   expect(panelButtons).toMatch(/^\d+,8,10,12,14$/);
-  const roadSlot = roadSlotPos;
-  await canvas.click({ position: roadSlot, force: true });
+  await canvas.click({ position: roadSlotPos, force: true });
   await expect(page.locator("#app")).toHaveAttribute(
     "data-serfbound-road-mode",
     "awaiting-start",
   );
-  // BuildRoadStarred is sprite 24, the last panel_button the DOS data
-  // carries (SB-34 round 4 — 25 rendered as a transparent hole).
   await expect(page.locator("#app")).toHaveAttribute(
     "data-serfbound-panel-buttons",
-    /^\d+,24,10,12,14$/,
+    "24,0,9,11,13",
   );
-  await canvas.click({ position: roadSlot, force: true });
+  await canvas.click({ position: cancelSlotPos, force: true });
   await expect(page.locator("#app")).toHaveAttribute("data-serfbound-road-mode", "idle");
 
   // The popup system: the stats slot opens the resources box, a click

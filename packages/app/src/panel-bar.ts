@@ -143,8 +143,20 @@ export type PanelBarButtonsState = {
 
 // The five slots' panel_button sprite ids for the current game state
 // (reference ButtonTypeFromBuildPossibility; map/stats/sett active with
-// their popups).
+// their popups). Road-building swaps the whole bar to the reference
+// road-builder layout: the starred road button (tap to cancel) and
+// inactive slots (PanelBar.Update, IsBuildingRoad — SB-34-08).
 export function panelButtonSprites(state: PanelBarButtonsState): number[] {
+  if (state.roadMode) {
+    return [
+      panelButtonId.buildRoadStarred,
+      panelButtonId.buildInactive,
+      panelButtonId.mapInactive,
+      panelButtonId.statsInactive,
+      panelButtonId.settInactive,
+    ];
+  }
+
   let build: number = panelButtonId.buildInactive;
   switch (state.buildPossibility) {
     case "castle":
@@ -173,7 +185,7 @@ export function panelButtonSprites(state: PanelBarButtonsState): number[] {
 
   return [
     build,
-    state.roadMode ? panelButtonId.buildRoadStarred : panelButtonId.buildRoad,
+    panelButtonId.buildRoad,
     panelButtonId.map,
     panelButtonId.stats,
     panelButtonId.sett,

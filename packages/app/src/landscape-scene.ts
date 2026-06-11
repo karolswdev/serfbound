@@ -530,6 +530,10 @@ export type LandscapeSceneOptions = {
   }[];
   // The selected tile: the map cursor draws here (SB-34 round 3).
   readonly selected?: { readonly column: number; readonly row: number };
+  // The road builder's in-progress path (SB-34-08): consecutive map
+  // positions from the start flag to the current end; the preview
+  // draws with the same segment sprites as built roads.
+  readonly roadPreview?: { readonly positions: readonly number[] };
   // The authentic panel bar: the five slots' panel_button sprite ids
   // (SB-16-02; computed from game state by the shell).
   readonly panel?: { readonly buttons: readonly number[] };
@@ -594,6 +598,28 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
     atlas.regions[`objflagshadow:${flagFrame}`] !== undefined
       ? `objflagshadow:${flagFrame}`
       : "objshadow:flag";
+
+  // Road-builder preview edges, normalized to the Right/DownRight/Down
+  // rendering directions so the segment loop treats them as paths.
+  const previewEdges = new Set<string>();
+  if (options.roadPreview !== undefined && options.world !== undefined) {
+    const world = options.world;
+    const positions = options.roadPreview.positions;
+    const renderDirections = ["Right", "DownRight", "Down"] as const;
+    for (let index = 0; index + 1 < positions.length; index += 1) {
+      const a = positions[index]!;
+      const b = positions[index + 1]!;
+      renderDirections.forEach((direction, directionIndex) => {
+        if (world.move(a, direction) === b) {
+          previewEdges.add(`${a}:${directionIndex}`);
+        }
+
+        if (world.move(b, direction) === a) {
+          previewEdges.add(`${b}:${directionIndex}`);
+        }
+      });
+    }
+  }
 
   const latticeColumns = Math.ceil(options.size.width / (tileWidth * viewScale)) + extraColumns;
   const latticeRows = Math.ceil(options.size.height / (tileHeight * viewScale)) + extraRowsBelow;
@@ -701,7 +727,10 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
           { direction: "Down", index: 2 },
         ] as const;
         for (const { direction, index } of roadDirections) {
-          if (!world.hasPath(position, direction)) {
+          if (
+            !world.hasPath(position, direction) &&
+            !previewEdges.has(`${position}:${index}`)
+          ) {
             continue;
           }
 

@@ -100,7 +100,9 @@ test("a phone founds a settlement through the authentic UI by touch", async ({ p
     throw new Error("canvas has no bounding box");
   }
 
-  // The panel bar responds to taps: the road slot toggles road mode.
+  // The panel bar responds to taps: the road slot arms road mode, and
+  // the starred build slot cancels it (the reference road-builder bar,
+  // SB-34-08).
   const panelX = Math.max(0, Math.floor((runningBox.width - 320 * scale) / 2));
   const panelY = Math.max(0, runningBox.height - 40 * scale);
   await canvas.tap({
@@ -115,14 +117,16 @@ test("a phone founds a settlement through the authentic UI by touch", async ({ p
     "awaiting-start",
   );
 
-  // The stats popup opens and closes by touch.
+  // The stats popup opens and closes by touch (cancel road mode first
+  // via the starred slot 0 — the bar is otherwise inert while building).
   await canvas.tap({
     position: {
-      x: panelX + (64 + 48) * scale + 16 * scale,
+      x: panelX + 64 * scale + 16 * scale,
       y: panelY + 4 * scale + 16 * scale,
     },
     force: true,
   });
+  await expect(page.locator("#app")).toHaveAttribute("data-serfbound-road-mode", "idle");
   await canvas.tap({
     position: {
       x: panelX + (64 + 3 * 48) * scale + 16 * scale,

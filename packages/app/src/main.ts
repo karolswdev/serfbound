@@ -43,6 +43,7 @@ import {
   buildingType,
   engineBoundary,
   findSerfboundMission,
+  findShortestRoad,
   serfboundMissions,
   startSerfboundMission,
   restoreSerfboundLocalGame,
@@ -1164,6 +1165,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       initScreenSettings(),
       { sfxMuted: audioService.sfxMuted, musicMuted: audioService.musicMuted },
       selectedInteraction?.tile,
+      roadBuilderPath === undefined ? undefined : { positions: roadBuilderPath },
     );
 
     // SB-34-03: publish the chrome's hit rectangles in canvas CSS space
@@ -1544,6 +1546,94 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     renderCurrentScene();
   };
 
+  // The road builder (SB-34-08, the reference interface): the path
+  // under construction as consecutive map positions, start flag first.
+  let roadBuilderPath: number[] | undefined;
+  const setRoadMode = (mode: "idle" | "awaiting-start" | "building") => {
+    root.dataset.serfboundRoadMode = mode;
+    if (mode === "idle") {
+      roadBuilderPath = undefined;
+    }
+  };
+  const roadDirectionCycle = [
+    "Right",
+    "DownRight",
+    "Down",
+    "Left",
+    "UpLeft",
+    "Up",
+  ] as const;
+  const tileForPosition = (
+    position: number,
+  ): { column: number; row: number; position: number } => ({
+    column: currentWorld === undefined ? 0 : position % currentWorld.columns,
+    row: currentWorld === undefined ? 0 : Math.trunc(position / currentWorld.columns),
+    position,
+  });
+  const beginRoadBuilding = (position: number) => {
+    roadBuilderPath = [position];
+    setRoadMode("building");
+    setNotice(uiText("notice.roadExtendHint"));
+    getCommandStateElement(root).textContent = "Build road";
+    getCommandDetailElement(root).textContent =
+      "Tap to extend; tap the end to raise a flag; tap back to undo.";
+  };
+  // Lay the drawn path as a real road (explicit directions — the world
+  // validates them like any road).
+  const completeRoad = (): boolean => {
+    const path = roadBuilderPath;
+    const world = currentWorld;
+    if (path === undefined || path.length < 2 || world === undefined) {
+      return false;
+    }
+
+    const directions: (typeof roadDirectionCycle)[number][] = [];
+    for (let step = 0; step + 1 < path.length; step += 1) {
+      const direction = roadDirectionCycle.find(
+        (candidate) => world.move(path[step]!, candidate) === path[step + 1]!,
+      );
+      if (direction === undefined) {
+        return false;
+      }
+
+      directions.push(direction);
+    }
+
+    const result = commandRouter.dispatch({
+      type: "game.build-road",
+      source: "pointer",
+      tile: tileForPosition(path[0]!),
+      toTile: tileForPosition(path[path.length - 1]!),
+      directions,
+    });
+    setNotice(uiText(result.status === "accepted" ? "notice.roadBuilt" : "notice.roadFailed"));
+    applyCommandResultState(root, result);
+    if (result.status === "accepted") {
+      setRoadMode("idle");
+      setGameSpeed(1);
+      if (currentSerfEngine !== undefined && currentWorld !== undefined) {
+        for (const building of currentWorld.buildings.values()) {
+          if (!building.isDone) {
+            currentSerfEngine.dispatchConstructionLogistics(building, commandRouter.state.tick);
+          }
+        }
+      }
+
+      currentLocalGameSnapshot = refreshLocalGameSnapshot(currentLocalGameSnapshot, commandRouter);
+      syncWorldState(root, currentWorld);
+      syncLocalGameSaveControls(
+        root,
+        currentLocalGameSnapshot,
+        currentSavedLocalGame,
+        currentImportedDataSource,
+      );
+    }
+
+    return result.status === "accepted";
+  };
+  setRoadMode("idle");
+  setGameSpeed(1);
+
   renderGeneratedScene();
   observeSceneResize(canvas, renderCurrentScene);
   attachPointerMapInteraction(root, canvas, {
@@ -1704,6 +1794,23 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       }
 
       const slot = panelButtonAt(rect, uiScale, interaction.screen.x, interaction.screen.y);
+      // Road-building owns the bar (reference IsBuildingRoad layout):
+      // the starred slot 0 cancels; every other slot is inert.
+      if (root.dataset.serfboundRoadMode !== "idle" && root.dataset.serfboundRoadMode !== undefined) {
+        if (slot === 0) {
+          setRoadMode("idle");
+          setGameSpeed(1);
+          setNotice(uiText("notice.roadEnded"));
+          getCommandStateElement(root).textContent = "Road mode ended";
+          getCommandDetailElement(root).textContent =
+            "Select a tile to inspect available actions.";
+          audioService.playSfx(sfxType.click);
+        }
+
+        renderCurrentScene();
+        return true;
+      }
+
       if (slot === 0) {
         // Build: place the castle directly during founding; on an own
         // flag the build act is a road from it (SB-34 round 4, the
@@ -1720,11 +1827,8 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
           applyCommandResultState(root, result);
           syncWorldState(root, currentWorld);
         } else if (possibility === "road" && selectedInteraction !== undefined) {
-          roadModeFrom = selectedInteraction;
-          setRoadMode("awaiting-end");
-          setNotice(uiText("notice.roadPickEnd"));
-          getCommandStateElement(root).textContent = "Build road";
-          getCommandDetailElement(root).textContent = "Select the destination flag.";
+          // The road builder starts at the selected flag (SB-34-08).
+          beginRoadBuilding(selectedInteraction.tile.position);
           audioService.playSfx(sfxType.click);
         } else if (currentWorld.players[0]?.hasCastle === true) {
           setPopup("buildBasic");
@@ -1764,47 +1868,89 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         return false;
       }
 
+      const position = interaction.tile.position;
       if (mode === "awaiting-start") {
-        roadModeFrom = interaction;
-        setRoadMode("awaiting-end");
-        setNotice(uiText("notice.roadPickEnd"));
-        getCommandStateElement(root).textContent = "Build road";
-        getCommandDetailElement(root).textContent = "Select the destination flag.";
+        const flag = currentWorld.flagAt(position);
+        if (flag !== null && flag.player === currentLocalPlayer) {
+          beginRoadBuilding(position);
+          audioService.playSfx(sfxType.click);
+        } else {
+          setNotice(uiText("notice.roadPickStart"));
+        }
+
         renderCurrentScene();
         return true;
       }
 
-      const from = roadModeFrom;
-      setRoadMode("idle");
-  setGameSpeed(1);
-      if (from === undefined) {
+      // The road builder (SB-34-08, reference semantics): tap extends
+      // the path toward the tap; tapping the previous tile undoes a
+      // segment; tapping the end raises a flag there and lays the
+      // road; reaching an own flag lays the road to it.
+      const path = roadBuilderPath;
+      if (path === undefined || path.length === 0) {
+        setRoadMode("idle");
         return true;
       }
 
-      const result = commandRouter.dispatch({
-        type: "game.build-road",
-        source: "pointer",
-        tile: from.tile,
-        toTile: interaction.tile,
-      });
-      // The verdict must reach the player's eyes, not the dev ledger
-      // (SB-34 round 4: "it just does not do anything" was a silent
-      // rejection).
-      setNotice(uiText(result.status === "accepted" ? "notice.roadBuilt" : "notice.roadFailed"));
-      if (result.status === "accepted" && currentSerfEngine !== undefined && currentWorld !== undefined) {
-        // Newly connected sites get their builders and materials.
-        for (const building of currentWorld.buildings.values()) {
-          if (!building.isDone) {
-            currentSerfEngine.dispatchConstructionLogistics(building, commandRouter.state.tick);
-          }
+      const end = path[path.length - 1]!;
+      if (position === end) {
+        if (path.length === 1) {
+          renderCurrentScene();
+          return true;
+        }
+
+        const flagResult = commandRouter.dispatch({
+          type: "game.build-flag",
+          source: "pointer",
+          tile: tileForPosition(end),
+        });
+        if (flagResult.status !== "accepted") {
+          setNotice(uiText("notice.roadFailed"));
+          applyCommandResultState(root, flagResult);
+          renderCurrentScene();
+          return true;
+        }
+
+        audioService.playSfx(sfxType.accepted);
+        completeRoad();
+        renderCurrentScene();
+        return true;
+      }
+
+      if (path.length > 1 && position === path[path.length - 2]) {
+        path.pop();
+        audioService.playSfx(sfxType.click);
+        renderCurrentScene();
+        return true;
+      }
+
+      const found = findShortestRoad(currentWorld, end, position);
+      const extension: number[] = [];
+      if (found !== null) {
+        let walker = end;
+        for (const direction of found.directions) {
+          walker = currentWorld.move(walker, direction);
+          extension.push(walker);
         }
       }
 
-      currentLocalGameSnapshot = refreshLocalGameSnapshot(currentLocalGameSnapshot, commandRouter);
-      applyCommandResultState(root, result);
-      syncWorldState(root, currentWorld);
+      if (found === null || extension.some((step) => path.includes(step))) {
+        setNotice(uiText("notice.roadNoPath"));
+        renderCurrentScene();
+        return true;
+      }
+
+      path.push(...extension);
+      const flag = currentWorld.flagAt(position);
+      if (flag !== null && flag.player === currentLocalPlayer) {
+        audioService.playSfx(sfxType.accepted);
+        completeRoad();
+      } else {
+        audioService.playSfx(sfxType.click);
+        setNotice(uiText("notice.roadFlagHint"));
+      }
+
       renderCurrentScene();
-      syncLocalGameSaveControls(root, currentLocalGameSnapshot, currentSavedLocalGame, currentImportedDataSource);
       return true;
     },
     onWorldChanged() {
@@ -2880,15 +3026,6 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     }
   });
 
-  let roadModeFrom: PointerMapInteraction | undefined;
-  const setRoadMode = (mode: "idle" | "awaiting-start" | "awaiting-end") => {
-    root.dataset.serfboundRoadMode = mode;
-    if (mode === "idle") {
-      roadModeFrom = undefined;
-    }
-  };
-  setRoadMode("idle");
-  setGameSpeed(1);
 
   const buildRoadButton = root.querySelector<HTMLButtonElement>("[data-testid='build-road-button']");
   if (buildRoadButton === null) {
@@ -3485,6 +3622,7 @@ function renderScene(
   initScreen?: InitScreenSettings,
   audio?: { sfxMuted: boolean; musicMuted: boolean },
   selected?: { readonly column: number; readonly row: number },
+  roadPreview?: { readonly positions: readonly number[] },
 ): void {
   const canvas = root.querySelector<HTMLCanvasElement>("[data-testid='terrain-preview']");
   if (canvas === null) {
@@ -3507,6 +3645,7 @@ function renderScene(
           ...(notice === undefined ? {} : { notice }),
           ...(audio === undefined ? {} : { audio }),
           ...(selected === undefined ? {} : { selected }),
+          ...(roadPreview === undefined ? {} : { roadPreview }),
           ...(decodedAssets === undefined
             ? {}
             : { definedArchiveEntries: decodedAssets.definedArchiveEntries }),

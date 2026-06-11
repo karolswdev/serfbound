@@ -96,7 +96,9 @@ test("punch 2: the cursor follows the tap, never the corner", async ({ page }) =
   expect(selected).not.toMatch(/\b0,\s*0\b/);
 });
 
-async function foundCastle(page: import("@playwright/test").Page): Promise<void> {
+async function foundCastle(
+  page: import("@playwright/test").Page,
+): Promise<{ x: number; y: number }> {
   const app = page.locator("#app");
   const canvas = page.getByTestId("terrain-preview");
   const box = await canvas.boundingBox();
@@ -110,7 +112,7 @@ async function foundCastle(page: import("@playwright/test").Page): Promise<void>
     await page.touchscreen.tap(x, y);
     await page.touchscreen.tap(x, y);
     if ((await app.getAttribute("data-serfbound-world-has-castle")) === "true") {
-      return;
+      return { x, y };
     }
   }
 
@@ -191,13 +193,18 @@ test("punch 5: road mode engages from a panel-bar tap at DPR 3", async ({ page }
   );
   // The prompt reaches the player's eyes (the in-canvas notice), not
   // just the dev ledger (SB-34 round 4). Background notices (a deed
-  // landing) may overwrite it on a slow runner — re-arm and re-read.
+  // landing) may overwrite it on a slow runner — re-arm and re-read
+  // (cancel rides the starred slot 0 while road mode owns the bar).
+  const cancelSlot = {
+    x: box.x + panel.x + (64 + 16) * chromeScale,
+    y: box.y + panel.y + (4 + 16) * chromeScale,
+  };
   await expect(async () => {
     const notice = await page
       .locator("#app")
       .getAttribute("data-serfbound-notification");
     if (notice !== "TAP YOUR STARTING FLAG") {
-      await page.touchscreen.tap(roadSlot.x, roadSlot.y);
+      await page.touchscreen.tap(cancelSlot.x, cancelSlot.y);
       await page.touchscreen.tap(roadSlot.x, roadSlot.y);
       throw new Error(`the road prompt was overwritten by: ${notice}`);
     }
@@ -206,6 +213,81 @@ test("punch 5: road mode engages from a panel-bar tap at DPR 3", async ({ page }
     "data-serfbound-road-mode",
     "awaiting-start",
   );
+});
+
+test("the road builder: tap the flag, extend, plant a flag, the road is laid", async ({ page }) => {
+  test.setTimeout(120_000);
+  await importAndStart(page);
+  const castleTap = await foundCastle(page);
+  const app = page.locator("#app");
+  const canvas = page.getByTestId("terrain-preview");
+  const box = await canvas.boundingBox();
+  if (box === null) {
+    throw new Error("no canvas box");
+  }
+
+  const panel = await publishedRect(page, "data-serfbound-panel-rect");
+  const chromeScale = panel.width / 320;
+  const buildSlot = {
+    x: box.x + panel.x + (64 + 16) * chromeScale,
+    y: box.y + panel.y + (4 + 16) * chromeScale,
+  };
+
+  // The castle flag sits DownRight of the castle: roughly half a tile
+  // right, one tile down in CSS space (32px tiles at this profile).
+  // Selecting an own flag turns the build slot into the road button —
+  // the panel publishes "8," first. Probe small offsets to absorb the
+  // apex rounding.
+  let flagPoint: { x: number; y: number } | undefined;
+  for (const [dx, dy] of [[16, 20], [16, 24], [12, 20], [20, 20], [16, 16]]) {
+    const candidate = { x: castleTap.x + dx, y: castleTap.y + dy };
+    await page.touchscreen.tap(candidate.x, candidate.y);
+    const buttons = await app.getAttribute("data-serfbound-panel-buttons");
+    if (buttons?.startsWith("8,")) {
+      flagPoint = candidate;
+      break;
+    }
+  }
+  expect(flagPoint, "the castle flag is selectable and offers the road act").toBeDefined();
+
+  // Tap the build slot (now the road button): the road builder begins.
+  await page.touchscreen.tap(buildSlot.x, buildSlot.y);
+  await expect(app).toHaveAttribute("data-serfbound-road-mode", "building");
+  // The bar swaps to the reference road-builder layout.
+  await expect(app).toHaveAttribute("data-serfbound-panel-buttons", "24,0,9,11,13");
+
+  // Extend away from the flag and plant a flag at the end: try a few
+  // destinations until one accepts both the path and the flag.
+  let laid = false;
+  for (const [ex, ey] of [[64, 0], [-64, 0], [64, 40], [-64, 40], [0, 80], [96, 0]]) {
+    const target = { x: flagPoint!.x + ex, y: flagPoint!.y + ey };
+    if (
+      target.x < box.x + 8 ||
+      target.x > box.x + box.width - 8 ||
+      target.y < box.y + 40 ||
+      target.y > box.y + box.height - 140
+    ) {
+      continue;
+    }
+
+    await page.touchscreen.tap(target.x, target.y);
+    await page.touchscreen.tap(target.x, target.y);
+    if ((await app.getAttribute("data-serfbound-last-effect")) === "road-built") {
+      laid = true;
+      break;
+    }
+
+    if ((await app.getAttribute("data-serfbound-road-mode")) === "idle") {
+      // A failed completion ended the mode; restart from the flag.
+      await page.touchscreen.tap(flagPoint!.x, flagPoint!.y);
+      await page.touchscreen.tap(buildSlot.x, buildSlot.y);
+      await expect(app).toHaveAttribute("data-serfbound-road-mode", "building");
+    }
+  }
+
+  expect(laid, "extend + plant-a-flag lays a real road").toBe(true);
+  await expect(app).toHaveAttribute("data-serfbound-road-mode", "idle");
+  await expect(app).toHaveAttribute("data-serfbound-notification", "THE ROAD IS LAID");
 });
 
 test("punch 6: the build popup fits and its content is hit-true at DPR 3", async ({ page }) => {

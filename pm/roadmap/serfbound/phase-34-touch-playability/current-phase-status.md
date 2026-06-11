@@ -1,9 +1,8 @@
 # Phase 34 — Touch Playability
 
-**Last updated:** 2026-06-11 (after SB-34-07: the round-4 punch
-list — tap/cursor divergence on hills, the phantom road button, the
-missing flag→road act, silent rejections — fixed and gated; the
-fourth device pass is the open gate).
+**Last updated:** 2026-06-11 (after SB-34-08: the road builder —
+the reference IsBuildingRoad interface, touch-first — shipped and
+gated end to end; the fifth device pass is the open gate).
 **Status:** in progress — opened by the maintainer's real-device
 play test, which the previous touch gates failed to predict.
 
@@ -17,6 +16,18 @@ Real phone, real fingers: "LITERALLY unplayable."
 4. Zero animations — flags don't wave.
 5. Could not build a road — "could not even click into it."
 6. The build-building menu shows buildings cropped after ~5 pixels.
+
+## Round 5 (fourth device pass, 2026-06-11)
+
+The canvas prompts landed — but:
+
+13. "We're missing one very crucial thing in the entire interface,
+    which is the road builder interface, which allowed us to build
+    roads, plant flags, and so on with a very simple and intuitive
+    menu." (The reference IsBuildingRoad flow was never ported.
+    Shipped: tap-to-extend with live path preview, undo by tapping
+    back, plant-a-flag-at-the-end, the reference road-builder bar,
+    explicit drawn paths honored by the engine. SB-34-08.)
 
 ## Round 4 (third device pass, 2026-06-11)
 
@@ -96,9 +107,10 @@ their device and saying so.
 | SB-34-02 | Founding confirmation on touch | done | story-02-founding-confirmation.md | evidence-story-02.md |
 | SB-34-03 | DPR-3 coordinate spaces: cursor, panel, popups | done | story-03-dpr3-coordinate-truth.md | evidence-story-03.md |
 | SB-34-04 | Selection bleed + on-device animation | done | story-04-selection-bleed-and-motion.md | evidence-story-04.md |
-| SB-34-05 | The device gate | looped — rounds 2 and 3 rejected; round 4 shipped, fourth pass pending | — | — |
+| SB-34-05 | The device gate | looped — rounds 2–4 rejected; round 5 shipped, fifth pass pending | — | — |
 | SB-34-06 | The visible world: cursor, construction, waving flags | done | story-06-the-visible-world.md | evidence-story-06.md |
 | SB-34-07 | The road and the true tap | done | story-07-the-road-and-the-true-tap.md | evidence-story-07.md |
+| SB-34-08 | The road builder | done | story-08-the-road-builder.md | evidence-story-08.md |
 
 ## Active risks
 

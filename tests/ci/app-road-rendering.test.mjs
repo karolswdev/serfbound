@@ -79,3 +79,28 @@ test("built roads and world flags render in the landscape scene", () => {
     );
   }
 });
+
+test("the road builder's preview path draws with real segment sprites (SB-34-08)", () => {
+  const world = flatWorld();
+  const start = 10 * 64 + 10;
+  const positions = [start, world.move(start, "Right"), world.move(world.move(start, "Right"), "DownRight")];
+
+  const bare = createLandscapeScene({
+    size: { width: 960, height: 540 },
+    assets: landscapeAssets,
+    scroll: { column: 0, row: 0 },
+    world,
+  });
+  const previewed = createLandscapeScene({
+    size: { width: 960, height: 540 },
+    assets: landscapeAssets,
+    scroll: { column: 0, row: 0 },
+    world,
+    roadPreview: { positions },
+  });
+
+  const pathCount = (scene) =>
+    scene.sprites.filter((sprite) => sprite.key.startsWith("path:")).length;
+  assert.equal(pathCount(bare), 0, "no roads exist yet");
+  assert.equal(pathCount(previewed), 2, "both planned segments draw as path sprites");
+});
