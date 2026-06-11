@@ -1148,6 +1148,27 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       initScreenSettings(),
       { sfxMuted: audioService.sfxMuted, musicMuted: audioService.musicMuted },
     );
+
+    // SB-34-03: publish the chrome's hit rectangles in canvas CSS space
+    // so touch gates can verify hit-truth at any device pixel ratio.
+    if (currentWorld !== undefined && root.dataset.serfboundGameState === "running") {
+      const size = { width: canvas.width, height: canvas.height };
+      const uiScale = uiScaleFor(size, canvasPixelRatio);
+      const cssFactor = canvas.clientWidth > 0 ? canvas.clientWidth / canvas.width : 1;
+      const asCssRect = (rect: { x: number; y: number; width: number; height: number }) =>
+        [rect.x, rect.y, rect.width, rect.height]
+          .map((value) => String(Math.round(value * cssFactor)))
+          .join(",");
+      root.dataset.serfboundPanelRect = asCssRect(panelBarRect(size, uiScale));
+      if (currentPopup === undefined) {
+        delete root.dataset.serfboundPopupRect;
+      } else {
+        root.dataset.serfboundPopupRect = asCssRect(popupRect(size, uiScale));
+      }
+    } else {
+      delete root.dataset.serfboundPanelRect;
+      delete root.dataset.serfboundPopupRect;
+    }
   };
   const applyScroll = (columnDelta: number, rowDelta: number) => {
     if (currentLandscapeAssets === undefined) {

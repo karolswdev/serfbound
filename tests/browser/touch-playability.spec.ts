@@ -10,8 +10,10 @@ import { createDecodableGeneratedPaArchive } from "@serfbound/test-support";
 
 test.use({
   ...devices["iPhone 13"],
-  // The shipped app is what phones run; the default chromium project
-  // hosts this spec, but the context is true mobile: touch + DPR 3.
+  // The device profile defaults to WebKit; CI installs Chromium only.
+  // The context is still true mobile: touch + DPR 3. The WebKit half
+  // of the bar is the maintainer's device gate (SB-34-05).
+  browserName: "chromium",
   hasTouch: true,
   isMobile: true,
   deviceScaleFactor: 3,
@@ -94,32 +96,165 @@ test("punch 2: the cursor follows the tap, never the corner", async ({ page }) =
   expect(selected).not.toMatch(/\b0,\s*0\b/);
 });
 
-test.fixme("punch 6: the build popup fits and its content is hit-true at DPR 3", async ({ page }) => {
-  await importAndStart(page);
+async function foundCastle(page: import("@playwright/test").Page): Promise<void> {
   const app = page.locator("#app");
-  // Found the castle first (two-tap confirm or single tap pre-fix).
   const canvas = page.getByTestId("terrain-preview");
   const box = await canvas.boundingBox();
   if (box === null) {
     throw new Error("no canvas box");
   }
 
-  outer: for (let attempt = 0; attempt < 24; attempt += 1) {
+  for (let attempt = 0; attempt < 24; attempt += 1) {
     const x = box.x + 40 + (attempt % 6) * Math.floor((box.width - 80) / 5);
     const y = box.y + 80 + Math.floor(attempt / 6) * Math.floor((box.height - 360) / 3);
     await page.touchscreen.tap(x, y);
     await page.touchscreen.tap(x, y);
     if ((await app.getAttribute("data-serfbound-world-has-castle")) === "true") {
-      break outer;
+      return;
     }
   }
 
-  await expect(app).toHaveAttribute("data-serfbound-world-has-castle", "true");
+  throw new Error("no castle site reachable in the probe window");
+}
 
-  // The panel bar's build button must be tappable, and the popup must
-  // report itself fully inside the canvas.
-  const panel = await app.getAttribute("data-serfbound-panel-rect");
-  expect(panel, "the panel bar must publish its rect for hit verification").not.toBeNull();
-  const popupState = await app.getAttribute("data-serfbound-popup");
-  void popupState;
+// The published rect ("x,y,w,h" in canvas CSS space — SB-34-03) is the
+// hit truth the chrome itself uses; taps derived from it must land.
+async function publishedRect(
+  page: import("@playwright/test").Page,
+  attribute: string,
+): Promise<{ x: number; y: number; width: number; height: number }> {
+  const raw = await page.locator("#app").getAttribute(attribute);
+  if (raw === null) {
+    throw new Error(`${attribute} is not published`);
+  }
+
+  const [x, y, width, height] = raw.split(",").map(Number);
+  return { x: x!, y: y!, width: width!, height: height! };
+}
+
+test("punch 5: road mode engages from a panel-bar tap at DPR 3", async ({ page }) => {
+  await importAndStart(page);
+  await foundCastle(page);
+  const canvas = page.getByTestId("terrain-preview");
+  const box = await canvas.boundingBox();
+  if (box === null) {
+    throw new Error("no canvas box");
+  }
+
+  const panel = await publishedRect(page, "data-serfbound-panel-rect");
+  const chromeScale = panel.width / 320;
+  // Slot 1 is the road button: reference offset (64 + 48, 4), 32x32.
+  await page.touchscreen.tap(
+    box.x + panel.x + (64 + 48 + 16) * chromeScale,
+    box.y + panel.y + (4 + 16) * chromeScale,
+  );
+  await expect(page.locator("#app")).toHaveAttribute(
+    "data-serfbound-road-mode",
+    "awaiting-start",
+  );
+});
+
+test("punch 6: the build popup fits and its content is hit-true at DPR 3", async ({ page }) => {
+  await importAndStart(page);
+  const app = page.locator("#app");
+  await foundCastle(page);
+  const canvas = page.getByTestId("terrain-preview");
+  const box = await canvas.boundingBox();
+  if (box === null) {
+    throw new Error("no canvas box");
+  }
+
+  // Open the build popup from the panel bar's build slot (slot 0).
+  const panel = await publishedRect(page, "data-serfbound-panel-rect");
+  const chromeScale = panel.width / 320;
+  await page.touchscreen.tap(
+    box.x + panel.x + (64 + 16) * chromeScale,
+    box.y + panel.y + (4 + 16) * chromeScale,
+  );
+  await expect(app).toHaveAttribute("data-serfbound-popup", /build/);
+
+  // The popup must sit fully inside the visible canvas.
+  const popup = await publishedRect(page, "data-serfbound-popup-rect");
+  expect(popup.x).toBeGreaterThanOrEqual(0);
+  expect(popup.y).toBeGreaterThanOrEqual(0);
+  expect(popup.x + popup.width).toBeLessThanOrEqual(box.width + 1);
+  expect(popup.y + popup.height).toBeLessThanOrEqual(box.height + 1);
+
+  // The content must render beyond the background pattern. Honest
+  // limit: the CI fixture's building sprites are shallow strips, so
+  // this floor cannot catch the paint-order crop the phone showed —
+  // tests/ci/app-popup.test.mjs ("paints in push order") gates that;
+  // this asserts the popup is not an empty shell at DPR 3.
+  const interiorScale = popup.width / 144;
+  const fraction = await page.evaluate(
+    ({ popup, interiorScale }) => {
+      const source = document.querySelector(
+        "[data-testid='terrain-preview']",
+      ) as HTMLCanvasElement | null;
+      if (source === null) {
+        return -1;
+      }
+
+      const backingScale = source.width / source.clientWidth;
+      const probe = document.createElement("canvas");
+      probe.width = source.width;
+      probe.height = source.height;
+      const context = probe.getContext("2d");
+      if (context === null) {
+        return -1;
+      }
+
+      context.drawImage(source, 0, 0);
+      // The reference interior is 128x144 at inset (8,9); the strip
+      // above the first building row (y 9..21) is pure background.
+      const rect = (refX: number, refY: number, refW: number, refH: number) => ({
+        x: Math.round((popup.x + refX * interiorScale) * backingScale),
+        y: Math.round((popup.y + refY * interiorScale) * backingScale),
+        w: Math.round(refW * interiorScale * backingScale),
+        h: Math.round(refH * interiorScale * backingScale),
+      });
+      const background = new Set<number>();
+      const backgroundStrip = rect(8, 10, 128, 10);
+      const stripData = context.getImageData(
+        backgroundStrip.x, backgroundStrip.y, backgroundStrip.w, backgroundStrip.h,
+      ).data;
+      for (let index = 0; index < stripData.length; index += 4) {
+        background.add(
+          (stripData[index]! << 16) | (stripData[index + 1]! << 8) | stripData[index + 2]!,
+        );
+      }
+
+      const interior = rect(8, 22, 128, 120);
+      const interiorData = context.getImageData(
+        interior.x, interior.y, interior.w, interior.h,
+      ).data;
+      let foreign = 0;
+      const total = interiorData.length / 4;
+      for (let index = 0; index < interiorData.length; index += 4) {
+        const color =
+          (interiorData[index]! << 16) |
+          (interiorData[index + 1]! << 8) |
+          interiorData[index + 2]!;
+        if (!background.has(color)) {
+          foreign += 1;
+        }
+      }
+
+      return foreign / total;
+    },
+    { popup, interiorScale },
+  );
+  expect(fraction, "popup interior renders no content beyond the background").toBeGreaterThan(
+    0.12,
+  );
+
+  // Content hit-truth: the flip button (reference 16x16 at (8,137))
+  // cycles the build pages.
+  const before = await app.getAttribute("data-serfbound-popup");
+  await page.touchscreen.tap(
+    box.x + popup.x + (8 + 8) * interiorScale,
+    box.y + popup.y + (137 + 8) * interiorScale,
+  );
+  await expect(app).not.toHaveAttribute("data-serfbound-popup", before ?? "");
+  await expect(app).toHaveAttribute("data-serfbound-popup", /build/);
 });

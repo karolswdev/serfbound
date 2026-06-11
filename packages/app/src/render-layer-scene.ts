@@ -1042,6 +1042,13 @@ function compareSpritePrimitive(
     return layerDelta;
   }
 
+  // The UI layer composes in explicit paint order (background, borders,
+  // content) — y-sorting it lets a popup's lower background rows draw
+  // over content pushed earlier. Stable sort keeps insertion order.
+  if (left.layer === "ui") {
+    return 0;
+  }
+
   const yDelta = left.sortY - right.sortY;
   if (yDelta !== 0) {
     return yDelta;

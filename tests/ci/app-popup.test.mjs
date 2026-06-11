@@ -154,6 +154,35 @@ test("the build popup renders building sprites at the reference layout", () => {
   assert.equal(uiSprites.some((sprite) => sprite.key === "obj:flag"), true);
 });
 
+test("the popup paints in push order: content above every background tile", () => {
+  // SB-34-03 regression: the UI layer must keep its push (paint) order.
+  // Y-sorting the UI layer let the popup's lower background tile rows
+  // draw over the building sprites pushed before them — on a phone the
+  // build menu showed only the top sliver of every building.
+  const scene = decodedScene("buildBasic");
+  const uiKeys = scene.sprites
+    .filter((sprite) => sprite.layer === "ui")
+    .map((sprite) => sprite.key);
+  const lastBackgroundTile = uiKeys.lastIndexOf("uii:310");
+  assert.notEqual(lastBackgroundTile, -1, "interior pattern present");
+
+  const firstBorder = uiKeys.findIndex((key) => key.startsWith("uifr:"));
+  assert.notEqual(firstBorder, -1, "borders present");
+  assert.equal(
+    firstBorder > lastBackgroundTile,
+    true,
+    "borders draw above the interior pattern",
+  );
+
+  const firstBuilding = uiKeys.findIndex((key) => key.startsWith("mo:"));
+  assert.notEqual(firstBuilding, -1, "building sprites present");
+  assert.equal(
+    firstBuilding > lastBackgroundTile,
+    true,
+    "buildings draw above the interior pattern",
+  );
+});
+
 test("the stats popup renders the resource icons with live counts", () => {
   const scene = decodedScene("stats");
   const uiSprites = scene.sprites.filter((sprite) => sprite.layer === "ui");
