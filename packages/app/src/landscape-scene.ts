@@ -1166,9 +1166,11 @@ export function mapTileToScreen(
   };
 }
 
-// Screen position to map tile, ignoring terrain height lift (recorded
-// simplification; height-aware picking follows with the original
-// CoordinateSpace port).
+// Screen position to map tile, height-aware (SB-34 round 4): high
+// terrain lifts tile apexes up the screen (4px per height step, up to
+// 124px), so the true tile under a tap can sit several lattice rows
+// below the flat guess. The pick is the tile whose drawn apex — the
+// exact point the cursor renders at — lies nearest the tap.
 export function screenToMapTile(
   landscape: ClassicMapLandscape,
   screen: { readonly x: number; readonly y: number },
@@ -1177,16 +1179,28 @@ export function screenToMapTile(
 ): { column: number; row: number; position: number } {
   const mapX = screen.x / viewScale;
   const mapY = screen.y / viewScale;
-  const r = Math.floor(mapY / tileHeight);
-  const stagger = (r & 1) === 1 ? tileWidth / 2 : 0;
-  const c = Math.round((mapX - stagger) / tileWidth);
-  const columnShift = (r + (r & 1)) >> 1;
-  const column = wrap(scroll.column + c + columnShift, landscape.columns);
-  const row = wrap(scroll.row + r, landscape.rows);
+  const flatRow = Math.floor(mapY / tileHeight);
+  // Max height 31 * 4px lift = ~7 lattice rows of search downward.
+  let best: { column: number; row: number; position: number } | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let r = flatRow - 1; r <= flatRow + 8; r += 1) {
+    const stagger = (r & 1) === 1 ? tileWidth / 2 : 0;
+    const centerColumn = Math.round((mapX - stagger) / tileWidth);
+    const columnShift = (r + (r & 1)) >> 1;
+    for (let c = centerColumn - 1; c <= centerColumn + 1; c += 1) {
+      const column = wrap(scroll.column + c + columnShift, landscape.columns);
+      const row = wrap(scroll.row + r, landscape.rows);
+      const position = row * landscape.columns + column;
+      const apexX = c * tileWidth + stagger;
+      const apexY = r * tileHeight - heightStep * landscape.heights[position]!;
+      const distance = (apexX - mapX) ** 2 + (apexY - mapY) ** 2;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = { column, row, position };
+      }
+    }
+  }
 
-  return {
-    column,
-    row,
-    position: row * landscape.columns + column,
-  };
+  // The lattice window always contains at least one candidate.
+  return best!;
 }

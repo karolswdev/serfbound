@@ -47,9 +47,17 @@ test("button sprites follow the reference build possibility and road mode", () =
     panelButtonSprites({ buildPossibility: "large", roadMode: false }),
     [4, 8, 10, 12, 14],
   );
+  // BuildRoadStarred is sprite 24 — the last panel_button the DOS data
+  // carries (reference ButtonId; 25 does not exist and rendered as a
+  // transparent hole — SB-34 round 4).
   assert.deepEqual(
     panelButtonSprites({ buildPossibility: "flag", roadMode: true }),
-    [1, 25, 10, 12, 14],
+    [1, 24, 10, 12, 14],
+  );
+  // An own flag under the cursor turns the build slot into the road act.
+  assert.deepEqual(
+    panelButtonSprites({ buildPossibility: "road", roadMode: false }),
+    [8, 8, 10, 12, 14],
   );
   assert.deepEqual(
     panelButtonSprites({ buildPossibility: "none", roadMode: false }),

@@ -1,8 +1,9 @@
 # Phase 34 — Touch Playability
 
-**Last updated:** 2026-06-11 (after SB-34-06: the round-3 punch
-list — invisible cursor, invisible construction, frozen flags —
-fixed and gated; the third device pass is the open gate).
+**Last updated:** 2026-06-11 (after SB-34-07: the round-4 punch
+list — tap/cursor divergence on hills, the phantom road button, the
+missing flag→road act, silent rejections — fixed and gated; the
+fourth device pass is the open gate).
 **Status:** in progress — opened by the maintainer's real-device
 play test, which the previous touch gates failed to predict.
 
@@ -16,6 +17,23 @@ Real phone, real fingers: "LITERALLY unplayable."
 4. Zero animations — flags don't wave.
 5. Could not build a road — "could not even click into it."
 6. The build-building menu shows buildings cropped after ~5 pixels.
+
+## Round 4 (third device pass, 2026-06-11)
+
+"Definitely some improvements" — the cursor is visible — but:
+
+10. The cursor sometimes does not match the tapped spot.
+    (Root: height-blind tile picking vs the height-lifted apex the
+    cursor draws at — diverged on hills. Height-aware picking,
+    SB-34-07.)
+11. No way to build a road from a flag or construction site.
+    (Root: the reference's flag→road build-slot affordance was never
+    ported, and road rejections spoke only into the hidden dev
+    ledger. Both fixed, SB-34-07.)
+12. The road panel button becomes a transparent rectangle when
+    tapped. (Root: buildRoadStarred pointed at sprite 25 — the
+    reference enum ends at 24 and the DOS data carries 0..24; the
+    armed state drew a sprite that exists nowhere. SB-34-07.)
 
 ## Round 3 (second device pass, 2026-06-11)
 
@@ -78,8 +96,9 @@ their device and saying so.
 | SB-34-02 | Founding confirmation on touch | done | story-02-founding-confirmation.md | evidence-story-02.md |
 | SB-34-03 | DPR-3 coordinate spaces: cursor, panel, popups | done | story-03-dpr3-coordinate-truth.md | evidence-story-03.md |
 | SB-34-04 | Selection bleed + on-device animation | done | story-04-selection-bleed-and-motion.md | evidence-story-04.md |
-| SB-34-05 | The device gate | looped — round-2 pass rejected; round 3 shipped, third pass pending | — | — |
+| SB-34-05 | The device gate | looped — rounds 2 and 3 rejected; round 4 shipped, fourth pass pending | — | — |
 | SB-34-06 | The visible world: cursor, construction, waving flags | done | story-06-the-visible-world.md | evidence-story-06.md |
+| SB-34-07 | The road and the true tap | done | story-07-the-road-and-the-true-tap.md | evidence-story-07.md |
 
 ## Active risks
 
@@ -105,3 +124,11 @@ their device and saying so.
   `prefers-reduced-motion` pins decorative frame cycling only; the
   simulation timer always runs while a game is live. An
   accessibility preference must never read as a frozen game.
+- 2026-06-11 — Player feedback speaks in-canvas (SB-34-07): command
+  verdicts and mode prompts surface as the game-font notice; the
+  dev ledger is not a product surface and nothing player-critical
+  may live only there.
+- 2026-06-11 — Sprite ids answer to the data (SB-34-07): every
+  sprite-id constant must exist in the DOS archives (the fixture
+  mirrors the real entry counts), so a phantom id fails in CI the
+  way it fails on a phone.

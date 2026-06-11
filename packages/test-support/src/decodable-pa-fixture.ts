@@ -210,7 +210,10 @@ export function createDecodableGeneratedPaArchive(): Uint8Array {
   entries.push({ index: 661, bytes: solidSprite(144, 7, 85) });
   entries.push({ index: 662, bytes: solidSprite(8, 144, 90) });
   entries.push({ index: 663, bytes: solidSprite(8, 144, 95) });
-  for (let button = 0; button < 26; button += 1) {
+  // The DOS data carries exactly 25 panel buttons (0..24, reference
+  // ButtonId ends at BuildRoadStarred = 24) — the fixture mirrors that
+  // so a phantom sprite id fails in CI the way it fails on real data.
+  for (let button = 0; button < 25; button += 1) {
     entries.push({ index: 1750 + button, bytes: solidSprite(32, 32, 160 + button * 3) });
   }
   for (let piece = 0; piece < 26; piece += 1) {

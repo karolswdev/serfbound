@@ -248,9 +248,11 @@ test("importing a decodable archive renders the decoded sprite scene", async ({ 
     "data-serfbound-road-mode",
     "awaiting-start",
   );
+  // BuildRoadStarred is sprite 24, the last panel_button the DOS data
+  // carries (SB-34 round 4 — 25 rendered as a transparent hole).
   await expect(page.locator("#app")).toHaveAttribute(
     "data-serfbound-panel-buttons",
-    /^\d+,25,10,12,14$/,
+    /^\d+,24,10,12,14$/,
   );
   await canvas.click({ position: roadSlot, force: true });
   await expect(page.locator("#app")).toHaveAttribute("data-serfbound-road-mode", "idle");

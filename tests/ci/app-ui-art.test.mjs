@@ -84,7 +84,8 @@ test("decoded UI art lands in the render assets and the landscape atlas", () => 
   assert.equal(decoded.rawFontGlyphs.filter((glyph) => glyph !== null).length, 44);
   assert.equal(decoded.rawFontShadows.filter((glyph) => glyph !== null).length, 44);
   assert.equal(decoded.rawIcons.size, 65);
-  assert.equal(decoded.rawPanelButtons.size, 26);
+  // 25 panel buttons (0..24) — exactly what the DOS data carries.
+  assert.equal(decoded.rawPanelButtons.size, 25);
   assert.equal(decoded.rawPopupFrames.filter((frame) => frame !== null).length, 4);
   assert.equal(decoded.rawBottomFrames.filter((frame) => frame !== null).length, 26);
   assert.notEqual(decoded.rawCursor, null);

@@ -245,6 +245,9 @@ type PointerMapInteractionHandlers = {
   readonly roadModeClick: (interaction: PointerMapInteraction) => boolean;
   readonly onWorldChanged: () => void;
   readonly onSelection: (interaction: PointerMapInteraction) => void;
+  // Player-facing banner text (the in-canvas notice — the dev ledger
+  // is not a product surface; SB-34 round 4).
+  readonly onNotice?: (notice: string) => void;
 };
 
 // PWA: the offline app shell registers in secure contexts; original game
@@ -1108,6 +1111,13 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       return world.canBuildCastle(position, 0) ? "castle" : "none";
     }
 
+    // Reference Interface.BuildPossibility: standing on an own flag,
+    // the build act is a road from it (SB-34 round 4).
+    const flag = world.flagAt(position);
+    if (flag !== null && flag.player === currentLocalPlayer) {
+      return "road";
+    }
+
     if (world.canBuildBuilding(position, 17, 0)) return "large";
     if (world.canBuildBuilding(position, 2, 0)) return "small";
     if (world.canBuildBuilding(position, 6, 0)) return "mine";
@@ -1695,8 +1705,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
       const slot = panelButtonAt(rect, uiScale, interaction.screen.x, interaction.screen.y);
       if (slot === 0) {
-        // Build: place the castle directly during founding; with a castle
-        // standing, the build popup offers the building menu.
+        // Build: place the castle directly during founding; on an own
+        // flag the build act is a road from it (SB-34 round 4, the
+        // reference flow); with a castle standing, the build popup
+        // offers the building menu.
         const possibility = computeBuildPossibility();
         const tile = selectedInteraction?.tile;
         if (tile !== undefined && possibility === "castle") {
@@ -1707,6 +1719,13 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
           });
           applyCommandResultState(root, result);
           syncWorldState(root, currentWorld);
+        } else if (possibility === "road" && selectedInteraction !== undefined) {
+          roadModeFrom = selectedInteraction;
+          setRoadMode("awaiting-end");
+          setNotice(uiText("notice.roadPickEnd"));
+          getCommandStateElement(root).textContent = "Build road";
+          getCommandDetailElement(root).textContent = "Select the destination flag.";
+          audioService.playSfx(sfxType.click);
         } else if (currentWorld.players[0]?.hasCastle === true) {
           setPopup("buildBasic");
         }
@@ -1724,11 +1743,13 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         if (root.dataset.serfboundRoadMode !== "idle") {
           setRoadMode("idle");
   setGameSpeed(1);
+          setNotice(uiText("notice.roadEnded"));
           getCommandStateElement(root).textContent = "Road mode ended";
           getCommandDetailElement(root).textContent =
             "Select a tile to inspect available actions.";
         } else {
           setRoadMode("awaiting-start");
+          setNotice(uiText("notice.roadPickStart"));
           getCommandStateElement(root).textContent = "Build road";
           getCommandDetailElement(root).textContent = "Select the starting flag.";
         }
@@ -1746,8 +1767,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       if (mode === "awaiting-start") {
         roadModeFrom = interaction;
         setRoadMode("awaiting-end");
+        setNotice(uiText("notice.roadPickEnd"));
         getCommandStateElement(root).textContent = "Build road";
         getCommandDetailElement(root).textContent = "Select the destination flag.";
+        renderCurrentScene();
         return true;
       }
 
@@ -1764,6 +1787,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         tile: from.tile,
         toTile: interaction.tile,
       });
+      // The verdict must reach the player's eyes, not the dev ledger
+      // (SB-34 round 4: "it just does not do anything" was a silent
+      // rejection).
+      setNotice(uiText(result.status === "accepted" ? "notice.roadBuilt" : "notice.roadFailed"));
       if (result.status === "accepted" && currentSerfEngine !== undefined && currentWorld !== undefined) {
         // Newly connected sites get their builders and materials.
         for (const building of currentWorld.buildings.values()) {
@@ -1789,6 +1816,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       syncBuildFlagEnabled(root, selectedInteraction, currentBuiltStructures);
       // The map cursor draws at the selection — repaint immediately so
       // the tap lands visibly, not on the next animation tick.
+      renderCurrentScene();
+    },
+    onNotice(notice) {
+      setNotice(notice);
       renderCurrentScene();
     },
   });
@@ -3595,6 +3626,7 @@ function attachPointerMapInteraction(
           detail.textContent = "Tap the same tile again to confirm.";
         }
 
+        handlers.onNotice?.(uiText("notice.castleConfirm"));
         applyPointerSelectionState(root, interaction);
         handlers.onSelection(interaction);
         return;

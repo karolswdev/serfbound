@@ -188,6 +188,12 @@ test("punch 5: road mode engages from a panel-bar tap at DPR 3", async ({ page }
     "data-serfbound-road-mode",
     "awaiting-start",
   );
+  // The prompt reaches the player's eyes (the in-canvas notice), not
+  // just the dev ledger (SB-34 round 4).
+  await expect(page.locator("#app")).toHaveAttribute(
+    "data-serfbound-notification",
+    "TAP YOUR STARTING FLAG",
+  );
 });
 
 test("punch 6: the build popup fits and its content is hit-true at DPR 3", async ({ page }) => {

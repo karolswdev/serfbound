@@ -22,7 +22,11 @@ export const panelButtonId = {
   sett: 14,
   destroyRoad: 15,
   groundAnalysis: 16,
-  buildRoadStarred: 25,
+  // Reference PanelBar.ButtonId: ...BuildMineStarred = 23, then
+  // BuildRoadStarred = 24 — the last panel_button sprite the DOS data
+  // carries (0..24). 25 does not exist in any archive; it rendered as
+  // a transparent hole when road mode armed (SB-34 round 4).
+  buildRoadStarred: 24,
 } as const;
 
 // PanelBar.BackgroundLayout: frame_bottom sprite ids with x/y offsets.
@@ -123,7 +127,14 @@ export function pointInPanelBar(rect: PanelBarRect, pointX: number, pointY: numb
   );
 }
 
-export type PanelBuildPossibility = "castle" | "large" | "small" | "mine" | "flag" | "none";
+export type PanelBuildPossibility =
+  | "castle"
+  | "large"
+  | "small"
+  | "mine"
+  | "flag"
+  | "road"
+  | "none";
 
 export type PanelBarButtonsState = {
   readonly buildPossibility: PanelBuildPossibility;
@@ -150,6 +161,11 @@ export function panelButtonSprites(state: PanelBarButtonsState): number[] {
       break;
     case "flag":
       build = panelButtonId.buildFlag;
+      break;
+    case "road":
+      // On an own flag the build act is a road from it (reference
+      // Interface.BuildPossibility → PanelBar BuildRoad).
+      build = panelButtonId.buildRoad;
       break;
     default:
       break;

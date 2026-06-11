@@ -97,14 +97,9 @@ test("map/screen mappings agree and respect scroll", () => {
   ]) {
     const screen = mapTileToScreen(landscape, tile, scroll);
     assert.notEqual(screen, null);
-    // The reverse mapping lands on the same tile when compensating for the
-    // height lift the forward mapping applied.
-    const position = tile.row * landscape.columns + tile.column;
-    const screenWithoutHeight = {
-      x: screen.x,
-      y: screen.y + 4 * landscape.heights[position],
-    };
-    const roundTripped = screenToMapTile(landscape, screenWithoutHeight, scroll);
+    // Height-aware picking (SB-34 round 4): the exact screen point the
+    // cursor draws at must pick the same tile back — no compensation.
+    const roundTripped = screenToMapTile(landscape, screen, scroll);
     assert.deepEqual(
       { column: roundTripped.column, row: roundTripped.row },
       tile,
