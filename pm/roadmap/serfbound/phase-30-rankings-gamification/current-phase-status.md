@@ -1,7 +1,7 @@
 # Phase 30 — Rankings and Gamification
 
-**Last updated:** 2026-06-11.
-**Status:** not started.
+**Last updated:** 2026-06-11 (SB-30-05 added and started by maintainer direction).
+**Status:** in progress (SB-30-05 only; 01-04 await their dependencies/order).
 
 ## Goal
 
@@ -61,12 +61,18 @@ second-class.
 | SB-30-02 | Profiles, history, statistics | backlog | story-02-profiles-history-statistics.md | — |
 | SB-30-03 | Achievements in original art | backlog | story-03-achievements-original-art.md | — |
 | SB-30-04 | Gamification gate | backlog | story-04-gamification-gate.md | — |
+| SB-30-05 | Avatars and guild heraldry | done | story-05-avatars-and-guilds.md | evidence-story-05.md |
 
 ## Where we are
 
 Scaffolded 2026-06-11 from user direction (rankings and gamification
-discussed across Phases 23/25). SB-30-01 depends on the Phase 29
-public URL; SB-30-02/03 are local-first and can start any time.
+discussed across Phases 23/25). SB-30-05 (maintainer-directed
+addition) shipped same day: the 16-piece PixelLab identity library
+(8 avatars, 8 guild banners), the identity row and picker in the
+shell, local-first and additive — no wire-format change. SB-30-01
+depends on the Phase 29 public URL (live); SB-30-02/03 are
+local-first and can start any time; SB-30-02 will present the
+identity on the full profile surface.
 
 ## Active risks
 

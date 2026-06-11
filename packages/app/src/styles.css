@@ -20,6 +20,12 @@
   box-sizing: border-box;
 }
 
+/* The hidden attribute always wins — explicit display values on a
+   component class must not resurrect a [hidden] element. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   min-width: 320px;
   min-height: 100vh;
@@ -387,6 +393,90 @@ h1 {
   color: var(--sb-moss);
   font-size: var(--sb-text-sm);
   text-align: center;
+}
+
+/* The identity row & picker (SB-30-05): the player in the library's
+   art — local-first, instant, never on the wire. */
+.identity-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sb-space-3);
+}
+
+.identity-portrait {
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-sm);
+  background: var(--sb-canvas-well);
+  image-rendering: pixelated;
+}
+
+.identity-guild {
+  display: flex;
+  align-items: center;
+  gap: var(--sb-space-2);
+  margin: var(--sb-space-1) 0 0;
+  color: var(--sb-moss);
+  font-size: var(--sb-text-sm);
+}
+
+.identity-banner {
+  image-rendering: pixelated;
+}
+
+.identity-picker summary {
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-sm);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  color: var(--sb-parchment);
+  background: var(--sb-parchment-faint);
+  cursor: pointer;
+  font-weight: var(--sb-weight-bold);
+}
+
+.identity-picker summary:focus-visible {
+  outline: 3px solid var(--sb-steel);
+  outline-offset: 3px;
+}
+
+.identity-picker[open] summary {
+  margin-bottom: var(--sb-space-3);
+}
+
+.identity-choices {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sb-space-2);
+  margin-bottom: var(--sb-space-3);
+}
+
+.identity-choice {
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--sb-line);
+  border-radius: var(--sb-radius-sm);
+  padding: var(--sb-space-1);
+  background: var(--sb-canvas-well);
+  cursor: pointer;
+  transition: border-color var(--sb-dur-fast) var(--sb-ease);
+}
+
+.identity-choice img {
+  image-rendering: pixelated;
+}
+
+.identity-choice:hover {
+  border-color: var(--sb-moss);
+}
+
+.identity-choice[aria-pressed="true"] {
+  border-color: var(--sb-gold);
+}
+
+.identity-choice:focus-visible {
+  outline: 3px solid var(--sb-steel);
+  outline-offset: 2px;
 }
 
 .match-strip {

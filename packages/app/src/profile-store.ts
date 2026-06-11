@@ -36,6 +36,11 @@ export type StoredSerfboundProfile = {
   readonly history: readonly SerfboundMatchHistoryEntry[];
   // Optional hosted identity (SB-25-02); accountless play loses nothing.
   readonly account?: StoredProfileAccount;
+  // Local-first self-representation (SB-30-05): ids into the identity
+  // library. Never sent anywhere — the wire format has no field for
+  // them, by the Phase 30 schema constraint.
+  readonly avatarId?: string;
+  readonly guildId?: string;
 };
 
 export type ProfileStore = {
@@ -92,6 +97,20 @@ export function withAccount(
 export function withoutAccount(profile: StoredSerfboundProfile): StoredSerfboundProfile {
   const { account: _dropped, ...rest } = profile;
   return rest;
+}
+
+export function withAvatar(
+  profile: StoredSerfboundProfile,
+  avatarId: string,
+): StoredSerfboundProfile {
+  return { ...profile, avatarId };
+}
+
+export function withGuild(
+  profile: StoredSerfboundProfile,
+  guildId: string,
+): StoredSerfboundProfile {
+  return { ...profile, guildId };
 }
 
 // Newest first, capped — a local record, not a ladder.

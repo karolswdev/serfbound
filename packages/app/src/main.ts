@@ -16,10 +16,13 @@ import {
   BrowserIndexedDbProfileStore,
   createProfile,
   withAccount,
+  withAvatar,
+  withGuild,
   withMatchHistoryEntry,
   withProfileName,
   type StoredSerfboundProfile,
 } from "./profile-store.js";
+import { avatarById, guildById, serfboundAvatars, serfboundGuilds } from "./identity-art.js";
 import { resolveOnlineConfig } from "./online-config.js";
 import { SerfboundOnlineSurface } from "./online-surface.js";
 import { SerfboundOnlineMatch } from "./online-match.js";
@@ -127,6 +130,7 @@ export * from "./mailbox-client.js";
 export * from "./online-config.js";
 export * from "./online-surface.js";
 export * from "./online-match.js";
+export * from "./identity-art.js";
 
 export {
   BrowserIndexedDbImportedArchiveStore,
@@ -324,6 +328,52 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       const count = currentProfile.history.length;
       chronicle.textContent =
         count === 0 ? "No matches yet" : `${count} ${count === 1 ? "match" : "matches"} recorded`;
+    }
+
+    // The identity row (SB-30-05): who you are, in the library's art.
+    const avatar = avatarById(currentProfile.avatarId);
+    const guild = guildById(currentProfile.guildId);
+    root.dataset.serfboundAvatar = avatar?.id ?? "";
+    root.dataset.serfboundGuild = guild?.id ?? "";
+    const portrait = root.querySelector<HTMLImageElement>("[data-testid='identity-avatar']");
+    if (portrait !== null) {
+      portrait.hidden = avatar === undefined;
+      if (avatar !== undefined) {
+        portrait.src = avatar.src;
+        portrait.title = avatar.name;
+      }
+    }
+
+    const identityName = root.querySelector<HTMLElement>("[data-testid='identity-name']");
+    if (identityName !== null) {
+      identityName.textContent = currentProfile.name;
+    }
+
+    const guildRow = root.querySelector<HTMLElement>("[data-testid='identity-guild']");
+    const guildBanner = root.querySelector<HTMLImageElement>(
+      "[data-testid='identity-guild-banner']",
+    );
+    const guildName = root.querySelector<HTMLElement>("[data-testid='identity-guild-name']");
+    if (guildRow !== null && guildBanner !== null && guildName !== null) {
+      guildRow.hidden = guild === undefined;
+      if (guild !== undefined) {
+        guildBanner.src = guild.src;
+        guildName.textContent = guild.name;
+      }
+    }
+
+    for (const button of root.querySelectorAll<HTMLButtonElement>("[data-avatar-id]")) {
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset["avatarId"] === currentProfile.avatarId),
+      );
+    }
+
+    for (const button of root.querySelectorAll<HTMLButtonElement>("[data-guild-id]")) {
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset["guildId"] === currentProfile.guildId),
+      );
     }
   };
   const saveProfile = (next: StoredSerfboundProfile) => {
@@ -544,6 +594,38 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         </section>
         <section class="panel-group panel-group--company">
           <h2 class="panel-group__title">Play with someone</h2>
+          <div class="identity-row" data-testid="identity-row">
+            <img
+              class="identity-portrait"
+              data-testid="identity-avatar"
+              src="./avatars/knight.png"
+              alt=""
+              width="64"
+              height="64"
+              hidden
+            />
+            <div>
+              <p class="status-panel__value" data-testid="identity-name">PLAYER</p>
+              <p class="identity-guild" data-testid="identity-guild" hidden>
+                <img
+                  class="identity-banner"
+                  data-testid="identity-guild-banner"
+                  src="./guilds/wolf.png"
+                  alt=""
+                  width="20"
+                  height="20"
+                />
+                <span data-testid="identity-guild-name"></span>
+              </p>
+            </div>
+          </div>
+          <details class="identity-picker" data-testid="identity-picker">
+            <summary>Choose your avatar and guild</summary>
+            <p class="status-panel__label">Avatar</p>
+            <div class="identity-choices" data-testid="avatar-choices"></div>
+            <p class="status-panel__label">Guild</p>
+            <div class="identity-choices" data-testid="guild-choices"></div>
+          </details>
           <div>
             <p class="status-panel__label">Chronicle</p>
             <p class="status-panel__value" data-testid="profile-chronicle">No matches yet</p>
@@ -2049,6 +2131,55 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     ?.addEventListener("change", (event) => {
       saveProfile(withProfileName(currentProfile, (event.target as HTMLInputElement).value));
     });
+  // The identity picker (SB-30-05): the library rendered as pressable
+  // choices; selection is local-first and instant.
+  const avatarChoicesElement = root.querySelector<HTMLElement>("[data-testid='avatar-choices']");
+  const guildChoicesElement = root.querySelector<HTMLElement>("[data-testid='guild-choices']");
+  if (avatarChoicesElement !== null) {
+    avatarChoicesElement.innerHTML = serfboundAvatars
+      .map(
+        (entry) => `
+          <button
+            class="identity-choice"
+            type="button"
+            data-avatar-id="${entry.id}"
+            aria-pressed="false"
+            title="${entry.name}"
+            aria-label="${entry.name}"
+          ><img src="${entry.src}" alt="" width="48" height="48" /></button>`,
+      )
+      .join("");
+    avatarChoicesElement.addEventListener("click", (event) => {
+      const choice = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-avatar-id]");
+      const avatarId = choice?.dataset["avatarId"];
+      if (avatarId !== undefined) {
+        saveProfile(withAvatar(currentProfile, avatarId));
+      }
+    });
+  }
+
+  if (guildChoicesElement !== null) {
+    guildChoicesElement.innerHTML = serfboundGuilds
+      .map(
+        (entry) => `
+          <button
+            class="identity-choice"
+            type="button"
+            data-guild-id="${entry.id}"
+            aria-pressed="false"
+            title="${entry.name}"
+            aria-label="${entry.name}"
+          ><img src="${entry.src}" alt="" width="48" height="48" /></button>`,
+      )
+      .join("");
+    guildChoicesElement.addEventListener("click", (event) => {
+      const choice = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-guild-id]");
+      const guildId = choice?.dataset["guildId"];
+      if (guildId !== undefined) {
+        saveProfile(withGuild(currentProfile, guildId));
+      }
+    });
+  }
   root
     .querySelector<HTMLButtonElement>("[data-testid='async-host-button']")
     ?.addEventListener("click", () => startAsync("host"));

@@ -137,6 +137,12 @@ inventory first). Each component defines **all of its states**;
   your moment, banner-red on failure; one label, one line, always in
   the product voice; carries the closing ceremony when the match
   ends.
+- **Identity row & picker** (`.identity-row` / `.identity-picker`,
+  SB-30-05): the player's portrait (pixelated, canvas-well framed),
+  name, and guild banner; the picker is a disclosure of pressable
+  choices on a 4-column grid — line border at rest, moss on hover,
+  gold when chosen (`aria-pressed`). Library art follows §8; the
+  selection is local-first and never crosses the wire.
 
 ## 4. Layout
 
