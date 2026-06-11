@@ -180,19 +180,31 @@ test("punch 5: road mode engages from a panel-bar tap at DPR 3", async ({ page }
   const panel = await publishedRect(page, "data-serfbound-panel-rect");
   const chromeScale = panel.width / 320;
   // Slot 1 is the road button: reference offset (64 + 48, 4), 32x32.
-  await page.touchscreen.tap(
-    box.x + panel.x + (64 + 48 + 16) * chromeScale,
-    box.y + panel.y + (4 + 16) * chromeScale,
-  );
+  const roadSlot = {
+    x: box.x + panel.x + (64 + 48 + 16) * chromeScale,
+    y: box.y + panel.y + (4 + 16) * chromeScale,
+  };
+  await page.touchscreen.tap(roadSlot.x, roadSlot.y);
   await expect(page.locator("#app")).toHaveAttribute(
     "data-serfbound-road-mode",
     "awaiting-start",
   );
   // The prompt reaches the player's eyes (the in-canvas notice), not
-  // just the dev ledger (SB-34 round 4).
+  // just the dev ledger (SB-34 round 4). Background notices (a deed
+  // landing) may overwrite it on a slow runner — re-arm and re-read.
+  await expect(async () => {
+    const notice = await page
+      .locator("#app")
+      .getAttribute("data-serfbound-notification");
+    if (notice !== "TAP YOUR STARTING FLAG") {
+      await page.touchscreen.tap(roadSlot.x, roadSlot.y);
+      await page.touchscreen.tap(roadSlot.x, roadSlot.y);
+      throw new Error(`the road prompt was overwritten by: ${notice}`);
+    }
+  }).toPass({ timeout: 10_000 });
   await expect(page.locator("#app")).toHaveAttribute(
-    "data-serfbound-notification",
-    "TAP YOUR STARTING FLAG",
+    "data-serfbound-road-mode",
+    "awaiting-start",
   );
 });
 
