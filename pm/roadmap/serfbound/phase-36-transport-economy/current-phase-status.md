@@ -1,8 +1,9 @@
 # Phase 36 — The Transport Economy in Full
 
-**Last updated:** 2026-06-11 (scaffolded from the reference parity
-audit; see pm/roadmap/serfbound/reference-parity-audit.md).
-**Status:** scaffolded.
+**Last updated:** 2026-06-11 (SB-36-01 done: resources leave the
+castle in a serf's arms; the SB-35-03 re-export sweep already
+bridges the InventoryScheduleCounter half of SB-36-05).
+**Status:** in progress.
 
 ## Goal
 
@@ -33,7 +34,7 @@ at the castle door" and the unstaffed split road at the root.
 
 ## Exit criteria (evidence required)
 
-- [ ] A resource leaving the castle is carried out the door by a
+- [x] A resource leaving the castle is carried out the door by a
   serf — nothing materializes on a flag. (SB-36-01)
 - [ ] Flag slots schedule per direction over the reference network
   search; congested flags coordinate multiple serfs. (SB-36-02)
@@ -51,7 +52,7 @@ at the castle door" and the unstaffed split road at the root.
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-36-01 | Out the castle door | backlog | — | — |
+| SB-36-01 | Out the castle door | done | story-01-out-the-castle-door.md | evidence-story-01.md |
 | SB-36-02 | Flag scheduling | backlog | — | — |
 | SB-36-03 | The split road staffs itself | backlog | — | — |
 | SB-36-04 | Park, wake, and reinforce | backlog | — | — |

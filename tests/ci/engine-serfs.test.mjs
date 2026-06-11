@@ -644,3 +644,107 @@ test("the tree falls in visible stages under the axe (SB-35-03)", async () => {
     `the trunk lies felled (${finalObject})`,
   );
 });
+
+test("resources leave the castle in a serf's arms - nothing materializes on the flag (SB-36-01)", async () => {
+  const engineModule = await import("@serfbound/engine");
+  const {
+    SerfboundCommandRouter,
+    SerfboundSerfEngine,
+    serfState,
+    startSerfboundLocalGame,
+  } = engineModule;
+  const started = startSerfboundLocalGame({
+    data: {
+      kind: "imported-dos-pa-catalog",
+      archiveName: "SPAU.PA",
+      byteLength: 1_282_805,
+      entryCount: 4000,
+      definedArchiveEntries: 3805,
+      fixupCount: 252,
+    },
+  });
+  const world = started.game.world();
+  const router = new SerfboundCommandRouter(started.game.state, world);
+  const tileFor = (position) => ({
+    column: position & world.geometry.columnMask,
+    row: (position >>> world.geometry.rowShift) & world.geometry.rowMask,
+    position,
+  });
+  let castlePosition = -1;
+  for (let position = 0; position < world.tileCount; position += 1) {
+    if (world.canBuildCastle(position, 0)) {
+      castlePosition = position;
+      break;
+    }
+  }
+  router.dispatch({ type: "game.build-castle", source: "pointer", tile: tileFor(castlePosition) });
+  const castleFlagPosition = world.move(castlePosition, "DownRight");
+  let building = null;
+  for (let offset = 0; offset < 250 && building === null; offset += 1) {
+    const candidate = world.positionAddSpirally(castlePosition, offset);
+    if (!world.canBuildBuilding(candidate, 2, 0)) {
+      continue;
+    }
+
+    const result = router.dispatch({
+      type: "game.build-building",
+      source: "pointer",
+      tile: tileFor(candidate),
+      buildingKind: "lumberjack",
+    });
+    if (result.status !== "accepted") {
+      continue;
+    }
+
+    building = [...world.buildings.values()].reduce((a, b) => (a.index > b.index ? a : b));
+    const road = router.dispatch({
+      type: "game.build-road",
+      source: "pointer",
+      tile: tileFor(castleFlagPosition),
+      toTile: tileFor(world.flags.get(building.flagIndex).position),
+    });
+    if (road.status !== "accepted") {
+      building = null;
+    }
+  }
+  assert.notEqual(building, null);
+
+  const engine = new SerfboundSerfEngine(world);
+  const castleFlag = world.flagAt(castleFlagPosition);
+  engine.dispatchConstructionLogistics(building, started.game.state.tick);
+
+  let tick = started.game.state.tick;
+  let sawCarrier = false;
+  let firstSlotFillHadCarrier = null;
+  for (let step = 0; step < 4000; step += 1) {
+    tick += 8;
+    engine.update(tick);
+    for (const serf of engine.serfs.values()) {
+      if (
+        serf.state === serfState.dropResourceOut &&
+        serf.carriedResource >= 0 &&
+        serf.position === castleFlagPosition
+      ) {
+        sawCarrier = true;
+      }
+    }
+
+    if (
+      firstSlotFillHadCarrier === null &&
+      castleFlag.slots.some((slot) => slot.resource >= 0)
+    ) {
+      firstSlotFillHadCarrier = sawCarrier;
+    }
+
+    if (firstSlotFillHadCarrier !== null && sawCarrier) {
+      break;
+    }
+  }
+
+  assert.equal(sawCarrier, true, "a serf stood at the flag with the resource in his arms");
+  assert.equal(
+    firstSlotFillHadCarrier,
+    true,
+    "the first resource on the flag was CARRIED there - it did not materialize",
+  );
+});

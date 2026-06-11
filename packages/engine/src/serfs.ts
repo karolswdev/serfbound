@@ -44,6 +44,10 @@ export const serfState = {
   knightDefending: 14,
   knightAttackingVictory: 15,
   dead: 16,
+  // Reference DropResourceOut (SB-36-01): a serf stands at the
+  // inventory's flag with the resource in his arms, waiting to set
+  // it down.
+  dropResourceOut: 17,
 } as const;
 
 export type SerfStateValue = (typeof serfState)[keyof typeof serfState];
@@ -361,7 +365,7 @@ export class SerfboundSerfEngine {
   update(gameTick: number): void {
     this.#sweepWorkerRequests(gameTick);
     this.#sweepInventoryExports(gameTick);
-    this.#drainPendingOut();
+    this.#dispatchResourceOut(gameTick);
     this.#sweepMilitary(gameTick);
     for (const serf of [...this.serfs.values()]) {
       switch (serf.state) {
@@ -382,6 +386,9 @@ export class SerfboundSerfEngine {
           break;
         case serfState.leavingBuilding:
           this.#handleLeavingBuilding(serf, gameTick);
+          break;
+        case serfState.dropResourceOut:
+          this.#handleDropResourceOut(serf, gameTick);
           break;
         case serfState.enteringBuilding:
           this.#handleEnteringBuilding(serf, gameTick);
@@ -807,19 +814,118 @@ export class SerfboundSerfEngine {
 
   readonly #staffedBuildings = new Set<number>();
 
-  // Inventory outbound queue: move pending resources onto the inventory flag
-  // as slots free up (reference MoveResourceOut scheduling, condensed).
-  #drainPendingOut(): void {
+  // Out the castle door (SB-36-01, reference MoveResourceOut →
+  // DropResourceOut): every outbound resource is CARRIED by a serf —
+  // out through the door slide, set down at the flag, and the carrier
+  // walks back inside. Nothing materializes on a flag.
+  #dispatchResourceOut(gameTick: number): void {
     for (const inventory of this.world.inventories.values()) {
-      while (inventory.pendingOut.length > 0) {
-        const next = inventory.pendingOut[0]!;
-        if (!this.world.dropResource(inventory.flagIndex, next.resource, next.destinationFlagIndex)) {
+      if (inventory.pendingOut.length === 0) {
+        continue;
+      }
+
+      const flag = this.world.flags.get(inventory.flagIndex);
+      if (flag === undefined || !flag.slots.some((slot) => slot.resource < 0)) {
+        continue;
+      }
+
+      const castlePosition = this.world.players[inventory.player]?.castlePosition;
+      if (castlePosition === undefined || castlePosition === null) {
+        continue;
+      }
+
+      // One serf out the door at a time (the reference queues inside
+      // via WaitForResourceOut): no new carrier while one is mid-slide
+      // or standing at the flag, or carriers pile up and wall off the
+      // inventory flag from the very transporters that drain it.
+      let carrierOut = this.hasSerfAt(flag.position);
+      if (!carrierOut) {
+        for (const serf of this.serfs.values()) {
+          if (
+            serf.position === flag.position &&
+            (serf.state === serfState.dropResourceOut ||
+              serf.state === serfState.leavingBuilding)
+          ) {
+            carrierOut = true;
+            break;
+          }
+        }
+      }
+
+      if (carrierOut) {
+        continue;
+      }
+
+      // Prefer a serf already idle in the stock; spawn from the pool
+      // otherwise. One carrier launches per update per inventory.
+      let carrier: WorldSerf | null = null;
+      for (const serf of this.serfs.values()) {
+        if (serf.state === serfState.idleInStock && serf.position === castlePosition && !serf.isKnight) {
+          carrier = serf;
           break;
         }
-
-        inventory.pendingOut.shift();
       }
+
+      carrier ??= this.spawnGenericSerf(inventory.player, gameTick);
+      if (carrier === null) {
+        continue;
+      }
+
+      const next = inventory.pendingOut.shift()!;
+      carrier.carriedResource = next.resource;
+      carrier.carriedDestination = next.destinationFlagIndex;
+      carrier.tick = gameTick;
+      this.#leaveBuilding(
+        carrier,
+        castlePosition,
+        31 - roadBuildingSlope[24]!,
+        serfState.dropResourceOut,
+      );
+      carrier.position = this.world.move(castlePosition, "DownRight");
     }
+  }
+
+  // The carrier at the flag: set the resource down (retrying while the
+  // slots are full), then back inside through the door.
+  #handleDropResourceOut(serf: WorldSerf, gameTick: number): void {
+    const delta = (gameTick - serf.tick) & 0xffff;
+    serf.tick = gameTick;
+    serf.counter -= delta;
+    if (serf.counter > 0) {
+      return;
+    }
+
+    serf.counter = 0;
+    const flag = this.world.flagAt(serf.position);
+    if (flag === null) {
+      serf.state = serfState.null;
+      return;
+    }
+
+    if (
+      serf.carriedResource >= 0 &&
+      !this.world.dropResource(flag.index, serf.carriedResource, serf.carriedDestination)
+    ) {
+      // Slots filled while we slid out: take the resource back inside
+      // and requeue it — the reference waits INSIDE, never standing on
+      // the flag blocking the transporters that would drain it.
+      const inventory = this.world.inventoryForPlayer(serf.player);
+      inventory?.pendingOut.unshift({
+        resource: serf.carriedResource,
+        destinationFlagIndex: serf.carriedDestination,
+      });
+    }
+
+    serf.carriedResource = -1;
+    serf.carriedDestination = 0;
+    const home =
+      flag.buildingIndex === null ? undefined : this.world.buildings.get(flag.buildingIndex);
+    if (home === undefined) {
+      serf.state = serfState.null;
+      return;
+    }
+
+    this.#enterBuilding(serf, home, serfState.idleInStock);
   }
 
   #lastMoraleTick = -1;
@@ -2051,7 +2157,12 @@ export function serfBodyOffset(serf: WorldSerf, world: SerfboundGameWorld): numb
     return 0x500;
   }
 
-  if (serf.state === serfState.transporting && serf.carriedResource >= 0) {
+  if (
+    serf.carriedResource >= 0 &&
+    (serf.state === serfState.transporting ||
+      serf.state === serfState.dropResourceOut ||
+      serf.state === serfState.leavingBuilding)
+  ) {
     // The reference indexes the carry table by Resource.Type + 1.
     return transporterCarryOffsets[serf.carriedResource + 1] ?? 0;
   }
