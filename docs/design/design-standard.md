@@ -220,6 +220,19 @@ change adds or alters anything a player sees, it conforms to this
 document or says why not. `npm run check:design` keeps tokens honest
 (no orphans, no raw hex drift in component CSS).
 
+## 7.5 Gumps — material chrome (SB-32-07)
+
+The shell's surfaces may be built from forged pixel-art materials
+("gumps"): a 9-slice carved frame for panel groups and cards
+(`border-image`), a tileable wood texture for the chrome column
+(always under an ink veil so text contrast never depends on the
+texture), and ribbon banners for ceremonial headers. Rules: gumps
+follow §8's idiom; they texture *containers*, never text itself; the
+a11y floor (§6) is measured against the solid fills the text actually
+sits on; `image-rendering: pixelated` everywhere. The flat-CSS
+fallback (the token surfaces) remains the base layer — a gump that
+fails to load degrades to SB-32-02's chrome, never to broken UI.
+
 ## 8. Assets
 
 Generated first-party art (e.g. pixellab) may be commissioned for the

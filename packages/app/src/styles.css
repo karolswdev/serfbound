@@ -176,11 +176,22 @@ h1 {
   gap: var(--sb-space-4);
   max-width: 640px;
   margin: 0 auto;
-  border: 1px solid var(--sb-line);
+  border: 12px solid transparent;
+  border-image: url("./gumps/frame.png") 16 / 12px round;
   border-radius: var(--sb-radius-lg);
   padding: var(--sb-space-5);
   background: var(--sb-surface-raised);
+  background-clip: padding-box;
   box-shadow: var(--sb-shadow-card);
+}
+
+/* The ribbon gump carries the welcome's herald line. */
+.welcome__card .scene__kicker {
+  justify-self: start;
+  background: url("./gumps/ribbon.png") center / 100% 100% no-repeat;
+  padding: var(--sb-space-2) var(--sb-space-6);
+  color: var(--sb-on-gold);
+  image-rendering: pixelated;
 }
 
 .welcome__title {
@@ -275,7 +286,15 @@ h1 {
   gap: var(--sb-space-4);
   border-left: 1px solid var(--sb-line-soft);
   padding: var(--sb-space-5) var(--sb-space-4);
-  background: var(--sb-surface);
+  /* Gump material (§7.5): wood under an ink veil — text contrast
+     never depends on the texture; a missing texture degrades to the
+     token surface. */
+  background:
+    linear-gradient(var(--sb-ink-veil), var(--sb-ink-veil)),
+    url("./gumps/wood.png") var(--sb-surface);
+  background-size:
+    auto,
+    128px 128px;
   overflow-y: auto;
   transition: gap var(--sb-dur-slow) var(--sb-ease);
 }
@@ -283,10 +302,14 @@ h1 {
 .panel-group {
   display: grid;
   gap: var(--sb-space-3);
-  border: 1px solid var(--sb-line-soft);
+  /* The carved frame gump (9-slice); padding-box keeps the fill off
+     the frame's transparent flanks. */
+  border: 12px solid transparent;
+  border-image: url("./gumps/frame.png") 16 / 12px round;
   border-radius: var(--sb-radius-md);
   padding: var(--sb-space-4);
   background: var(--sb-surface-raised);
+  background-clip: padding-box;
 }
 
 .panel-group__title {

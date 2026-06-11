@@ -1,6 +1,6 @@
 # Phase 32 — Product Experience
 
-**Last updated:** 2026-06-11 (after SB-32-06; the SB-32-05 gate re-presents).
+**Last updated:** 2026-06-11 (after SB-32-07; the SB-32-05 gate re-presents on the material chrome).
 **Status:** in progress.
 
 ## Goal
@@ -82,6 +82,7 @@ mechanically encouraged.
 | SB-32-04 | Competitive surfaces styled as a platform | done | story-04-competitive-surfaces.md | evidence-story-04.md |
 | SB-32-05 | Experience gate | in-progress | story-05-experience-gate.md | — |
 | SB-32-06 | The product cut | done | story-06-the-product-cut.md | evidence-story-06.md |
+| SB-32-07 | Gumps: the material chrome | done | story-07-gumps-material-chrome.md | evidence-story-07.md |
 
 ## Where we are
 
@@ -118,8 +119,14 @@ retired the diagnostic rows and dev controls into the collapsed
 "Under the hood" ledger (?dev=1 for the suite), gated groups by
 chrome state, and made START the title's hero. Both gates green
 (ci:release, compatibility 5/5); three dev suites moved to ?dev=1 —
-the recorded contract evolution. SB-32-05 re-presents on this
-surface.
+the recorded contract evolution. Gate round 2: "better, but
+boring proper HTML/CSS — gumps, nay?" — SB-32-07 answered: §7.5
+entered the standard (material chrome: containers only, contrast on
+solid fills, flat degradation), three materials forged (the carved
+frame, the wood, the ribbon), applied to the column, the panel
+groups, and the welcome; slice tuned against the forged pixels;
+gump integrity rides check:design. Both gates green. SB-32-05
+re-presents on the material chrome.
 
 ## Active risks
 

@@ -8,7 +8,7 @@
 //      may only go down (SB-32-02 drives it to zero). New colors enter
 //      tokens.css, never component CSS.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const tokensCss = readFileSync("packages/app/src/tokens.css", "utf8");
 const componentCss = readFileSync("packages/app/src/styles.css", "utf8");
@@ -49,6 +49,13 @@ for (const [token, reason] of RESERVED) {
 
   if (consumed.has(token)) {
     failures.push(`now consumed — remove from RESERVED: ${token}`);
+  }
+}
+
+// Gump integrity (§7.5): every material the CSS references exists.
+for (const match of componentCss.matchAll(/url\("\.\/(gumps\/[a-z-]+\.png)"\)/g)) {
+  if (!existsSync(`packages/app/src/${match[1]}`)) {
+    failures.push(`gump referenced but missing on disk: ${match[1]}`);
   }
 }
 
