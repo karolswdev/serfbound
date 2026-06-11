@@ -2,10 +2,10 @@
 
 - **Project:** serfbound
 - **Phase:** 25
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-25-01
 - **Unblocks:** SB-25-03
-- **Owner:** unassigned
+- **Owner:** Claude
 
 ## Problem
 
@@ -25,11 +25,11 @@ minimal service implementing exactly that.
 
 ## Acceptance criteria
 
-- [ ] The decision record ships before/with the service and the stored
+- [x] The decision record ships before/with the service and the stored
   schema matches it exactly (contract-tested).
-- [ ] Sign-in links a local profile; sign-out and accountless play lose
+- [x] Sign-in links a local profile; sign-out and accountless play lose
   nothing.
-- [ ] Account deletion removes server-side data verifiably.
+- [x] Account deletion removes server-side data verifiably.
 
 ## Test plan
 

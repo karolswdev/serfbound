@@ -20,11 +20,22 @@ export type SerfboundMatchHistoryEntry = {
   readonly endedAtIso: string;
 };
 
+export type StoredProfileAccount = {
+  readonly accountId: string;
+  readonly serviceUrl: string;
+  readonly publicKeyJwk: JsonWebKey;
+  // Exportable on purpose: cross-device transfer is the player moving
+  // their own key, the same philosophy as their game data.
+  readonly privateKeyJwk: JsonWebKey;
+};
+
 export type StoredSerfboundProfile = {
   readonly schemaVersion: 1;
   readonly storageKey: typeof currentProfileKey;
   readonly name: string;
   readonly history: readonly SerfboundMatchHistoryEntry[];
+  // Optional hosted identity (SB-25-02); accountless play loses nothing.
+  readonly account?: StoredProfileAccount;
 };
 
 export type ProfileStore = {
@@ -69,6 +80,18 @@ export function withProfileName(
   name: string,
 ): StoredSerfboundProfile {
   return { ...profile, name: sanitizeProfileName(name) };
+}
+
+export function withAccount(
+  profile: StoredSerfboundProfile,
+  account: StoredProfileAccount,
+): StoredSerfboundProfile {
+  return { ...profile, account };
+}
+
+export function withoutAccount(profile: StoredSerfboundProfile): StoredSerfboundProfile {
+  const { account: _dropped, ...rest } = profile;
+  return rest;
 }
 
 // Newest first, capped — a local record, not a ladder.

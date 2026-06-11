@@ -1,7 +1,7 @@
 # Phase 25 — Community and Identity
 
 **Last updated:** 2026-06-10.
-**Status:** in progress — SB-25-01 done.
+**Status:** in progress — SB-25-01..02 done.
 
 ## Goal
 
@@ -37,7 +37,7 @@ accounts and zero servers.
 
 - [x] Local profiles persist and travel into multiplayer sessions with
   no hosted dependency. (SB-25-01)
-- [ ] The identity decision record ships and the optional account
+- [x] The identity decision record ships and the optional account
   service implements exactly it. (SB-25-02)
 - [ ] Challenges create matches with agreed terms; turn moves flow
   through the mailbox (re-verified client-side, always) and missed
@@ -50,16 +50,18 @@ accounts and zero servers.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-25-01 | Local-first profiles | done | story-01-local-first-profiles.md | evidence-story-01.md |
-| SB-25-02 | Identity decision and account service | backlog | story-02-identity-account-service.md | — |
+| SB-25-02 | Identity decision and account service | done | story-02-identity-account-service.md | evidence-story-02.md |
 | SB-25-03 | Challenges and the turn mailbox | backlog | story-03-challenges-turn-mailbox.md | — |
 | SB-25-04 | Ladder and operations gate | backlog | story-04-ladder-operations-gate.md | — |
 
 ## Where we are
 
-SB-25-01 shipped: local profiles (game-font names, capped match
-history) persist in IndexedDB, travel through both session handshakes,
-and record finished matches — zero hosted dependency. This phase still
-front-loads decision records before anything hosted: next, SB-25-02.
+SB-25-01..02 shipped: local profiles, and the identity layer — an
+account IS a device keypair (no email, no password, nothing to leak),
+the zero-dependency service enforces its four-field schema by contract
+test, mutations are signed, deletion is verifiable, and the local
+profile links/unlinks losing nothing. Next: SB-25-03 challenges and
+the turn mailbox.
 
 ## Active risks
 
