@@ -12,6 +12,13 @@ import { PointerGestureTracker } from "./gestures.js";
 import { SerfboundLoopbackMultiplayer } from "./multiplayer.js";
 import { HotseatController } from "./hotseat.js";
 import { SerfboundAsyncLoopbackMatch } from "./async-match.js";
+import {
+  BrowserIndexedDbProfileStore,
+  createProfile,
+  withMatchHistoryEntry,
+  withProfileName,
+  type StoredSerfboundProfile,
+} from "./profile-store.js";
 import { digestLines } from "./recap.js";
 import {
   SerfboundAiPlayer,
@@ -107,6 +114,7 @@ export * from "./multiplayer.js";
 export * from "./recap.js";
 export * from "./hotseat.js";
 export * from "./async-match.js";
+export * from "./profile-store.js";
 
 export {
   BrowserIndexedDbImportedArchiveStore,
@@ -267,6 +275,48 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     options.importedArchiveStore ?? new BrowserIndexedDbImportedArchiveStore();
   const localGameSaveStore =
     options.localGameSaveStore ?? new BrowserIndexedDbLocalGameSaveStore();
+  // Local-first identity (SB-25-01): the profile loads with the shell
+  // and persists on edit; no account required, ever.
+  const profileStore = new BrowserIndexedDbProfileStore();
+  let currentProfile: StoredSerfboundProfile = createProfile();
+  const syncProfileState = () => {
+    root.dataset.serfboundProfileName = currentProfile.name;
+    root.dataset.serfboundProfileHistoryCount = String(currentProfile.history.length);
+    const input = root.querySelector<HTMLInputElement>("[data-testid='profile-name-input']");
+    if (input !== null && input.value !== currentProfile.name) {
+      input.value = currentProfile.name;
+    }
+  };
+  const saveProfile = (next: StoredSerfboundProfile) => {
+    currentProfile = next;
+    syncProfileState();
+    void profileStore.save(next).catch(() => {
+      // Storage failures must never take the shell down.
+    });
+  };
+  const recordMatchEnd = (
+    mode: "realtime-loopback" | "async-loopback",
+    opponentName: string | null,
+    localPlayer: number,
+    result: "won" | "lost" | "completed" | "abandoned",
+  ) => {
+    saveProfile(
+      withMatchHistoryEntry(currentProfile, {
+        mode,
+        opponentName: opponentName ?? "UNKNOWN",
+        localPlayer,
+        result,
+        endedAtIso: new Date().toISOString(),
+      }),
+    );
+  };
+  void profileStore.load().then((stored) => {
+    if (stored !== null) {
+      currentProfile = stored;
+    }
+
+    syncProfileState();
+  });
   const summary = bootstrapSummary();
   root.dataset.serfboundRuntime = summary.runtime;
   root.dataset.serfboundDataState = summary.dataState;
@@ -410,6 +460,14 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
           data-testid="hotseat-button"
           type="button"
         >Hot-seat 2P (pass and play)</button>
+        <input
+          class="secondary-action"
+          data-testid="profile-name-input"
+          type="text"
+          maxlength="12"
+          placeholder="Profile name"
+          aria-label="Profile name"
+        />
         <button
           class="secondary-action"
           data-testid="async-host-button"
@@ -1533,6 +1591,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       root.dataset.serfboundMpDesyncTick = String(status.desyncTick);
     }
 
+    if (status.opponentName !== null) {
+      root.dataset.serfboundMpOpponent = status.opponentName;
+    }
+
     if (currentWorld !== undefined) {
       root.dataset.serfboundMpCastles = currentWorld.players
         .map((player) => (player.hasCastle ? "1" : "0"))
@@ -1548,6 +1610,18 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     currentMultiplayer = new SerfboundLoopbackMultiplayer({
       role,
       appVersion: "0.1.0",
+      profileName: currentProfile.name,
+      onEnded: () => {
+        const defeated = currentWorld?.players[currentLocalPlayer]?.defeated === true;
+        const opponentDefeated =
+          currentWorld?.players[1 - currentLocalPlayer]?.defeated === true;
+        recordMatchEnd(
+          "realtime-loopback",
+          currentMultiplayer?.status.opponentName ?? null,
+          currentLocalPlayer,
+          defeated ? "lost" : opponentDefeated ? "won" : "abandoned",
+        );
+      },
       settings: {
         seedString: initSeedString,
         mapSize: 3,
@@ -1672,6 +1746,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     if (status.failureReason !== null) {
       root.dataset.serfboundCorFailure = status.failureReason;
     }
+
+    if (status.opponentName !== null) {
+      root.dataset.serfboundCorOpponent = status.opponentName;
+    }
   };
   const startAsync = (role: "host" | "join") => {
     if (currentImportedDataSource === undefined || currentWorld !== undefined) {
@@ -1681,6 +1759,15 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     currentAsync = new SerfboundAsyncLoopbackMatch({
       role,
       appVersion: "0.1.0",
+      profileName: currentProfile.name,
+      onEnded: () => {
+        recordMatchEnd(
+          "async-loopback",
+          currentAsync?.status.opponentName ?? null,
+          currentAsync?.localPlayer ?? 0,
+          "abandoned",
+        );
+      },
       data: currentImportedDataSource,
       windowTicks: hotseatWindowTicks,
       settings: {
@@ -1713,6 +1800,11 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     });
     syncAsyncState();
   };
+  root
+    .querySelector<HTMLInputElement>("[data-testid='profile-name-input']")
+    ?.addEventListener("change", (event) => {
+      saveProfile(withProfileName(currentProfile, (event.target as HTMLInputElement).value));
+    });
   root
     .querySelector<HTMLButtonElement>("[data-testid='async-host-button']")
     ?.addEventListener("click", () => startAsync("host"));

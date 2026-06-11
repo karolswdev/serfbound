@@ -122,7 +122,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 22 | Multiplayer foundations: checksums, lockstep, loopback play | complete | [phase-22-multiplayer-foundations](./phase-22-multiplayer-foundations/) |
 | 23 | Correspondence play: turn windows, recaps, hot-seat/async gate | complete | [phase-23-correspondence-foundations](./phase-23-correspondence-foundations/) |
 | 24 | Repository independence: standalone GPL-3.0 repo, zero .NET | complete | [phase-24-repository-independence](./phase-24-repository-independence/) |
-| 25 | Community and identity: profiles, accounts, challenges, mailbox, ladder | scaffolded | [phase-25-community-identity](./phase-25-community-identity/) |
+| 25 | Community and identity: profiles, accounts, challenges, mailbox, ladder | in progress | [phase-25-community-identity](./phase-25-community-identity/) |
 | 26 | Data breadth and localization: Amiga evaluation, language tables | scaffolded | [phase-26-data-breadth-localization](./phase-26-data-breadth-localization/) |
 | 27 | Realtime online play: WebRTC transport, signaling, resilience | scaffolded | [phase-27-realtime-online-play](./phase-27-realtime-online-play/) |
 

@@ -2,10 +2,10 @@
 
 - **Project:** serfbound
 - **Phase:** 25
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-24-04
 - **Unblocks:** SB-25-02
-- **Owner:** unassigned
+- **Owner:** Claude
 
 ## Problem
 
@@ -24,10 +24,10 @@ dependency.
 
 ## Acceptance criteria
 
-- [ ] A profile persists across reloads and resets only via the
+- [x] A profile persists across reloads and resets only via the
   documented flows.
-- [ ] Both peers see each other's profile in a session.
-- [ ] Match history records finished online games locally.
+- [x] Both peers see each other's profile in a session.
+- [x] Match history records finished online games locally.
 
 ## Test plan
 

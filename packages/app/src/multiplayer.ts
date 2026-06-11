@@ -44,6 +44,7 @@ export type MultiplayerStatus = {
   readonly lastChecksumTick: number | null;
   readonly checksumAgreed: boolean | null;
   readonly desyncTick: number | null;
+  readonly opponentName: string | null;
 };
 
 export type MultiplayerPumpHooks = {
@@ -72,20 +73,27 @@ export class SerfboundLoopbackMultiplayer {
   #remoteChecksums: ChecksumRecord[] = [];
   #lastChecksumTick: number | null = null;
   #desyncTick: number | null = null;
+  #opponentName: string | null = null;
+  #profileName: string | undefined;
   #onReady: ((settings: SessionGameSettings, localPlayer: number) => void) | undefined;
+  #onEnded: ((reason: string) => void) | undefined;
 
   constructor(options: {
     role: MultiplayerRole;
     settings: SessionGameSettings;
     appVersion: string;
     channel?: LoopbackTextChannel;
+    profileName?: string;
     onReady?: (settings: SessionGameSettings, localPlayer: number) => void;
+    onEnded?: (reason: string) => void;
   }) {
     this.role = options.role;
     this.localPlayer = options.role === "host" ? 0 : 1;
     this.appVersion = options.appVersion;
     this.#settings = options.settings;
+    this.#profileName = options.profileName;
     this.#onReady = options.onReady;
+    this.#onEnded = options.onEnded;
     this.#channel =
       options.channel ?? (new BroadcastChannel(loopbackChannelName) as LoopbackTextChannel);
     this.#channel.onmessage = (event) => {
@@ -111,6 +119,7 @@ export class SerfboundLoopbackMultiplayer {
       checksumAgreed:
         this.#lastChecksumTick === null ? null : this.#desyncTick === null,
       desyncTick: this.#desyncTick,
+      opponentName: this.#opponentName,
     };
   }
 
@@ -201,6 +210,7 @@ export class SerfboundLoopbackMultiplayer {
       settings: this.#settings,
       turnTicks: 64,
       inputDelayTurns: 2,
+      ...(this.#profileName === undefined ? {} : { profile: { name: this.#profileName } }),
     };
     return encodeSessionMessage(message);
   }
@@ -222,6 +232,10 @@ export class SerfboundLoopbackMultiplayer {
       case "hello": {
         if (message.player === this.localPlayer) {
           return;
+        }
+
+        if (message.profile !== undefined) {
+          this.#opponentName = message.profile.name;
         }
 
         if (this.role === "join" && this.#phase === "waiting") {
@@ -282,6 +296,7 @@ export class SerfboundLoopbackMultiplayer {
       case "leave":
         if (message.player !== this.localPlayer) {
           this.#phase = "ended";
+          this.#onEnded?.(message.reason);
         }
 
         return;

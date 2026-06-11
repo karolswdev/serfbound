@@ -1,7 +1,7 @@
 # Phase 25 — Community and Identity
 
 **Last updated:** 2026-06-10.
-**Status:** not started.
+**Status:** in progress — SB-25-01 done.
 
 ## Goal
 
@@ -35,7 +35,7 @@ accounts and zero servers.
 
 ## Exit criteria (evidence required)
 
-- [ ] Local profiles persist and travel into multiplayer sessions with
+- [x] Local profiles persist and travel into multiplayer sessions with
   no hosted dependency. (SB-25-01)
 - [ ] The identity decision record ships and the optional account
   service implements exactly it. (SB-25-02)
@@ -49,16 +49,17 @@ accounts and zero servers.
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-25-01 | Local-first profiles | backlog | story-01-local-first-profiles.md | — |
+| SB-25-01 | Local-first profiles | done | story-01-local-first-profiles.md | evidence-story-01.md |
 | SB-25-02 | Identity decision and account service | backlog | story-02-identity-account-service.md | — |
 | SB-25-03 | Challenges and the turn mailbox | backlog | story-03-challenges-turn-mailbox.md | — |
 | SB-25-04 | Ladder and operations gate | backlog | story-04-ladder-operations-gate.md | — |
 
 ## Where we are
 
-Scaffolded; starts after Phase 24 closes. This phase deliberately
-front-loads decision records: hosted identity is a posture change for a
-zero-telemetry project and ships only as written.
+SB-25-01 shipped: local profiles (game-font names, capped match
+history) persist in IndexedDB, travel through both session handshakes,
+and record finished matches — zero hosted dependency. This phase still
+front-loads decision records before anything hosted: next, SB-25-02.
 
 ## Active risks
 

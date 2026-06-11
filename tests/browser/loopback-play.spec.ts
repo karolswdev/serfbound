@@ -43,6 +43,15 @@ test("two tabs host and join one lockstep game with agreeing checksums", async (
   await importData(hostPage);
   await importData(joinPage);
 
+  // Local profiles (SB-25-01): the name persists locally and travels
+  // with the session handshake.
+  await hostPage.getByTestId("profile-name-input").fill("ALICE");
+  await hostPage.getByTestId("profile-name-input").blur();
+  await expect(hostPage.locator("#app")).toHaveAttribute(
+    "data-serfbound-profile-name",
+    "ALICE",
+  );
+
   // Host first, then join; the handshake adopts the host's settings.
   await hostPage.getByTestId("host-loopback-button").click();
   await expect(hostPage.locator("#app")).toHaveAttribute("data-serfbound-mp-phase", "waiting");
@@ -70,6 +79,12 @@ test("two tabs host and join one lockstep game with agreeing checksums", async (
       timeout: 60_000,
     });
   }
+
+  // The joiner sees the host's announced profile name.
+  await expect(joinPage.locator("#app")).toHaveAttribute(
+    "data-serfbound-mp-opponent",
+    "ALICE",
+  );
 
   // The periodic state checksums crossed the wire and agree on both
   // sides; nobody is stalled or desynced.

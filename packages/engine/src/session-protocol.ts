@@ -28,6 +28,9 @@ export type SessionHelloMessage = {
   readonly settings: SessionGameSettings;
   readonly turnTicks: number;
   readonly inputDelayTurns: number;
+  // Local-first identity (SB-25-01): a display name travels with the
+  // handshake; it never affects determinism or verification.
+  readonly profile?: { readonly name: string };
 };
 
 export type SessionTurnMessage = {
@@ -247,6 +250,20 @@ function decodeHello(message: Record<string, unknown>): SessionHelloMessage {
     );
   }
 
+  const profile = message["profile"];
+  let decodedProfile: { readonly name: string } | undefined;
+  if (profile !== undefined) {
+    if (
+      typeof profile !== "object" ||
+      profile === null ||
+      typeof (profile as Record<string, unknown>)["name"] !== "string"
+    ) {
+      throw new SessionProtocolError("malformed-field", "hello.profile.name must be a string.");
+    }
+
+    decodedProfile = { name: (profile as { name: string }).name };
+  }
+
   return {
     type: "hello",
     protocolVersion,
@@ -261,6 +278,7 @@ function decodeHello(message: Record<string, unknown>): SessionHelloMessage {
     },
     turnTicks,
     inputDelayTurns,
+    ...(decodedProfile === undefined ? {} : { profile: decodedProfile }),
   };
 }
 

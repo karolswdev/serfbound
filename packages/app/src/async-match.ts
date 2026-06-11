@@ -40,6 +40,7 @@ export type AsyncMatchStatus = {
   readonly boundaryChecksum: number | null;
   readonly digest: WindowDigest | null;
   readonly failureReason: string | null;
+  readonly opponentName: string | null;
 };
 
 export class SerfboundAsyncLoopbackMatch {
@@ -55,7 +56,10 @@ export class SerfboundAsyncLoopbackMatch {
   #pendingMove: CorrespondenceWindowMove | null = null;
   #recap: RecapDriver | null = null;
   #failureReason: string | null = null;
+  #opponentName: string | null = null;
+  #profileName: string | undefined;
   #onReady: (() => void) | undefined;
+  #onEnded: ((reason: string) => void) | undefined;
 
   constructor(options: {
     role: "host" | "join";
@@ -64,7 +68,9 @@ export class SerfboundAsyncLoopbackMatch {
     windowTicks: number;
     appVersion: string;
     channel?: LoopbackTextChannel;
+    profileName?: string;
     onReady?: () => void;
+    onEnded?: (reason: string) => void;
   }) {
     this.role = options.role;
     this.localPlayer = options.role === "host" ? 0 : 1;
@@ -72,7 +78,9 @@ export class SerfboundAsyncLoopbackMatch {
     this.windowTicks = options.windowTicks;
     this.#settings = options.settings;
     this.#gameData = options.data;
+    this.#profileName = options.profileName;
     this.#onReady = options.onReady;
+    this.#onEnded = options.onEnded;
     this.#channel =
       options.channel ?? (new BroadcastChannel(loopbackChannelName) as LoopbackTextChannel);
     this.#channel.onmessage = (event) => {
@@ -97,6 +105,7 @@ export class SerfboundAsyncLoopbackMatch {
       boundaryChecksum: this.#match?.moves.at(-1)?.endChecksum ?? null,
       digest: this.#match?.lastWindowDigest ?? null,
       failureReason: this.#failureReason,
+      opponentName: this.#opponentName,
     };
   }
 
@@ -187,6 +196,7 @@ export class SerfboundAsyncLoopbackMatch {
       settings: this.#settings,
       turnTicks: this.windowTicks,
       inputDelayTurns: 1,
+      ...(this.#profileName === undefined ? {} : { profile: { name: this.#profileName } }),
     };
     return encodeSessionMessage(message);
   }
@@ -224,6 +234,10 @@ export class SerfboundAsyncLoopbackMatch {
 
     switch (message.type) {
       case "hello": {
+        if (message.player !== this.localPlayer && message.profile !== undefined) {
+          this.#opponentName = message.profile.name;
+        }
+
         if (message.player === this.localPlayer || this.#mode !== "waiting-peer") {
           if (this.role === "host" && message.player !== this.localPlayer) {
             // Re-announce for late joiners.
@@ -282,6 +296,7 @@ export class SerfboundAsyncLoopbackMatch {
         if (message.player !== this.localPlayer) {
           this.#mode = "failed";
           this.#failureReason = "peer-left";
+          this.#onEnded?.(message.reason);
         }
 
         return;
