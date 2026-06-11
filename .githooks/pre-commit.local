@@ -1,0 +1,30 @@
+# Serfbound structural check for rule #8 (SB-32-01): UI-facing changes
+# conform to the design standard. A commit touching UI-facing paths
+# must either touch design canon in the same commit (the standard or
+# the tokens) or carry .tmp/DESIGN-OK.md with a one-line rationale.
+# Canon: docs/design/design-standard.md §7; pm/roadmap/PMO-CONTRACT.md §8.
+
+DESIGN_OK_FILE="$REPO_ROOT/.tmp/DESIGN-OK.md"
+UI_FACING_REGEX='^(packages/app/src/[^/]+\.css$|index\.html$|public/)'
+DESIGN_CANON_REGEX='^(docs/design/|packages/app/src/tokens\.css$)'
+
+STAGED_UI=$(printf '%s\n' "$STAGED" | grep -E "$UI_FACING_REGEX" || true)
+STAGED_DESIGN_CANON=$(printf '%s\n' "$STAGED" | grep -E "$DESIGN_CANON_REGEX" || true)
+
+if [ -n "$STAGED_UI" ] && [ -z "$STAGED_DESIGN_CANON" ] && [ ! -f "$DESIGN_OK_FILE" ]; then
+  bar
+  echo "✗ Design conformance — UI-facing files staged without design canon:" >&2
+  printf '%s\n' "$STAGED_UI" | sed 's/^/    - /' >&2
+  echo "" >&2
+  echo "  Rule #8: UI-facing changes answer to docs/design/design-standard.md." >&2
+  echo "  Either the change updates the standard/tokens in this commit, or" >&2
+  echo "  write .tmp/DESIGN-OK.md with a one-line conformance rationale." >&2
+  bar
+  exit 1
+fi
+
+EXTRA_CLEANUP_FILES="$EXTRA_CLEANUP_FILES $DESIGN_OK_FILE"
+if [ -n "$STAGED_UI" ]; then
+  EXTRA_BANNER_LINES="$EXTRA_BANNER_LINES  Design conformance (rule #8) satisfied for UI-facing changes.
+"
+fi

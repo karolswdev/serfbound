@@ -109,6 +109,22 @@ that as a per-commit override and auto-deletes it on success
 yourself reaching for `BUNDLE-OK` regularly, you are mis-sizing
 your stories.
 
+<!-- Project extensions (Serfbound) -->
+
+### 8. Design-standard conformance (project-specific, SB-32-01)
+
+If this commit changes anything a player can see — shell CSS,
+`index.html`, `public/` assets, or player-facing markup/copy in
+`packages/app/src/main.ts` — it conforms to
+`docs/design/design-standard.md`: tokens consumed (no new raw color
+literals in component CSS), components from the inventory with all
+their states, copy in the product voice, the accessibility floor
+held. Structurally, the hook blocks UI-facing path changes that
+neither touch design canon (`docs/design/`, `tokens.css`) in the same
+commit nor carry `.tmp/DESIGN-OK.md` with a one-line rationale.
+`npm run check:design` enforces token hygiene in CI. Changing taste
+means changing the standard first, in the same commit.
+
 ---
 
 ## Contract template
@@ -133,6 +149,7 @@ I certify, for this commit:
 - [ ] **No bypasses.** No `--no-verify`, no unauthorized `Co-Authored-By`, no scope creep beyond what the user asked.
 - [ ] **Story → evidence pairing.** If any story flipped to `done`, its `evidence-story-{n}.md` ships in this commit.
 - [ ] **One PR per story.** This commit maps to one story (or atomic chunk), or the bundling is documented.
+- [ ] **Design-standard conformance (rule #8).** UI-facing changes conform to `docs/design/design-standard.md` (or `.tmp/DESIGN-OK.md` explains why not); non-UI commits mark this n/a.
 
 Methodology: pm/roadmap/roadmap-builder.md
 Rules canon: pm/roadmap/PMO-CONTRACT.md

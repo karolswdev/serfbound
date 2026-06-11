@@ -1,7 +1,7 @@
 # Phase 32 — Product Experience
 
-**Last updated:** 2026-06-11.
-**Status:** not started.
+**Last updated:** 2026-06-11 (after SB-32-01).
+**Status:** in progress.
 
 ## Goal
 
@@ -57,7 +57,7 @@ mechanically encouraged.
 
 ## Exit criteria (evidence required)
 
-- [ ] The design standard exists as canon (tokens, component
+- [x] The design standard exists as canon (tokens, component
   inventory, layout system, voice, a11y floor) and the PMO extension
   holds UI-facing changes to it. (SB-32-01)
 - [ ] The shell chrome conforms: landing/title, panels, controls,
@@ -76,7 +76,7 @@ mechanically encouraged.
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-32-01 | The design standard and its enforcement | backlog | story-01-design-standard.md | — |
+| SB-32-01 | The design standard and its enforcement | done | story-01-design-standard.md | evidence-story-01.md |
 | SB-32-02 | Shell chrome rebuilt to the standard | backlog | story-02-shell-chrome-redesign.md | — |
 | SB-32-03 | First-run and import as a designed journey | backlog | story-03-first-run-experience.md | — |
 | SB-32-04 | Competitive surfaces styled as a platform | backlog | story-04-competitive-surfaces.md | — |
@@ -84,11 +84,16 @@ mechanically encouraged.
 
 ## Where we are
 
-Scaffolded 2026-06-11 from direct maintainer direction after the
-Phase 29 artifacts made the shell's state impossible to unsee. Can
-start immediately; SB-32-02..04 depend on the standard (SB-32-01).
-Phase 28's README media should be captured after this phase lands
-(noted in phase 28) — the landing screenshots will be worth showing.
+SB-32-01 shipped: `docs/design/design-standard.md` is canon (the
+materials palette, type, space/shape/depth/motion, the component
+inventory with states, layout/chrome states, voice, the a11y floor);
+38 tokens live in `tokens.css` with the buttons/pill/focus ring
+converted as reference components; `npm run check:design` rides
+`ci:release` (orphan tokens, raw-color ratchet 15 → 0 over the
+phase); and rule #8 is mechanically live — the hook block and the
+DESIGN-OK override were both proven, and every commit now needs 8
+checkboxes. Next: SB-32-02 (the chrome rebuild). Connect pixellab
+MCP before the asset-hungry parts of 02/03.
 
 ## Active risks
 
@@ -101,7 +106,14 @@ Phase 28's README media should be captured after this phase lands
 
 ## Decisions made (this phase)
 
-- none yet.
+- 2026-06-11 — Token hygiene enforces via a reserved list (tokens
+  defined ahead of their consuming story, delisted on consumption)
+  and a raw-color ratchet (may only decrease) — pragmatic path to
+  "no raw literals" without blocking incremental conversion —
+  SB-32-01.
+- 2026-06-11 — Rule #8 structural check covers CSS/index.html/public;
+  `main.ts` markup conformance is certified by checkbox 8 (too much
+  non-UI code in that file for a path-based check) — SB-32-01.
 
 ## Decisions deferred
 

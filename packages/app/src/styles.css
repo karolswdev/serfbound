@@ -1,9 +1,13 @@
+@import "./tokens.css";
+
+/* SB-32-01: the buttons, pills, and focus ring are the reference
+   components consuming the design tokens; SB-32-02 converts the rest
+   of this file. Canon: docs/design/design-standard.md. */
+
 :root {
-  color: #f2ecd8;
-  background: #141816;
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  color: var(--sb-parchment);
+  background: var(--sb-ink);
+  font-family: var(--sb-font);
   font-synthesis: none;
   line-height: 1.45;
   text-rendering: optimizeLegibility;
@@ -76,13 +80,13 @@ h1 {
 
 .runtime-pill {
   flex: 0 0 auto;
-  border: 1px solid rgba(215, 236, 242, 0.22);
-  border-radius: 6px;
-  padding: 8px 11px;
-  color: #d7ecf2;
-  background: rgba(42, 82, 92, 0.28);
-  font-size: 0.86rem;
-  font-weight: 700;
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-sm);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  color: var(--sb-steel);
+  background: var(--sb-steel-dim);
+  font-size: var(--sb-text-sm);
+  font-weight: var(--sb-weight-bold);
 }
 
 .terrain-preview {
@@ -131,24 +135,50 @@ h1 {
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  border: 1px solid rgba(242, 236, 216, 0.18);
-  border-radius: 6px;
-  padding: 0 16px;
-  color: #221d14;
-  background: #d7c584;
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-sm);
+  padding: 0 var(--sb-space-4);
+  color: var(--sb-on-gold);
+  background: var(--sb-gold);
   cursor: pointer;
-  font-weight: 800;
+  font-weight: var(--sb-weight-black);
   text-align: center;
+  transition:
+    background var(--sb-dur-fast) var(--sb-ease),
+    transform var(--sb-dur-fast) var(--sb-ease);
+}
+
+.primary-action:hover:not(:disabled) {
+  background: var(--sb-gold-deep);
+}
+
+.primary-action:active:not(:disabled),
+.secondary-action:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .secondary-action {
-  color: #f2ecd8;
+  color: var(--sb-parchment);
   background: rgba(242, 236, 216, 0.06);
 }
 
+.secondary-action:hover:not(:disabled) {
+  background: var(--sb-surface-raised);
+}
+
+.primary-action:disabled,
 .secondary-action:disabled {
   cursor: not-allowed;
   opacity: 0.48;
+}
+
+.primary-action:disabled:hover,
+.secondary-action:disabled:hover {
+  background: var(--sb-gold);
+}
+
+.secondary-action:disabled:hover {
+  background: rgba(242, 236, 216, 0.06);
 }
 
 .import-input {
@@ -165,7 +195,7 @@ h1 {
 .import-control:focus-visible,
 .secondary-action:focus-visible,
 .primary-action:focus-visible {
-  outline: 3px solid rgba(215, 236, 242, 0.72);
+  outline: 3px solid var(--sb-steel);
   outline-offset: 3px;
 }
 

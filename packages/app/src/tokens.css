@@ -1,0 +1,59 @@
+/* Serfbound design tokens (SB-32-01) — the single source of truth.
+   Canon: docs/design/design-standard.md. Component CSS consumes these;
+   raw value literals belong here and nowhere else.
+   `npm run check:design` enforces both directions. */
+
+:root {
+  /* Color — the materials (standard §2.1) */
+  --sb-ink: #101411;
+  --sb-surface: #1b201c;
+  --sb-surface-raised: #242a24;
+  --sb-line: rgba(242, 236, 216, 0.14);
+  --sb-parchment: #f2ecd8;
+  --sb-parchment-bright: #fff9e7;
+  --sb-moss: #a7b9a8;
+  --sb-gold: #d7c584;
+  --sb-gold-deep: #b89f5a;
+  --sb-on-gold: #221d14;
+  --sb-steel: #d7ecf2;
+  --sb-steel-dim: rgba(42, 82, 92, 0.28);
+  --sb-banner-red: #b5524a;
+  --sb-meadow: #7fae6e;
+
+  /* Type (standard §2.2) */
+  --sb-font:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --sb-text-xs: 0.78rem;
+  --sb-text-sm: 0.9rem;
+  --sb-text-md: 1rem;
+  --sb-text-lg: 1.25rem;
+  --sb-text-hero: clamp(2.4rem, 6vw, 5.4rem);
+  --sb-weight-body: 500;
+  --sb-weight-bold: 700;
+  --sb-weight-black: 800;
+  --sb-track-wide: 0.08em;
+
+  /* Space, shape, depth, motion (standard §2.3) */
+  --sb-space-1: 4px;
+  --sb-space-2: 8px;
+  --sb-space-3: 12px;
+  --sb-space-4: 16px;
+  --sb-space-5: 24px;
+  --sb-space-6: 32px;
+  --sb-radius-sm: 6px;
+  --sb-radius-md: 10px;
+  --sb-radius-lg: 14px;
+  --sb-shadow-canvas: 0 24px 80px rgba(0, 0, 0, 0.26);
+  --sb-shadow-card: 0 8px 28px rgba(0, 0, 0, 0.22);
+  --sb-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --sb-dur-fast: 120ms;
+  --sb-dur-slow: 240ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sb-dur-fast: 0ms;
+    --sb-dur-slow: 0ms;
+  }
+}
