@@ -1,6 +1,6 @@
 # Phase 32 — Product Experience
 
-**Last updated:** 2026-06-11 (after SB-32-01).
+**Last updated:** 2026-06-11 (after SB-32-02).
 **Status:** in progress.
 
 ## Goal
@@ -60,7 +60,7 @@ mechanically encouraged.
 - [x] The design standard exists as canon (tokens, component
   inventory, layout system, voice, a11y floor) and the PMO extension
   holds UI-facing changes to it. (SB-32-01)
-- [ ] The shell chrome conforms: landing/title, panels, controls,
+- [x] The shell chrome conforms: landing/title, panels, controls,
   state-driven views — desktop and mobile captures from real data.
   (SB-32-02)
 - [ ] First-run is a designed journey: a stranger lands, understands,
@@ -77,7 +77,7 @@ mechanically encouraged.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-32-01 | The design standard and its enforcement | done | story-01-design-standard.md | evidence-story-01.md |
-| SB-32-02 | Shell chrome rebuilt to the standard | backlog | story-02-shell-chrome-redesign.md | — |
+| SB-32-02 | Shell chrome rebuilt to the standard | done | story-02-shell-chrome-redesign.md | evidence-story-02.md |
 | SB-32-03 | First-run and import as a designed journey | backlog | story-03-first-run-experience.md | — |
 | SB-32-04 | Competitive surfaces styled as a platform | backlog | story-04-competitive-surfaces.md | — |
 | SB-32-05 | Experience gate | backlog | story-05-experience-gate.md | — |
@@ -92,8 +92,14 @@ converted as reference components; `npm run check:design` rides
 `ci:release` (orphan tokens, raw-color ratchet 15 → 0 over the
 phase); and rule #8 is mechanically live — the hook block and the
 DESIGN-OK override were both proven, and every commit now needs 8
-checkboxes. Next: SB-32-02 (the chrome rebuild). Connect pixellab
-MCP before the asset-hungry parts of 02/03.
+checkboxes. SB-32-02 shipped: the chrome is rebuilt — designed header
+with the PixelLab-forged emblem, six purposeful panel groups, the
+three chrome states (running yields the screen to the game), raw-color
+ratchet at **0**, full ci:release green with zero test edits, and
+real-data captures (desktop + phone) for all three states under
+artifacts/. pixellab is reachable via raw MCP-over-HTTP (recorded in
+evidence) — no session restart needed. Next: SB-32-03 (the first-run
+journey).
 
 ## Active risks
 
@@ -119,6 +125,6 @@ MCP before the asset-hungry parts of 02/03.
 
 - A custom display font for shell headings (license + glyph
   questions) — default: system stack tuned by tokens until decided.
-- Animated/asset-rich landing hero — decide in SB-32-02 against
-  performance and the no-bundled-assets boundary.
+- ~~Animated/asset-rich landing hero~~ — resolved by restraint in
+  SB-32-02: the emblem and composition carry the brand; no heavy hero.
 - Dark-only vs dual themes — default: the game's dark idiom only.

@@ -19,6 +19,11 @@
   --sb-steel-dim: rgba(42, 82, 92, 0.28);
   --sb-banner-red: #b5524a;
   --sb-meadow: #7fae6e;
+  --sb-meadow-veil: rgba(127, 174, 110, 0.16);
+  --sb-parchment-veil: rgba(242, 236, 216, 0.04);
+  --sb-parchment-faint: rgba(242, 236, 216, 0.06);
+  --sb-line-soft: rgba(242, 236, 216, 0.12);
+  --sb-canvas-well: #18211d;
 
   /* Type (standard §2.2) */
   --sb-font:

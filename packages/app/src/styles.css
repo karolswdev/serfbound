@@ -1,14 +1,17 @@
 @import "./tokens.css";
 
-/* SB-32-01: the buttons, pills, and focus ring are the reference
-   components consuming the design tokens; SB-32-02 converts the rest
-   of this file. Canon: docs/design/design-standard.md. */
+/* The Serfbound shell (SB-32-02), rebuilt to the design standard:
+   docs/design/design-standard.md. The game canvas is the hero; the
+   chrome wears the game's materials and recedes during play via the
+   chrome states on [data-serfbound-chrome]. Every color and size in
+   this file is a token. */
 
 :root {
   color: var(--sb-parchment);
   background: var(--sb-ink);
   font-family: var(--sb-font);
   font-synthesis: none;
+  font-weight: var(--sb-weight-body);
   line-height: 1.45;
   text-rendering: optimizeLegibility;
 }
@@ -22,8 +25,8 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    linear-gradient(180deg, rgba(242, 236, 216, 0.04), rgba(20, 24, 22, 0) 28%),
-    #141816;
+    linear-gradient(180deg, var(--sb-parchment-veil), transparent 28%),
+    var(--sb-ink);
 }
 
 button,
@@ -35,12 +38,13 @@ input {
   min-height: 100vh;
 }
 
+/* ── Layout: the game is the hero ─────────────────────────────── */
+
 .serfbound-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(268px, 336px);
-  /* The game stays in view; the status panel scrolls its own overflow
-     (the action list keeps growing — it must not push the map below
-     the fold). */
+  /* The game stays in view; the chrome column scrolls its own
+     overflow — it must never push the map below the fold. */
   height: 100vh;
 }
 
@@ -48,34 +52,48 @@ input {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 28px;
+  padding: var(--sb-space-6);
+  transition: padding var(--sb-dur-slow) var(--sb-ease);
 }
 
 .scene__toolbar {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 20px;
+  gap: var(--sb-space-5);
+  margin-bottom: var(--sb-space-5);
 }
 
-.scene__kicker,
-.status-panel__label {
-  margin: 0 0 6px;
-  color: #a7b9a8;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0;
+.scene__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sb-space-4);
+}
+
+.scene__emblem {
+  width: 56px;
+  height: 56px;
+  image-rendering: pixelated;
+  transition: width var(--sb-dur-slow) var(--sb-ease), height var(--sb-dur-slow) var(--sb-ease);
+}
+
+.scene__kicker {
+  margin: 0 0 var(--sb-space-1);
+  color: var(--sb-moss);
+  font-size: var(--sb-text-xs);
+  font-weight: var(--sb-weight-bold);
+  letter-spacing: var(--sb-track-wide);
   text-transform: uppercase;
 }
 
 h1 {
   margin: 0;
-  color: #fff9e7;
-  font-size: clamp(2.4rem, 6vw, 5.4rem);
-  font-weight: 800;
+  color: var(--sb-parchment-bright);
+  font-size: var(--sb-text-hero);
+  font-weight: var(--sb-weight-black);
   letter-spacing: 0;
   line-height: 0.95;
+  transition: font-size var(--sb-dur-slow) var(--sb-ease);
 }
 
 .runtime-pill {
@@ -96,38 +114,86 @@ h1 {
   /* Flex-basis 0: the backing-store height attribute must not feed back
      into layout (high-DPI stores are CSS size * devicePixelRatio). */
   flex: 1 1 0;
-  border: 1px solid rgba(242, 236, 216, 0.14);
-  border-radius: 8px;
-  background: #18211d;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.26);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-lg);
+  background: var(--sb-canvas-well);
+  box-shadow: var(--sb-shadow-canvas);
   cursor: crosshair;
   touch-action: none;
 }
 
+/* ── The chrome column ────────────────────────────────────────── */
+
 .status-panel {
   display: grid;
   align-content: start;
-  gap: 16px;
-  border-left: 1px solid rgba(242, 236, 216, 0.12);
-  padding: 28px;
-  background: #20241f;
+  gap: var(--sb-space-4);
+  border-left: 1px solid var(--sb-line-soft);
+  padding: var(--sb-space-5) var(--sb-space-4);
+  background: var(--sb-surface);
   overflow-y: auto;
+  transition: gap var(--sb-dur-slow) var(--sb-ease);
+}
+
+.panel-group {
+  display: grid;
+  gap: var(--sb-space-3);
+  border: 1px solid var(--sb-line-soft);
+  border-radius: var(--sb-radius-md);
+  padding: var(--sb-space-4);
+  background: var(--sb-surface-raised);
+}
+
+.panel-group__title {
+  margin: 0;
+  padding-bottom: var(--sb-space-2);
+  border-bottom: 1px solid var(--sb-line-soft);
+  color: var(--sb-moss);
+  font-size: var(--sb-text-xs);
+  font-weight: var(--sb-weight-bold);
+  letter-spacing: var(--sb-track-wide);
+  text-transform: uppercase;
+}
+
+.panel-group__actions {
+  display: grid;
+  gap: var(--sb-space-2);
+}
+
+.status-panel__label {
+  margin: 0 0 var(--sb-space-1);
+  color: var(--sb-moss);
+  font-size: var(--sb-text-xs);
+  font-weight: var(--sb-weight-bold);
+  letter-spacing: var(--sb-track-wide);
+  text-transform: uppercase;
 }
 
 .status-panel__value {
   margin: 0;
-  color: #fff9e7;
-  font-size: 1rem;
-  font-weight: 700;
+  color: var(--sb-parchment-bright);
+  font-size: var(--sb-text-md);
+  font-weight: var(--sb-weight-bold);
   overflow-wrap: anywhere;
 }
 
 .status-panel__detail {
-  margin: -8px 0 0;
-  color: #a7b9a8;
-  font-size: 0.9rem;
+  margin: 0;
+  color: var(--sb-moss);
+  font-size: var(--sb-text-sm);
   overflow-wrap: anywhere;
 }
+
+/* The attention badge — the one element allowed a voice of its own. */
+.online-badge {
+  border-radius: var(--sb-radius-sm);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  color: var(--sb-meadow);
+  background: var(--sb-meadow-veil);
+  font-weight: var(--sb-weight-bold);
+}
+
+/* ── Controls ─────────────────────────────────────────────────── */
 
 .primary-action,
 .secondary-action {
@@ -159,11 +225,11 @@ h1 {
 
 .secondary-action {
   color: var(--sb-parchment);
-  background: rgba(242, 236, 216, 0.06);
+  background: var(--sb-parchment-faint);
 }
 
 .secondary-action:hover:not(:disabled) {
-  background: var(--sb-surface-raised);
+  background: var(--sb-surface);
 }
 
 .primary-action:disabled,
@@ -172,13 +238,17 @@ h1 {
   opacity: 0.48;
 }
 
-.primary-action:disabled:hover,
-.secondary-action:disabled:hover {
+.primary-action:disabled:hover {
   background: var(--sb-gold);
 }
 
 .secondary-action:disabled:hover {
-  background: rgba(242, 236, 216, 0.06);
+  background: var(--sb-parchment-faint);
+}
+
+input.secondary-action {
+  cursor: text;
+  text-align: left;
 }
 
 .import-input {
@@ -191,13 +261,59 @@ h1 {
   clip-path: inset(50%);
 }
 
-.import-input:focus-visible + .primary-action,
+.import-input:focus-visible + .import-control,
 .import-control:focus-visible,
 .secondary-action:focus-visible,
 .primary-action:focus-visible {
   outline: 3px solid var(--sb-steel);
   outline-offset: 3px;
 }
+
+/* ── Chrome states (standard §4): pre-import, title, running ──── */
+
+/* Pre-import: the data group carries the journey — a gold accent
+   marks where the player begins. */
+[data-serfbound-chrome="pre-import"] .panel-group--data {
+  border-color: var(--sb-gold);
+}
+
+/* Title: data is in; the realm group (START lives there) leads. */
+[data-serfbound-chrome="title"] .panel-group--realm {
+  border-color: var(--sb-gold);
+}
+
+/* Running: the chrome yields the screen to the game. */
+[data-serfbound-chrome="running"] .scene {
+  padding: var(--sb-space-4);
+}
+
+[data-serfbound-chrome="running"] .scene__toolbar {
+  margin-bottom: var(--sb-space-3);
+}
+
+[data-serfbound-chrome="running"] .scene__kicker {
+  display: none;
+}
+
+[data-serfbound-chrome="running"] h1 {
+  font-size: var(--sb-text-lg);
+}
+
+[data-serfbound-chrome="running"] .scene__emblem {
+  width: 28px;
+  height: 28px;
+}
+
+[data-serfbound-chrome="running"] .status-panel {
+  gap: var(--sb-space-3);
+}
+
+[data-serfbound-chrome="running"] .panel-group {
+  padding: var(--sb-space-3);
+  gap: var(--sb-space-2);
+}
+
+/* ── Small screens ────────────────────────────────────────────── */
 
 @media (max-width: 760px) {
   .serfbound-shell {
@@ -209,13 +325,18 @@ h1 {
 
   .scene {
     min-height: 68vh;
-    padding: 18px;
+    padding: var(--sb-space-4);
   }
 
   .scene__toolbar {
     align-items: stretch;
     flex-direction: column;
-    gap: 14px;
+    gap: var(--sb-space-3);
+  }
+
+  .scene__emblem {
+    width: 40px;
+    height: 40px;
   }
 
   .runtime-pill {
@@ -227,18 +348,18 @@ h1 {
   }
 
   .status-panel {
-    border-top: 1px solid rgba(242, 236, 216, 0.12);
+    border-top: 1px solid var(--sb-line-soft);
     border-left: 0;
+    padding: var(--sb-space-4);
+  }
+
+  .panel-group {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 18px;
   }
 
+  .panel-group__title,
+  .panel-group__actions,
   .status-panel__detail {
-    grid-column: 1 / -1;
-  }
-
-  .primary-action,
-  .secondary-action {
     grid-column: 1 / -1;
   }
 }

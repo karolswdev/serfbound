@@ -364,9 +364,12 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     <main class="serfbound-shell" data-testid="serfbound-shell">
       <section class="scene" aria-labelledby="serfbound-title">
         <div class="scene__toolbar">
-          <div>
-            <p class="scene__kicker">New settlement</p>
-            <h1 id="serfbound-title">Serfbound</h1>
+          <div class="scene__brand">
+            <img class="scene__emblem" src="./emblem.png" alt="" width="64" height="64" />
+            <div>
+              <p class="scene__kicker">New settlement</p>
+              <h1 id="serfbound-title">Serfbound</h1>
+            </div>
           </div>
           <div class="runtime-pill" data-testid="runtime-pill">Ready</div>
         </div>
@@ -379,204 +382,255 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         ></canvas>
       </section>
       <aside class="status-panel" aria-label="Serfbound status">
-        <div>
-          <p
-            class="visually-hidden"
-            data-testid="notification-live"
-            aria-live="polite"
-          ></p>
+        <p
+          class="visually-hidden"
+          data-testid="notification-live"
+          aria-live="polite"
+        ></p>
+        <section class="panel-group panel-group--data">
+          <h2 class="panel-group__title">Your data</h2>
           <div
             class="status-panel__detail"
             data-testid="onboarding-banner"
             role="note"
           >First run: 1) locate your original Settlers SPAU.PA file, 2) use Import data below (it stays on this device), 3) press START on the title screen.</div>
-          <p class="status-panel__label">Data</p>
-          <p class="status-panel__value" data-testid="data-state">No game data</p>
-        </div>
-        <p class="status-panel__detail" data-testid="data-detail">Import SPAU.PA to start a local game.</p>
-        <div>
-          <p class="status-panel__label">Game</p>
-          <p class="status-panel__value" data-testid="game-state">Data needed</p>
-        </div>
-        <p class="status-panel__detail" data-testid="game-detail">Import game data first.</p>
-        <div>
-          <p class="status-panel__label">Source</p>
-          <p class="status-panel__value" data-testid="source-state">No data</p>
-        </div>
-        <div>
-          <p class="status-panel__label">Map</p>
-          <p class="status-panel__value" data-testid="scene-state">Waiting for data</p>
-        </div>
-        <p class="status-panel__detail" data-testid="scene-detail">Select land to inspect it.</p>
-        <div>
-          <p class="status-panel__label">Hover</p>
-          <p class="status-panel__value" data-testid="pointer-state">No map target</p>
-        </div>
-        <p class="status-panel__detail" data-testid="pointer-detail">Move over the map.</p>
-        <div>
-          <p class="status-panel__label">Selected Tile</p>
-          <p class="status-panel__value" data-testid="selected-tile-state">No tile selected</p>
-        </div>
-        <p class="status-panel__detail" data-testid="selected-tile-detail">Select land to see its position.</p>
-        <div>
-          <p class="status-panel__label">Action</p>
-          <p class="status-panel__value" data-testid="command-state">No action selected</p>
-        </div>
-        <p class="status-panel__detail" data-testid="command-detail">Select a tile to inspect available actions.</p>
-        <div>
-          <p class="status-panel__label">Save</p>
-          <p class="status-panel__value" data-testid="save-state">No saved game</p>
-        </div>
-        <p class="status-panel__detail" data-testid="save-detail">Start a game to save.</p>
-        <input
-          id="data-import"
-          class="import-input"
-          data-testid="data-import-input"
-          type="file"
-          accept=".PA,.pa"
-          tabindex="-1"
-        />
-        <button
-          class="secondary-action"
-          data-testid="build-flag-button"
-          type="button"
-          disabled
-        >Build flag</button>
-        <button
-          class="secondary-action"
-          data-testid="build-road-button"
-          type="button"
-          disabled
-        >Build road</button>
-        <button
-          class="secondary-action"
-          data-testid="build-lumberjack-button"
-          type="button"
-          disabled
-        >Build lumberjack</button>
-        <button
-          class="primary-action"
-          data-testid="start-game-button"
-          type="button"
-          disabled
-        >Start game</button>
-        <button
-          class="secondary-action"
-          data-testid="save-game-button"
-          type="button"
-          disabled
-        >Save game</button>
-        <button
-          class="secondary-action"
-          data-testid="load-game-button"
-          type="button"
-          disabled
-        >Load game</button>
-        <button
-          class="secondary-action"
-          data-testid="language-button"
-          type="button"
-        >Language</button>
-        <button
-          class="secondary-action"
-          data-testid="view-scale-button"
-          type="button"
-        >View scale</button>
-        <button
-          class="secondary-action"
-          data-testid="host-loopback-button"
-          type="button"
-        >Host 2P (this browser)</button>
-        <button
-          class="secondary-action"
-          data-testid="join-loopback-button"
-          type="button"
-        >Join 2P (this browser)</button>
-        <button
-          class="secondary-action"
-          data-testid="hotseat-button"
-          type="button"
-        >Hot-seat 2P (pass and play)</button>
-        <input
-          class="secondary-action"
-          data-testid="profile-name-input"
-          type="text"
-          maxlength="12"
-          placeholder="Profile name"
-          aria-label="Profile name"
-        />
-        <button
-          class="secondary-action"
-          data-testid="async-host-button"
-          type="button"
-        >Async 2P host (this browser)</button>
-        <button
-          class="secondary-action"
-          data-testid="async-join-button"
-          type="button"
-        >Async 2P join (this browser)</button>
-        <div>
-          <p class="status-panel__label">Online</p>
-          <p class="status-panel__value" data-testid="online-state">Signed out</p>
-        </div>
-        <p class="status-panel__detail" data-testid="online-detail">Optional: play correspondence matches over the internet. Local play never needs this.</p>
-        <button
-          class="secondary-action"
-          data-testid="online-signin-button"
-          type="button"
-        >Sign in (device key)</button>
-        <button
-          class="secondary-action"
-          data-testid="online-refresh-button"
-          type="button"
-        >Refresh online</button>
-        <button
-          class="secondary-action"
-          data-testid="online-challenge-button"
-          type="button"
-          disabled
-        >Post online challenge</button>
-        <div data-testid="online-lobby"></div>
-        <p class="status-panel__detail" data-testid="online-your-turn" hidden>Your turn in 0 matches</p>
-        <button
-          class="secondary-action"
-          data-testid="online-attest-win-button"
-          type="button"
-          hidden
-        >Attest result: I won</button>
-        <button
-          class="secondary-action"
-          data-testid="online-attest-loss-button"
-          type="button"
-          hidden
-        >Attest result: I lost</button>
-        <button
-          class="secondary-action"
-          data-testid="error-report-button"
-          type="button"
-        >Copy error report</button>
-        <label
-          class="secondary-action import-control"
-          data-testid="data-import-control"
-          for="data-import"
-          role="button"
-          tabindex="0"
-        >Import data</label>
-        <button
-          class="secondary-action"
-          data-testid="clear-save-button"
-          type="button"
-          disabled
-        >Clear save</button>
-        <button
-          class="secondary-action"
-          data-testid="data-reset-button"
-          type="button"
-          disabled
-        >Clear data</button>
+          <div>
+            <p class="status-panel__label">Data</p>
+            <p class="status-panel__value" data-testid="data-state">No game data</p>
+          </div>
+          <p class="status-panel__detail" data-testid="data-detail">Import SPAU.PA to start a local game.</p>
+          <div>
+            <p class="status-panel__label">Source</p>
+            <p class="status-panel__value" data-testid="source-state">No data</p>
+          </div>
+          <div class="panel-group__actions">
+            <input
+              id="data-import"
+              class="import-input"
+              data-testid="data-import-input"
+              type="file"
+              accept=".PA,.pa"
+              tabindex="-1"
+            />
+            <label
+              class="secondary-action import-control"
+              data-testid="data-import-control"
+              for="data-import"
+              role="button"
+              tabindex="0"
+            >Import data</label>
+            <button
+              class="secondary-action"
+              data-testid="data-reset-button"
+              type="button"
+              disabled
+            >Clear data</button>
+          </div>
+        </section>
+        <section class="panel-group panel-group--realm">
+          <h2 class="panel-group__title">The realm</h2>
+          <div>
+            <p class="status-panel__label">Game</p>
+            <p class="status-panel__value" data-testid="game-state">Data needed</p>
+          </div>
+          <p class="status-panel__detail" data-testid="game-detail">Import game data first.</p>
+          <div>
+            <p class="status-panel__label">Map</p>
+            <p class="status-panel__value" data-testid="scene-state">Waiting for data</p>
+          </div>
+          <p class="status-panel__detail" data-testid="scene-detail">Select land to inspect it.</p>
+          <div>
+            <p class="status-panel__label">Hover</p>
+            <p class="status-panel__value" data-testid="pointer-state">No map target</p>
+          </div>
+          <p class="status-panel__detail" data-testid="pointer-detail">Move over the map.</p>
+          <div>
+            <p class="status-panel__label">Selected Tile</p>
+            <p class="status-panel__value" data-testid="selected-tile-state">No tile selected</p>
+          </div>
+          <p class="status-panel__detail" data-testid="selected-tile-detail">Select land to see its position.</p>
+          <div>
+            <p class="status-panel__label">Action</p>
+            <p class="status-panel__value" data-testid="command-state">No action selected</p>
+          </div>
+          <p class="status-panel__detail" data-testid="command-detail">Select a tile to inspect available actions.</p>
+          <div class="panel-group__actions">
+            <button
+              class="primary-action"
+              data-testid="start-game-button"
+              type="button"
+              disabled
+            >Start game</button>
+            <button
+              class="secondary-action"
+              data-testid="build-flag-button"
+              type="button"
+              disabled
+            >Build flag</button>
+            <button
+              class="secondary-action"
+              data-testid="build-road-button"
+              type="button"
+              disabled
+            >Build road</button>
+            <button
+              class="secondary-action"
+              data-testid="build-lumberjack-button"
+              type="button"
+              disabled
+            >Build lumberjack</button>
+            <button
+              class="secondary-action"
+              data-testid="view-scale-button"
+              type="button"
+            >View scale</button>
+          </div>
+        </section>
+        <section class="panel-group panel-group--ledger">
+          <h2 class="panel-group__title">The ledger</h2>
+          <div>
+            <p class="status-panel__label">Save</p>
+            <p class="status-panel__value" data-testid="save-state">No saved game</p>
+          </div>
+          <p class="status-panel__detail" data-testid="save-detail">Start a game to save.</p>
+          <div class="panel-group__actions">
+            <button
+              class="secondary-action"
+              data-testid="save-game-button"
+              type="button"
+              disabled
+            >Save game</button>
+            <button
+              class="secondary-action"
+              data-testid="load-game-button"
+              type="button"
+              disabled
+            >Load game</button>
+            <button
+              class="secondary-action"
+              data-testid="clear-save-button"
+              type="button"
+              disabled
+            >Clear save</button>
+          </div>
+        </section>
+        <section class="panel-group panel-group--company">
+          <h2 class="panel-group__title">Play with someone</h2>
+          <div class="panel-group__actions">
+            <input
+              class="secondary-action"
+              data-testid="profile-name-input"
+              type="text"
+              maxlength="12"
+              placeholder="Profile name"
+              aria-label="Profile name"
+            />
+            <button
+              class="secondary-action"
+              data-testid="hotseat-button"
+              type="button"
+            >Hot-seat 2P (pass and play)</button>
+            <button
+              class="secondary-action"
+              data-testid="host-loopback-button"
+              type="button"
+            >Host 2P (this browser)</button>
+            <button
+              class="secondary-action"
+              data-testid="join-loopback-button"
+              type="button"
+            >Join 2P (this browser)</button>
+            <button
+              class="secondary-action"
+              data-testid="async-host-button"
+              type="button"
+            >Async 2P host (this browser)</button>
+            <button
+              class="secondary-action"
+              data-testid="async-join-button"
+              type="button"
+            >Async 2P join (this browser)</button>
+          </div>
+        </section>
+        <section class="panel-group panel-group--online">
+          <h2 class="panel-group__title">Online</h2>
+          <div>
+            <p class="status-panel__label">Account</p>
+            <p class="status-panel__value" data-testid="online-state">Signed out</p>
+          </div>
+          <p class="status-panel__detail" data-testid="online-detail">Optional: play correspondence matches over the internet. Local play never needs this.</p>
+          <p class="online-badge" data-testid="online-your-turn" hidden>Your turn in 0 matches</p>
+          <div class="panel-group__actions">
+            <button
+              class="secondary-action"
+              data-testid="online-signin-button"
+              type="button"
+            >Sign in (device key)</button>
+            <button
+              class="secondary-action"
+              data-testid="online-refresh-button"
+              type="button"
+            >Refresh online</button>
+            <button
+              class="secondary-action"
+              data-testid="online-challenge-button"
+              type="button"
+              disabled
+            >Post online challenge</button>
+            <div class="panel-group__actions" data-testid="online-lobby"></div>
+            <button
+              class="secondary-action"
+              data-testid="online-attest-win-button"
+              type="button"
+              hidden
+            >Attest result: I won</button>
+            <button
+              class="secondary-action"
+              data-testid="online-attest-loss-button"
+              type="button"
+              hidden
+            >Attest result: I lost</button>
+          </div>
+        </section>
+        <section class="panel-group panel-group--service">
+          <h2 class="panel-group__title">Housekeeping</h2>
+          <div class="panel-group__actions">
+            <button
+              class="secondary-action"
+              data-testid="language-button"
+              type="button"
+            >Language</button>
+            <button
+              class="secondary-action"
+              data-testid="error-report-button"
+              type="button"
+            >Copy error report</button>
+          </div>
+        </section>
       </aside>
     </main>
   `;
+
+  // Chrome states (SB-32-02, standard §4): the shell composition
+  // follows the player's journey — pre-import, title, running. CSS
+  // keys off this; the observer keeps it true wherever game/data
+  // state changes.
+  const syncChromeState = () => {
+    const chrome =
+      root.dataset.serfboundGameState === "running"
+        ? "running"
+        : root.dataset.serfboundDataState === "supported"
+          ? "title"
+          : "pre-import";
+    if (root.dataset.serfboundChrome !== chrome) {
+      root.dataset.serfboundChrome = chrome;
+    }
+  };
+  syncChromeState();
+  new MutationObserver(syncChromeState).observe(root, {
+    attributes: true,
+    attributeFilter: ["data-serfbound-game-state", "data-serfbound-data-state"],
+  });
 
   const canvas = root.querySelector<HTMLCanvasElement>("[data-testid='terrain-preview']");
   if (canvas === null) {

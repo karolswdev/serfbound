@@ -13,31 +13,14 @@ import { readFileSync } from "node:fs";
 const tokensCss = readFileSync("packages/app/src/tokens.css", "utf8");
 const componentCss = readFileSync("packages/app/src/styles.css", "utf8");
 
-// Ratchet: raw color literals still in styles.css awaiting SB-32-02
-// conversion. Lower this number as they convert; never raise it.
-const RAW_COLOR_RATCHET = 15;
+// Ratchet: raw color literals still in styles.css awaiting
+// conversion. SB-32-02 drove it to zero; it stays there.
+const RAW_COLOR_RATCHET = 0;
 
 // Tokens defined ahead of the surfaces that consume them.
 const RESERVED = new Map([
-  ["--sb-text-lg", "SB-32-02 section titles"],
-  ["--sb-text-hero", "SB-32-02 wordmark"],
-  ["--sb-text-xs", "SB-32-02 panel kickers"],
-  ["--sb-text-md", "SB-32-02 panel values"],
-  ["--sb-weight-body", "SB-32-02 body text"],
-  ["--sb-track-wide", "SB-32-02 uppercase labels"],
-  ["--sb-space-1", "SB-32-02 dense gaps"],
-  ["--sb-space-5", "SB-32-02 panel padding"],
-  ["--sb-space-6", "SB-32-02 scene padding"],
-  ["--sb-radius-md", "SB-32-02 cards/panels"],
-  ["--sb-radius-lg", "SB-32-02 canvas frame"],
-  ["--sb-shadow-canvas", "SB-32-02 canvas frame"],
   ["--sb-shadow-card", "SB-32-04 lobby cards/toasts"],
-  ["--sb-dur-slow", "SB-32-02 chrome state changes"],
   ["--sb-banner-red", "SB-32-03 error states"],
-  ["--sb-meadow", "SB-32-04 your-turn badge"],
-  ["--sb-surface", "SB-32-02 panel surfaces"],
-  ["--sb-parchment-bright", "SB-32-02 headings/values"],
-  ["--sb-moss", "SB-32-02 labels/details"],
 ]);
 
 const failures = [];
