@@ -1924,7 +1924,20 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         return true;
       }
 
-      const found = findShortestRoad(currentWorld, end, position);
+      // The original's stepwise build: a tap on a tile adjacent to the
+      // end extends exactly that one segment (reference Viewport click
+      // → direction; rejected if that single segment is invalid). A
+      // distant tap pathfinds toward it — the modern convenience.
+      const world = currentWorld;
+      const isAdjacent = roadDirectionCycle.some(
+        (candidate) => world.move(end, candidate) === position,
+      );
+      const found = findShortestRoad(
+        currentWorld,
+        end,
+        position,
+        isAdjacent ? { maxLength: 1 } : {},
+      );
       const extension: number[] = [];
       if (found !== null) {
         let walker = end;

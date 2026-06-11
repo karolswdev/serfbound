@@ -1,8 +1,8 @@
 # Phase 34 — Touch Playability
 
-**Last updated:** 2026-06-11 (after SB-34-08: the road builder —
-the reference IsBuildingRoad interface, touch-first — shipped and
-gated end to end; the fifth device pass is the open gate).
+**Last updated:** 2026-06-11 (after SB-34-09: buildings rise under
+the hammer, the architect myth dissolved, the original's stepwise
+road control restored; the sixth device pass is the open gate).
 **Status:** in progress — opened by the maintainer's real-device
 play test, which the previous touch gates failed to predict.
 
@@ -16,6 +16,24 @@ Real phone, real fingers: "LITERALLY unplayable."
 4. Zero animations — flags don't wave.
 5. Could not build a road — "could not even click into it."
 6. The build-building menu shows buildings cropped after ~5 pixels.
+
+## Round 6 (fifth device pass, 2026-06-11)
+
+The road builder landed — but:
+
+14. "Buildings just immediately transform to the other phase" — no
+    construction animation. (Root: the renderer knew only three
+    states AND the engine banked builder work against missing
+    materials, snapping a phase per delivery. Shipped: material-gated
+    work + the reference bottom-up reveal — cross, cornerstone with
+    the frame creeping up, building over the frame. SB-34-09.)
+15. "The architect finishing each phase coming back to the castle" —
+    diagnosed: the builder never leaves; the walkers are transporters
+    hauling planks, and the delivery-snap made them look causal. With
+    gradual rise the illusion dissolves. (SB-34-09.)
+16. The road builder lacked the original's stepwise control — an
+    adjacent tap now extends exactly one segment (the reference
+    click), distant taps keep the pathfind convenience. (SB-34-09.)
 
 ## Round 5 (fourth device pass, 2026-06-11)
 
@@ -107,10 +125,11 @@ their device and saying so.
 | SB-34-02 | Founding confirmation on touch | done | story-02-founding-confirmation.md | evidence-story-02.md |
 | SB-34-03 | DPR-3 coordinate spaces: cursor, panel, popups | done | story-03-dpr3-coordinate-truth.md | evidence-story-03.md |
 | SB-34-04 | Selection bleed + on-device animation | done | story-04-selection-bleed-and-motion.md | evidence-story-04.md |
-| SB-34-05 | The device gate | looped — rounds 2–4 rejected; round 5 shipped, fifth pass pending | — | — |
+| SB-34-05 | The device gate | looped — rounds 2–5 rejected; round 6 shipped, sixth pass pending | — | — |
 | SB-34-06 | The visible world: cursor, construction, waving flags | done | story-06-the-visible-world.md | evidence-story-06.md |
 | SB-34-07 | The road and the true tap | done | story-07-the-road-and-the-true-tap.md | evidence-story-07.md |
 | SB-34-08 | The road builder | done | story-08-the-road-builder.md | evidence-story-08.md |
+| SB-34-09 | Rising under the hammer | done | story-09-rising-under-the-hammer.md | evidence-story-09.md |
 
 ## Active risks
 

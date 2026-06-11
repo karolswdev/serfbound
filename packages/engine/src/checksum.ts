@@ -143,6 +143,7 @@ export function hashWorld(hasher: StateHasher, world: SerfboundGameWorld): void 
     hasher.numericRecord(building.requestedResources);
     hasher.int(building.builderTicks);
     hasher.int(building.consumedMaterials);
+    hasher.int(building.materialWorkTicks);
     hasher.int(building.knights);
     hasher.int(building.requestedKnights);
     hasher.int(building.threatLevel);

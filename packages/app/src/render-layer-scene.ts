@@ -58,6 +58,9 @@ export type RenderSpritePrimitive = {
   readonly sortX: number;
   // Integer pixel-art scale (UI chrome renders at 2x; map sprites at 1x).
   readonly scale?: number;
+  // Hide this top fraction of the sprite (0..1): construction reveals
+  // buildings bottom-up like the reference build-progress mask.
+  readonly cropTop?: number;
 };
 
 export type DecodedMapObjectSprite = {
@@ -1323,12 +1326,17 @@ function renderDecodedSpriteScene(
     }
 
     const spriteScale = sprite.scale ?? 1;
+    // cropTop hides the top fraction of the sprite (SB-34 round 6):
+    // construction reveals buildings bottom-up like the reference
+    // build-progress mask.
+    const cropTop = Math.min(1, Math.max(0, sprite.cropTop ?? 0));
+    const croppedPixels = region.height * cropTop;
     const x0 = sprite.x;
-    const y0 = sprite.y;
+    const y0 = sprite.y + croppedPixels * spriteScale;
     const x1 = sprite.x + region.width * spriteScale;
     const y1 = sprite.y + region.height * spriteScale;
     const u0 = region.x / atlas.width;
-    const v0 = region.y / atlas.height;
+    const v0 = (region.y + croppedPixels) / atlas.height;
     const u1 = (region.x + region.width) / atlas.width;
     const v1 = (region.y + region.height) / atlas.height;
     const quad = [

@@ -293,3 +293,55 @@ test("an explicit drawn road path builds exactly as drawn (SB-34-08)", () => {
   });
   assert.equal(bad.status, "rejected");
 });
+
+test("builder work never banks: phases rise under the hammer, not on delivery (SB-34 round 6)", () => {
+  const { world, router, castlePosition } = startedGameWithCastle();
+  let sitePosition = -1;
+  for (let offset = 0; offset < 200; offset += 1) {
+    const candidate = world.positionAddSpirally(castlePosition, offset);
+    if (world.canBuildBuilding(candidate, 2, 0)) {
+      sitePosition = candidate;
+      break;
+    }
+  }
+  assert.equal(
+    router.dispatch({
+      type: "game.build-building",
+      source: "pointer",
+      tile: tileFor(world, sitePosition),
+      buildingKind: "lumberjack",
+    }).status,
+    "accepted",
+  );
+  const building = world.buildingAt(sitePosition);
+
+  // Leveling: fraction stays 0 until the ground is ready.
+  assert.equal(world.constructionFraction(building), 0);
+  world.applyBuilderWork(building, 40);
+  assert.equal(building.progress, 1, "leveling done");
+
+  // The builder hammers for ages with NO materials on site: nothing
+  // banks — the fraction stays at 0 instead of storing phantom work.
+  world.applyBuilderWork(building, 500);
+  assert.equal(building.consumedMaterials, 0);
+  assert.equal(world.constructionFraction(building), 0);
+
+  // The first plank arrives: progress rises tick by tick, not in one
+  // snap from the banked 500.
+  building.deliveredResources[7] = 1;
+  world.applyBuilderWork(building, 10);
+  const early = world.constructionFraction(building);
+  assert.equal(early > 0 && early < 0.5, true, `gradual (${early})`);
+  world.applyBuilderWork(building, 10);
+  const later = world.constructionFraction(building);
+  assert.equal(later > early, true, "monotonic under the hammer");
+  world.applyBuilderWork(building, 10);
+  assert.equal(building.consumedMaterials, 1, "one material consumed after 30 ticks");
+  assert.equal(building.isDone, false);
+
+  // The second plank: the building tops out and completes.
+  building.deliveredResources[7] = 2;
+  world.applyBuilderWork(building, 30);
+  assert.equal(building.isDone, true);
+  assert.equal(world.constructionFraction(building), 1);
+});

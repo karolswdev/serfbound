@@ -258,6 +258,10 @@ export const mapBuildingFrameSprite: readonly number[] = [
 // placed site shows while the ground is leveled (progress 0).
 export const constructionCrossSprite = 0x90;
 
+// RenderBuilding.CornerStoneSprite: marks the site while the frame
+// rises (SB-34 round 6).
+export const cornerStoneSprite = 0x91;
+
 // RenderFlag: flags cycle four wave frames (map objects 128..131).
 export const flagWaveFrames = 4;
 
@@ -354,6 +358,7 @@ export function buildLandscapeRenderAssets(
     ...mapBuildingSprite,
     ...mapBuildingFrameSprite,
     constructionCrossSprite,
+    cornerStoneSprite,
   ]) {
     if (spriteIndex === 0) {
       continue;
@@ -572,6 +577,7 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
     anchorY: number,
     sortY: number,
     sortX: number,
+    cropTop?: number,
   ): void => {
     const region = atlas.regions[key];
     if (region === undefined) {
@@ -586,6 +592,7 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
       sortY,
       sortX,
       ...(viewScale === 1 ? {} : { scale: viewScale }),
+      ...(cropTop === undefined || cropTop <= 0 ? {} : { cropTop }),
     });
   };
 
@@ -670,20 +677,49 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
         pushSprite("shadows", flagShadowKey, apexX, apexY, apexY, apexX);
         pushSprite("markers", flagKey, apexX, apexY, apexY, apexX);
       } else if (objectType >= 2 && objectType <= 4 && options.world !== undefined) {
-        // Buildings render their reference map_object sprite by type.
+        // Buildings render their reference map_object sprite by type,
+        // rising bottom-up under the builder's hammer (SB-34 round 6,
+        // the reference build-progress mask): cross while leveling,
+        // then the corner stone with the frame revealing through the
+        // first half of the work, then the building revealing over the
+        // finished frame through the second half.
         const building = options.world.buildingAt(position);
         if (building !== null) {
-          // Leveling sites show the construction cross (the placement is
-          // visible the instant it happens); framed sites show the frame;
-          // completed buildings show the finished sprite.
-          const spriteIndex = building.isDone
-            ? (mapBuildingSprite[building.type] ?? 0)
-            : building.progress >= 1
-              ? (mapBuildingFrameSprite[building.type] ?? 0)
-              : constructionCrossSprite;
-          if (spriteIndex !== 0) {
-            pushSprite("shadows", `mos:${spriteIndex}`, apexX, apexY, apexY, apexX);
-            pushSprite("objects", `mo:${spriteIndex}`, apexX, apexY, apexY, apexX);
+          const doneIndex = mapBuildingSprite[building.type] ?? 0;
+          if (building.isDone) {
+            if (doneIndex !== 0) {
+              pushSprite("shadows", `mos:${doneIndex}`, apexX, apexY, apexY, apexX);
+              pushSprite("objects", `mo:${doneIndex}`, apexX, apexY, apexY, apexX);
+            }
+          } else if (building.progress === 0) {
+            pushSprite("shadows", `mos:${constructionCrossSprite}`, apexX, apexY, apexY, apexX);
+            pushSprite("objects", `mo:${constructionCrossSprite}`, apexX, apexY, apexY, apexX);
+          } else {
+            const frameIndex = mapBuildingFrameSprite[building.type] ?? 0;
+            const fraction = options.world.constructionFraction(building);
+            if (fraction < 0.5) {
+              pushSprite("objects", `mo:${cornerStoneSprite}`, apexX, apexY, apexY, apexX);
+              if (frameIndex !== 0) {
+                const reveal = fraction * 2;
+                pushSprite(
+                  "objects", `mo:${frameIndex}`,
+                  apexX, apexY, apexY + 1, apexX, 1 - reveal,
+                );
+              }
+            } else {
+              if (frameIndex !== 0) {
+                pushSprite("shadows", `mos:${frameIndex}`, apexX, apexY, apexY, apexX);
+                pushSprite("objects", `mo:${frameIndex}`, apexX, apexY, apexY, apexX);
+              }
+
+              if (doneIndex !== 0) {
+                const reveal = (fraction - 0.5) * 2;
+                pushSprite(
+                  "objects", `mo:${doneIndex}`,
+                  apexX, apexY, apexY + 1, apexX, 1 - reveal,
+                );
+              }
+            }
           }
         }
       }

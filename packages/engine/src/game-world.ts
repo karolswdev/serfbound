@@ -154,6 +154,9 @@ export type WorldBuilding = {
   // Serf-driven construction state.
   builderTicks: number;
   consumedMaterials: number;
+  // Builder work toward the material currently under the hammer —
+  // accrues only while one is on site (SB-34 round 6).
+  materialWorkTicks: number;
   // Military occupation: knights garrisoned and in flight, and the
   // building's threat level (Building.ThreatLevel, 0 = interior).
   knights: number;
@@ -1015,6 +1018,7 @@ export class SerfboundGameWorld {
       requestedResources: {},
       builderTicks: 0,
       consumedMaterials: 0,
+      materialWorkTicks: 0,
       knights: 0,
       requestedKnights: 0,
       threatLevel: 0,
@@ -1087,6 +1091,7 @@ export class SerfboundGameWorld {
       requestedResources: {},
       builderTicks: 0,
       consumedMaterials: 0,
+      materialWorkTicks: 0,
       knights: 0,
       requestedKnights: 0,
       threatLevel: 0,
@@ -1138,6 +1143,9 @@ export class SerfboundGameWorld {
 
   // Serf-driven construction (SB-13-04): the builder's work advances the
   // site through leveling, then consumes delivered materials until done.
+  // Work toward a material only accrues while one is actually on site
+  // (SB-34 round 6) — banked time made buildings snap a whole phase the
+  // instant a delivery arrived instead of rising under the hammer.
   applyBuilderWork(building: WorldBuilding, workTicks: number): boolean {
     if (building.isDone) {
       return false;
@@ -1159,14 +1167,26 @@ export class SerfboundGameWorld {
     }
 
     if (building.progress >= 1) {
-      const buildableTicks = building.builderTicks - constructionLevelingTicks;
-      const consumable = Math.min(
-        Math.trunc(buildableTicks / constructionTicksPerMaterial),
-        delivered,
-        totalMaterials,
-      );
-      if (consumable > building.consumedMaterials) {
-        building.consumedMaterials = consumable;
+      let workable = workTicks;
+      if (building.builderTicks - workTicks < constructionLevelingTicks) {
+        // Only the part of this work slice past the leveling threshold
+        // counts toward materials.
+        workable = building.builderTicks - constructionLevelingTicks;
+      }
+
+      while (
+        workable > 0 &&
+        building.consumedMaterials < Math.min(delivered, totalMaterials)
+      ) {
+        const needed = constructionTicksPerMaterial - building.materialWorkTicks;
+        const spent = Math.min(workable, needed);
+        building.materialWorkTicks += spent;
+        workable -= spent;
+        if (building.materialWorkTicks >= constructionTicksPerMaterial) {
+          building.materialWorkTicks = 0;
+          building.consumedMaterials += 1;
+        }
+
         changed = true;
       }
 
@@ -1177,6 +1197,32 @@ export class SerfboundGameWorld {
     }
 
     return changed;
+  }
+
+  // The visible construction fraction (SB-34 round 6): 0 while the
+  // ground levels, then materials consumed plus the work on the
+  // current one, over the build's total — what the renderer reveals.
+  constructionFraction(building: WorldBuilding): number {
+    if (building.isDone) {
+      return 1;
+    }
+
+    if (building.progress === 0) {
+      return 0;
+    }
+
+    const [planks, stones] = buildingConstructionCosts[building.type] ?? [0, 0];
+    const totalMaterials = planks + stones;
+    if (totalMaterials === 0) {
+      return 1;
+    }
+
+    return Math.min(
+      1,
+      (building.consumedMaterials +
+        building.materialWorkTicks / constructionTicksPerMaterial) /
+        totalMaterials,
+    );
   }
 
   // Flag.DropResource: place a resource into the first empty slot.
