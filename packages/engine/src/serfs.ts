@@ -80,10 +80,10 @@ const mineDeposits: Readonly<Record<number, readonly [number, number]>> = {
 
 const minerFoods: readonly number[] = [resourceType.fish, resourceType.bread, resourceType.meat];
 
-// Outdoor harvest pacing (SB-34 round 7): a step every 8 work ticks
-// (the serf walking pace) on the way to the target, and a visible
-// 60-tick dwell working it.
-const harvestStepTicks = 8;
+// Outdoor harvest dwell (SB-34 round 7). The walk itself is paced by
+// the shared reference counter tables (SB-35-01 — no second movement
+// system); the reference per-stage work durations (logging's
+// five-stage fall) land with SB-35-03.
 const harvestDwellTicks = 60;
 
 // The reference tool order for the toolmaker's round-robin output.
@@ -882,10 +882,10 @@ export class SerfboundSerfEngine {
 
     switch (building.type) {
       case buildingType.lumberjack:
-        this.#workHarvest(serf, building, 400, isTreeObject, mapObject.stub, resourceType.lumber);
+        this.#workHarvest(serf, building, 400, isTreeObject, mapObject.stub, resourceType.lumber, delta);
         break;
       case buildingType.stonecutter:
-        this.#workHarvest(serf, building, 450, isStoneObject, mapObject.none, resourceType.stone);
+        this.#workHarvest(serf, building, 450, isStoneObject, mapObject.none, resourceType.stone, delta);
         break;
       case buildingType.forester:
         if (serf.workCounter >= 500) {
@@ -1111,7 +1111,9 @@ export class SerfboundSerfEngine {
   // Outdoor harvest (SB-34 round 7, the visible cycle): rest inside,
   // walk OUT to the nearest target, work it under the player's eyes,
   // and walk the product home — the tree/stone changes only while the
-  // worker stands at it, never by remote control.
+  // worker stands at it, never by remote control. The walk is paced
+  // by the shared reference counter tables (SB-35-01): there is no
+  // second movement system.
   #workHarvest(
     serf: WorldSerf,
     building: WorldBuilding,
@@ -1119,6 +1121,7 @@ export class SerfboundSerfEngine {
     isTarget: (objectValue: number) => boolean,
     remainder: number,
     product: number,
+    delta: number,
   ): void {
     // Phase 0: inside, resting until the cycle matures; then pick the
     // nearest target and step out. The rest takes half the cycle —
@@ -1136,6 +1139,7 @@ export class SerfboundSerfEngine {
           serf.workPhase = 1;
           serf.workTargetPosition = candidate;
           serf.walkingDestination = 0;
+          serf.counter = 0;
           return;
         }
       }
@@ -1152,11 +1156,12 @@ export class SerfboundSerfEngine {
         return;
       }
 
-      this.#stepToward(serf, serf.workTargetPosition);
+      this.#freeWalkToward(serf, serf.workTargetPosition, delta);
       return;
     }
 
-    // Phase 2: work the target — the dwell is the visible chopping.
+    // Phase 2: work the target — the dwell is the visible chopping
+    // (the reference per-stage work durations land with SB-35-03).
     if (serf.workPhase === 2) {
       if (serf.workCounter < harvestDwellTicks) {
         return;
@@ -1169,6 +1174,7 @@ export class SerfboundSerfEngine {
       serf.workCounter = 0;
       serf.workPhase = 3;
       serf.walkingDestination = 0;
+      serf.counter = 0;
       return;
     }
 
@@ -1177,59 +1183,62 @@ export class SerfboundSerfEngine {
       serf.workPhase = 0;
       serf.workCounter = 0;
       serf.workTargetPosition = -1;
+      // Inside again: off the collision map, like settling in.
+      if (this.serfIndexes[serf.position] === serf.index) {
+        this.serfIndexes[serf.position] = 0;
+      }
+
       this.#emitProduct(building, product);
       return;
     }
 
-    this.#stepToward(serf, building.position);
+    this.#freeWalkToward(serf, building.position, delta);
   }
 
-  // One greedy step toward a free-walking target, paced by the work
-  // clock; the previous tile (walkingDestination, unused while
-  // working) blocks backtracking so the walk flows around obstacles.
-  #stepToward(serf: WorldSerf, target: number): void {
-    if (serf.workCounter < harvestStepTicks) {
-      return;
-    }
+  // Free walking on the SHARED walker (SB-35-01): greedy descent on
+  // map distance (the condensed reference FreeWalking), every step
+  // taken through #changeDirection so the reference animation counters
+  // pace the walk — flat 255 ticks per tile, slopes slower, collisions
+  // waiting — exactly like every road serf. The previous tile
+  // (walkingDestination, unused while working) blocks backtracking.
+  #freeWalkToward(serf: WorldSerf, target: number, delta: number): void {
+    serf.counter -= delta;
+    while (serf.counter < 0 && serf.position !== target) {
+      let bestDirection: Direction | null = null;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      for (const direction of directionOrder) {
+        const next = this.world.move(serf.position, direction);
+        // The target itself is always enterable — walking home means
+        // stepping INTO the worker's own building.
+        if (
+          next !== target &&
+          (this.world.hasBuilding(next) || next === serf.walkingDestination)
+        ) {
+          continue;
+        }
 
-    serf.workCounter = 0;
-    let bestDirection: Direction | null = null;
-    let bestDistance = Number.POSITIVE_INFINITY;
-    for (const direction of directionOrder) {
-      const next = this.world.move(serf.position, direction);
-      // The target itself is always enterable — walking home means
-      // stepping INTO the worker's own building.
-      if (
-        next !== target &&
-        (this.world.hasBuilding(next) || next === serf.walkingDestination)
-      ) {
-        continue;
+        const distance = this.#hexDistance(next, target);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestDirection = direction;
+        }
       }
 
-      const distance = this.#hexDistance(next, target);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestDirection = direction;
+      if (bestDirection === null) {
+        serf.counter = 0;
+        return;
+      }
+
+      serf.walkingDestination = serf.position;
+      if (!this.#changeDirection(serf, bestDirection)) {
+        serf.counter = 0;
+        return;
       }
     }
 
-    if (bestDirection === null) {
-      return;
+    if (serf.counter < 0) {
+      serf.counter = 0;
     }
-
-    // Harvest walkers ghost off the collision map (like idle-on-path
-    // serfs): a stonecutter dwelling on a road tile must never wall
-    // off the transporters behind him.
-    const next = this.world.move(serf.position, bestDirection);
-    const heightDifference =
-      this.world.heights[next]! - this.world.heights[serf.position]!;
-    if (this.serfIndexes[serf.position] === serf.index) {
-      this.serfIndexes[serf.position] = 0;
-    }
-
-    serf.walkingDestination = serf.position;
-    serf.animation = walkingAnimation(heightDifference, bestDirection, false);
-    serf.position = next;
   }
 
   #plantTree(building: WorldBuilding): void {

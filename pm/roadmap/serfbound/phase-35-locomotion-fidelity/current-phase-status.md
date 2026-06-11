@@ -1,8 +1,8 @@
 # Phase 35 — Locomotion and the Working Pose
 
-**Last updated:** 2026-06-11 (scaffolded from the reference parity
-audit; see pm/roadmap/serfbound/reference-parity-audit.md).
-**Status:** scaffolded.
+**Last updated:** 2026-06-11 (SB-35-01 done: the ghost stepper is
+deleted, outdoor walks pace on the reference counter tables).
+**Status:** in progress.
 
 ## Goal
 
@@ -30,7 +30,7 @@ movement code path left to drift.
 
 ## Exit criteria (evidence required)
 
-- [ ] The harvest walk and every other off-road walk run through the
+- [x] The harvest walk and every other off-road walk run through the
   same counter-table pacing as road walking — the fixed-tick stepper
   is deleted. (SB-35-01)
 - [ ] Building entry/exit: door, slides, slope-scaled counters; a
@@ -45,7 +45,7 @@ movement code path left to drift.
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-35-01 | One walking system | backlog | — | — |
+| SB-35-01 | One walking system | done | story-01-one-walking-system.md | evidence-story-01.md |
 | SB-35-02 | Doors and slides | backlog | — | — |
 | SB-35-03 | The working pose | backlog | — | — |
 | SB-35-04 | The device gate | backlog | — | — |

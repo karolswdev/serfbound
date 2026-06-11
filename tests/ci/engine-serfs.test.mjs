@@ -308,3 +308,119 @@ test("harvesters walk out, work the target in the open, and walk the product hom
   assert.equal(leftHome, true, "the worker physically left the building");
   assert.equal(workedOutside, true, "the worker stood AT the tree while working it");
 });
+
+test("free walking rides the reference counter tables - no second movement system (SB-35-01)", async () => {
+  const engineModule = await import("@serfbound/engine");
+  const {
+    SerfboundCommandRouter,
+    SerfboundSerfEngine,
+    startSerfboundLocalGame,
+  } = engineModule;
+  const started = startSerfboundLocalGame({
+    data: {
+      kind: "imported-dos-pa-catalog",
+      archiveName: "SPAU.PA",
+      byteLength: 1_282_805,
+      entryCount: 4000,
+      definedArchiveEntries: 3805,
+      fixupCount: 252,
+    },
+  });
+  const world = started.game.world();
+  const router = new SerfboundCommandRouter(started.game.state, world);
+  const tileFor = (position) => ({
+    column: position & world.geometry.columnMask,
+    row: (position >>> world.geometry.rowShift) & world.geometry.rowMask,
+    position,
+  });
+  let castlePosition = -1;
+  for (let position = 0; position < world.tileCount; position += 1) {
+    if (world.canBuildCastle(position, 0)) {
+      castlePosition = position;
+      break;
+    }
+  }
+  router.dispatch({ type: "game.build-castle", source: "pointer", tile: tileFor(castlePosition) });
+  const castleFlag = world.move(castlePosition, "DownRight");
+  let building = null;
+  for (let offset = 0; offset < 250 && building === null; offset += 1) {
+    const candidate = world.positionAddSpirally(castlePosition, offset);
+    if (!world.canBuildBuilding(candidate, 2, 0)) {
+      continue;
+    }
+
+    const result = router.dispatch({
+      type: "game.build-building",
+      source: "pointer",
+      tile: tileFor(candidate),
+      buildingKind: "lumberjack",
+    });
+    if (result.status !== "accepted") {
+      continue;
+    }
+
+    building = [...world.buildings.values()].reduce((a, b) => (a.index > b.index ? a : b));
+    const road = router.dispatch({
+      type: "game.build-road",
+      source: "pointer",
+      tile: tileFor(castleFlag),
+      toTile: tileFor(world.flags.get(building.flagIndex).position),
+    });
+    if (road.status !== "accepted") {
+      building = null;
+    }
+  }
+  assert.notEqual(building, null);
+
+  const engine = new SerfboundSerfEngine(world);
+  engine.dispatchConstructionLogistics(building, started.game.state.tick);
+
+  // Watch the worker's outdoor walk: every tile must cost at least the
+  // flat reference walking counter (255 ticks). The deleted fixed-tick
+  // stepper moved a tile every 8 ticks - a 30x teleport.
+  let tick = started.game.state.tick;
+  let worker = null;
+  let lastPosition = -1;
+  let lastMoveTick = -1;
+  const stepCosts = [];
+  for (let step = 0; step < 30000 && stepCosts.length < 4; step += 1) {
+    tick += 8;
+    engine.update(tick);
+    if (worker === null) {
+      for (const serf of engine.serfs.values()) {
+        if (serf.workBuildingIndex === building.index && serf.state === 11) {
+          worker = serf;
+        }
+      }
+
+      continue;
+    }
+
+    if (worker.workPhase === 1) {
+      if (lastPosition === -1) {
+        lastPosition = worker.position;
+        lastMoveTick = tick;
+      } else if (worker.position !== lastPosition) {
+        stepCosts.push(tick - lastMoveTick);
+        lastPosition = worker.position;
+        lastMoveTick = tick;
+      }
+
+      // The walk wears a walking-row animation, not a synthetic pose.
+      assert.equal(worker.animation < 81, true, `walking animation (${worker.animation})`);
+    }
+  }
+
+  assert.equal(stepCosts.length >= 2, true, `observed outdoor steps (${stepCosts.length})`);
+  // Crossing swaps with oncoming serfs are instant (reference
+  // SwitchWaiting), so individual cheap steps can occur — but the
+  // walk's typical tile must cost the reference counter (flat 255).
+  // The deleted stepper moved EVERY tile in 8 ticks.
+  const sorted = [...stepCosts].sort((a, b) => a - b);
+  const median = sorted[Math.trunc(sorted.length / 2)];
+  assert.equal(
+    median >= 255 - 8,
+    true,
+    `the typical free-walk tile costs reference ticks (median ${median}, steps ${stepCosts})`,
+  );
+});
