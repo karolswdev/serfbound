@@ -748,3 +748,126 @@ test("resources leave the castle in a serf's arms - nothing materializes on the 
     "the first resource on the flag was CARRIED there - it did not materialize",
   );
 });
+
+test("a flag splitting a road keeps one half staffed and staffs the other (SB-36-03)", async () => {
+  const engineModule = await import("@serfbound/engine");
+  const {
+    SerfboundCommandRouter,
+    SerfboundSerfEngine,
+    startSerfboundLocalGame,
+  } = engineModule;
+  const started = startSerfboundLocalGame({
+    data: {
+      kind: "imported-dos-pa-catalog",
+      archiveName: "SPAU.PA",
+      byteLength: 1_282_805,
+      entryCount: 4000,
+      definedArchiveEntries: 3805,
+      fixupCount: 252,
+    },
+  });
+  const world = started.game.world();
+  const router = new SerfboundCommandRouter(started.game.state, world);
+  const tileFor = (position) => ({
+    column: position & world.geometry.columnMask,
+    row: (position >>> world.geometry.rowShift) & world.geometry.rowMask,
+    position,
+  });
+  let castlePosition = -1;
+  for (let position = 0; position < world.tileCount; position += 1) {
+    if (world.canBuildCastle(position, 0)) {
+      castlePosition = position;
+      break;
+    }
+  }
+  router.dispatch({ type: "game.build-castle", source: "pointer", tile: tileFor(castlePosition) });
+  const castleFlagPosition = world.move(castlePosition, "DownRight");
+
+  // A straight four-segment road castleFlag -> B, then a flag at the
+  // midpoint splits it (the maintainer's exact scenario).
+  let cursor = castleFlagPosition;
+  const steps = [];
+  for (let step = 0; step < 4; step += 1) {
+    cursor = world.move(cursor, "Right");
+    steps.push(cursor);
+  }
+  const endPosition = cursor;
+  const midPosition = steps[1];
+  assert.equal(
+    router.dispatch({ type: "game.build-flag", source: "pointer", tile: tileFor(endPosition) })
+      .status,
+    "accepted",
+  );
+  assert.equal(
+    router.dispatch({
+      type: "game.build-road",
+      source: "pointer",
+      tile: tileFor(castleFlagPosition),
+      toTile: tileFor(endPosition),
+      directions: ["Right", "Right", "Right", "Right"],
+    }).status,
+    "accepted",
+  );
+
+  const engine = new SerfboundSerfEngine(world);
+  // Staff the original road (the construction-logistics path normally
+  // does this): one transporter for castleFlag -> B.
+  const original = engine.spawnGenericSerf(0, 0);
+  assert.notEqual(original, null);
+  const castleFlag = world.flagAt(castleFlagPosition);
+  assert.equal(engine.assignTransporter(original, castleFlag.index, "Right", 0), true);
+
+  let tick = 0;
+  for (let step = 0; step < 800; step += 1) {
+    tick += 8;
+    engine.update(tick);
+  }
+
+  // The split: a new flag mid-road.
+  assert.equal(
+    router.dispatch({ type: "game.build-flag", source: "pointer", tile: tileFor(midPosition) })
+      .status,
+    "accepted",
+  );
+  for (let step = 0; step < 3000; step += 1) {
+    tick += 8;
+    engine.update(tick);
+  }
+
+  const midFlag = world.flagAt(midPosition);
+  const endFlag = world.flagAt(endPosition);
+  assert.notEqual(midFlag, null);
+
+  // Every half reports a transporter on BOTH of its ends, and the
+  // serfs actually serving each half exist.
+  const halfStaffing = [];
+  for (const direction of ["Right", "Left"]) {
+    const path = midFlag.paths[direction];
+    assert.equal(path.hasPath, true, `the ${direction} half exists`);
+    halfStaffing.push(path.freeTransporters);
+  }
+  assert.equal(
+    halfStaffing.every((count) => count >= 1),
+    true,
+    `both halves staffed from the split flag's view (${halfStaffing})`,
+  );
+  assert.equal(
+    castleFlag.paths.Right.freeTransporters >= 1,
+    true,
+    "the castle half counts its transporter",
+  );
+  assert.equal(
+    endFlag.paths.Left.freeTransporters >= 1,
+    true,
+    "the far half counts its transporter",
+  );
+
+  // Two distinct road serfs serve the two halves.
+  const servers = new Set();
+  for (const serf of engine.serfs.values()) {
+    if (serf.roadDirection !== null) {
+      servers.add(serf.index);
+    }
+  }
+  assert.equal(servers.size >= 2, true, `two transporters serve the split road (${servers.size})`);
+});

@@ -215,11 +215,85 @@ export class SerfboundAiPlayer {
       candidates.push(buildingType.hut);
     }
 
+    // Reconnect stranded sites first (SB-36-03): a building whose road
+    // attempt failed at placement retries as the map changes (felled
+    // wood decays, corridors reopen) instead of standing as junk.
+    if (this.#reconnectStranded(castlePosition, gameTick)) {
+      return;
+    }
+
     for (const nextType of candidates) {
       if (this.#tryBuild(nextType, castlePosition, gameTick)) {
         return;
       }
     }
+  }
+
+  #reconnectStranded(castlePosition: number, gameTick: number): boolean {
+    const castleFlagPosition = this.world.move(castlePosition, "DownRight");
+    for (const building of this.world.buildings.values()) {
+      if (building.player !== this.playerIndex) {
+        continue;
+      }
+
+      const flag = this.world.flags.get(building.flagIndex);
+      if (flag === undefined || flag.position === castleFlagPosition) {
+        continue;
+      }
+
+      const hasAnyPath = Object.values(flag.paths).some((path) => path.hasPath);
+      if (hasAnyPath) {
+        continue;
+      }
+
+      if (this.#connectToNetwork(flag.position)) {
+        this.engine.dispatchConstructionLogistics(building, gameTick);
+        this.decisions.push(`reconnect:${building.type}:${flag.position}:${gameTick}`);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Link a flag to the road network at the NEAREST own flag (the
+  // reference linker behavior, SB-36-03): a growing settlement
+  // exhausts direct corridors to the castle flag, so always aiming
+  // there stranded buildings forever.
+  #connectToNetwork(flagPosition: number): boolean {
+    const anchors = [...this.world.flags.values()]
+      .filter(
+        (flag) =>
+          flag.player === this.playerIndex &&
+          flag.position !== flagPosition &&
+          (Object.values(flag.paths).some((path) => path.hasPath) ||
+            flag.buildingIndex !== null),
+      )
+      .sort((a, b) => {
+        const hex = (position: number) => {
+          const dx = this.world.geometry.distanceX(flagPosition, position);
+          const dy = this.world.geometry.distanceY(flagPosition, position);
+          return dx * dy < 0 ? Math.max(Math.abs(dx), Math.abs(dy)) : Math.abs(dx) + Math.abs(dy);
+        };
+        return hex(a.position) - hex(b.position);
+      });
+
+    for (const anchor of anchors.slice(0, 6)) {
+      const road = findShortestRoad(this.world, anchor.position, flagPosition);
+      if (
+        road !== null &&
+        this.#apply({
+          kind: "build-road",
+          start: road.start,
+          directions: road.directions,
+          player: this.playerIndex,
+        })
+      ) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   #tryBuild(
@@ -251,16 +325,7 @@ export class SerfboundAiPlayer {
       const castleFlagPosition = this.world.move(castlePosition, "DownRight");
       const buildingFlag = this.world.flags.get(building.flagIndex);
       if (buildingFlag !== undefined && buildingFlag.position !== castleFlagPosition) {
-        const road = findShortestRoad(this.world, castleFlagPosition, buildingFlag.position);
-        if (
-          road !== null &&
-          this.#apply({
-            kind: "build-road",
-            start: road.start,
-            directions: road.directions,
-            player: this.playerIndex,
-          })
-        ) {
+        if (this.#connectToNetwork(buildingFlag.position)) {
           // Builders and materials follow over the new road.
           this.engine.dispatchConstructionLogistics(building, gameTick);
         }

@@ -517,6 +517,9 @@ export class SerfboundGameWorld {
 
     if (this.pathsAt(position) !== 0) {
       this.#splitPathAtFlag(position);
+      // The serf engine reassigns the road's transporter to one half
+      // and staffs the other (SB-36-03, reference BuildFlagSplitPath).
+      this.pendingPathSplits.push(flag.index);
     }
 
     return flag;
@@ -637,6 +640,11 @@ export class SerfboundGameWorld {
 
   // Game.BuildFlagSplitPath, structural subset (serf reassignment deferred to
   // Phase 13 — no serfs exist yet).
+  // Road splits awaiting serf reassignment (SB-36-03): drained by the
+  // serf engine each update; transient, excluded from checksums (both
+  // lockstep peers drain it the same tick it is pushed).
+  readonly pendingPathSplits: number[] = [];
+
   #splitPathAtFlag(position: number): void {
     let path1Direction: Direction | null = null;
     let path2Direction: Direction | null = null;

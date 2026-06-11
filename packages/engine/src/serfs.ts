@@ -363,6 +363,8 @@ export class SerfboundSerfEngine {
 
   // Game.UpdateSerfs equivalent.
   update(gameTick: number): void {
+    this.#updateAmbientDecay();
+    this.#handlePathSplits(gameTick);
     this.#sweepWorkerRequests(gameTick);
     this.#sweepInventoryExports(gameTick);
     this.#dispatchResourceOut(gameTick);
@@ -1064,6 +1066,129 @@ export class SerfboundSerfEngine {
           break;
         }
       }
+    }
+  }
+
+  // A flag split a road in two (SB-36-03, the reference
+  // BuildFlagSplitPath serf handling, condensed by anchor): the old
+  // transporter keeps the half his anchor flag still names; the
+  // staffing counts are recomputed from the serfs that actually serve
+  // each half; an unstaffed half gets a fresh transporter from the
+  // castle.
+  // Felled-wood decay (a minimal SB-37-01 down-payment, recorded):
+  // the reference Map.Update rots FelledPine/FelledTree to stubs and
+  // clears stubs at 25% odds. Without it, trunks litter the map
+  // forever and choke every corridor new roads and fields need — the
+  // AI suite bricked on it. Full ambience (growth, fields, fish)
+  // lands with Phase 37.
+  #ambientCursor = 0;
+  #ambientPass = 0;
+  #updateAmbientDecay(): void {
+    const tiles = this.world.tileCount;
+    for (let step = 0; step < 32; step += 1) {
+      const position = this.#ambientCursor;
+      this.#ambientCursor = (this.#ambientCursor + 1) % tiles;
+      if (this.#ambientCursor === 0) {
+        this.#ambientPass = (this.#ambientPass + 1) & 0xffff;
+      }
+
+      const objectValue = this.world.objectAt(position);
+      if (objectValue >= 93 && objectValue <= 102) {
+        this.world.setObject(position, mapObject.stub, null);
+      } else if (
+        objectValue === mapObject.stub &&
+        ((position + this.#ambientPass) & 3) === 0
+      ) {
+        // 25% per sweep, position-hashed: deterministic without
+        // consuming the shared random (a decay draw per update would
+        // shift every downstream seeded decision — the AI suite
+        // caught exactly that).
+        this.world.setObject(position, mapObject.none, null);
+      }
+    }
+  }
+
+  #handlePathSplits(gameTick: number): void {
+    while (this.world.pendingPathSplits.length > 0) {
+      const flagIndex = this.world.pendingPathSplits.shift()!;
+      const flag = this.world.flags.get(flagIndex);
+      if (flag === undefined) {
+        continue;
+      }
+
+      const halves: { direction: Direction; otherFlagIndex: number }[] = [];
+      for (const direction of directionOrder) {
+        const path = flag.paths[direction];
+        if (path.hasPath) {
+          halves.push({ direction, otherFlagIndex: path.otherFlagIndex });
+        }
+      }
+
+      if (halves.length !== 2) {
+        continue;
+      }
+
+      // Count the serfs serving each half first: an UNSTAFFED road
+      // splits into two unstaffed halves (staffing arrives through
+      // normal dispatch) — spawning for both would drain the pool on
+      // every split the AI makes.
+      const staffing = halves.map((half) => {
+        let staffed = 0;
+        for (const serf of this.serfs.values()) {
+          if (serf.roadDirection === null) {
+            continue;
+          }
+
+          const anchor = this.world.flags.get(serf.roadFlagIndex);
+          if (anchor === undefined) {
+            continue;
+          }
+
+          const anchorPath = anchor.paths[serf.roadDirection];
+          if (!anchorPath.hasPath) {
+            continue;
+          }
+
+          if (
+            (anchor.index === half.otherFlagIndex &&
+              anchorPath.otherFlagIndex === flagIndex) ||
+            (anchor.index === flagIndex && serf.roadDirection === half.direction)
+          ) {
+            staffed += 1;
+          }
+        }
+
+        return staffed;
+      });
+      const roadWasStaffed = staffing.some((count) => count > 0);
+
+      halves.forEach((half, halfIndex) => {
+        const staffed = staffing[halfIndex]!;
+        // The truth on both ends of this half.
+        flag.paths[half.direction].freeTransporters = staffed;
+        const farFlag = this.world.flags.get(half.otherFlagIndex);
+        const farDirection = flag.paths[half.direction].otherEndDirection;
+        if (farFlag !== undefined && farDirection !== null) {
+          farFlag.paths[farDirection].freeTransporters = staffed;
+        }
+
+        if (staffed === 0 && roadWasStaffed) {
+          // Top up from the pool only while it has slack — the AI
+          // splits roads constantly and a hard spawn per split drains
+          // the serfs its builders need. A tight pool records the
+          // reference serfRequested bit instead (serviced fully with
+          // SB-36-04's park/wake work).
+          const inventory = this.world.inventoryForPlayer(flag.player);
+          if (inventory !== null && inventory.genericSerfs > 4) {
+            const transporter = this.spawnGenericSerf(flag.player, gameTick);
+            if (transporter !== null) {
+              this.assignTransporter(transporter, flagIndex, half.direction, gameTick);
+            }
+          } else {
+            flag.paths[half.direction].serfRequested = true;
+          }
+        }
+      });
     }
   }
 
