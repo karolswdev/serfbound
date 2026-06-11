@@ -2,10 +2,10 @@
 
 - **Project:** serfbound
 - **Phase:** 26
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-26-01
 - **Unblocks:** SB-26-03
-- **Owner:** unassigned
+- **Owner:** Claude
 
 ## Problem
 
@@ -24,11 +24,14 @@ decoders behind the interface, invisible to the engine and renderer.
 
 ## Acceptance criteria
 
-- [ ] A user-selected Amiga archive imports, persists, and starts a
-  playable decoded game.
-- [ ] Opt-in parity tests over the real corpus meet the DOS standard.
-- [ ] The engine and renderer compile untouched — decode stays behind
-  the catalog.
+- [x] A user-selected Amiga archive imports, persists, and starts a
+  playable decoded game. (Not applicable: SB-26-01 recorded NO-GO; the
+  story closes unbuilt by its own "if go" gate, reopening on corpus
+  arrival.)
+- [x] Opt-in parity tests over the real corpus meet the DOS standard.
+  (Not applicable, same gate.)
+- [x] The engine and renderer compile untouched — decode stays behind
+  the catalog. (Trivially holds: nothing changed.)
 
 ## Test plan
 

@@ -1,7 +1,7 @@
 # Phase 26 — Data Breadth and Localization
 
 **Last updated:** 2026-06-10.
-**Status:** in progress — SB-26-01 done (Amiga: NO-GO recorded).
+**Status:** in progress — SB-26-01..02 done (Amiga: NO-GO; 02 closed not-applicable).
 
 ## Goal
 
@@ -38,8 +38,10 @@ ship a localized interface within the original glyph set's limits.
   decision is recorded with evidence. (SB-26-01: NO-GO — no lawful
   corpus exists locally; the record carries the full loader inventory
   and the re-opening condition.)
-- [ ] If go: Amiga archives import, decode, and play behind the same
-  typed catalog with opt-in parity tests. (SB-26-02)
+- [x] If go: Amiga archives import, decode, and play behind the same
+  typed catalog with opt-in parity tests. (SB-26-02: the "if go"
+  condition is false — closed not-applicable, reopening on corpus
+  arrival.)
 - [ ] UI strings live in language tables with English extracted as the
   reference language and a second language proving the path. (SB-26-03)
 - [ ] The localized-UI gate passes: language switch in the shell, glyph
@@ -50,7 +52,7 @@ ship a localized interface within the original glyph set's limits.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-26-01 | Amiga corpus evaluation | done | story-01-amiga-corpus-evaluation.md | evidence-story-01.md |
-| SB-26-02 | Amiga decoders behind the typed catalog | backlog | story-02-amiga-decoders.md | — |
+| SB-26-02 | Amiga decoders behind the typed catalog | done (n/a) | story-02-amiga-decoders.md | evidence-story-02.md |
 | SB-26-03 | String extraction and language tables | backlog | story-03-string-extraction-language-tables.md | — |
 | SB-26-04 | Localized UI gate | backlog | story-04-localized-ui-gate.md | — |
 
