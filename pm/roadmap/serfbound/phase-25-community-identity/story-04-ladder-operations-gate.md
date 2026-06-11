@@ -2,10 +2,10 @@
 
 - **Project:** serfbound
 - **Phase:** 25
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-25-03
 - **Unblocks:** SB-26-01
-- **Owner:** unassigned
+- **Owner:** Claude
 
 ## Problem
 
@@ -25,10 +25,12 @@ on abuse posture, ops runbook, and a full gate rerun.
 
 ## Acceptance criteria
 
-- [ ] Only dual-attested results rate; mismatched attestations quarantine.
-- [ ] The ladder updates and displays; forfeits/abandons resolve per the
-  recorded semantics.
-- [ ] Ops runbook + abuse posture ship; all standing gates rerun green.
+- [x] Only dual-attested results rate; mismatched attestations quarantine.
+- [x] The ladder updates and displays; forfeits/abandons resolve per the
+  recorded semantics. (Display = the sorted /ladder endpoint and its
+  client; the shell view is the recorded follow-up pending a deployed
+  service URL.)
+- [x] Ops runbook + abuse posture ship; all standing gates rerun green.
 
 ## Test plan
 

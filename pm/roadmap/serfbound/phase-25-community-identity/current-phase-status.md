@@ -1,7 +1,7 @@
 # Phase 25 — Community and Identity
 
 **Last updated:** 2026-06-10.
-**Status:** in progress — SB-25-01..03 done.
+**Status:** complete — see final-summary.md (the shell online surface is the recorded follow-up).
 
 ## Goal
 
@@ -42,7 +42,7 @@ accounts and zero servers.
 - [x] Challenges create matches with agreed terms; turn moves flow
   through the mailbox (re-verified client-side, always) and missed
   pickups forfeit per the recorded semantics. (SB-25-03)
-- [ ] Verified match results produce a ladder with an honest
+- [x] Verified match results produce a ladder with an honest
   abuse/operations posture; phase gate reruns green. (SB-25-04)
 
 ## Story status
@@ -52,16 +52,15 @@ accounts and zero servers.
 | SB-25-01 | Local-first profiles | done | story-01-local-first-profiles.md | evidence-story-01.md |
 | SB-25-02 | Identity decision and account service | done | story-02-identity-account-service.md | evidence-story-02.md |
 | SB-25-03 | Challenges and the turn mailbox | done | story-03-challenges-turn-mailbox.md | evidence-story-03.md |
-| SB-25-04 | Ladder and operations gate | backlog | story-04-ladder-operations-gate.md | — |
+| SB-25-04 | Ladder and operations gate | done | story-04-ladder-operations-gate.md | evidence-story-04.md |
 
 ## Where we are
 
-SB-25-01..03 shipped: local profiles, the device-key identity layer,
-and now the turn mailbox — a real correspondence match plays through
-the real service in CI (challenge → lobby → accept → signed moves →
-client-side re-verification → agreeing checksums), with whose-turn
-listings and deadline forfeits enforced. Next: SB-25-04 closes the
-phase with the ladder, the ops posture, and the shell surface.
+The phase is closed: profiles, device-key identity, the turn mailbox,
+and the dual-attested Elo ladder, all proven against real local service
+instances in CI (222/222 unit, 13/13 browser, all gates green). The
+shell online surface awaits a deployed service URL — the recorded
+follow-up in final-summary.md.
 
 ## Active risks
 

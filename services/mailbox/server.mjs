@@ -14,14 +14,17 @@ const storePath = process.env.SERFBOUND_MAILBOX_STORE ?? ".tmp/mailbox-matches.j
 const moveByteCap = 256 * 1024;
 
 function loadStore() {
+  const empty = { challenges: {}, matches: {}, ratings: {} };
   if (!existsSync(storePath)) {
-    return { challenges: {}, matches: {} };
+    return empty;
   }
 
   try {
-    return JSON.parse(readFileSync(storePath, "utf8"));
+    const store = JSON.parse(readFileSync(storePath, "utf8"));
+    store.ratings ??= {};
+    return store;
   } catch {
-    return { challenges: {}, matches: {} };
+    return empty;
   }
 }
 
@@ -110,9 +113,38 @@ function evaluateMatch(match, nowMs) {
   if (match.terms.pickupSeconds > 0 && nowMs > Date.parse(match.nextDeadlineIso)) {
     match.state = "forfeited";
     match.forfeitedPlayer = match.moves.length % 2;
+    match.pendingForfeitRating = true;
   }
 
   return match;
+}
+
+// The ladder (SB-25-04): Elo, K=32, rated only on dual-attested or
+// forfeited outcomes. Modest stakes by design — no rewards, no decay.
+const eloK = 32;
+const eloBase = 1500;
+
+function rateOutcome(store, match, winnerSeat) {
+  if (match.rated === true) {
+    return;
+  }
+
+  const ids = match.players.map((player) => player.keyId);
+  const ratings = ids.map((id) => store.ratings[id]?.rating ?? eloBase);
+  const expectedWinner = 1 / (1 + 10 ** ((ratings[1 - winnerSeat] - ratings[winnerSeat]) / 400));
+  const delta = Math.round(eloK * (1 - expectedWinner));
+  for (const seat of [0, 1]) {
+    const id = ids[seat];
+    store.ratings[id] = {
+      keyId: id,
+      name: match.players[seat].name,
+      rating: ratings[seat] + (seat === winnerSeat ? delta : -delta),
+      matches: (store.ratings[id]?.matches ?? 0) + 1,
+    };
+  }
+
+  match.rated = true;
+  match.winnerSeat = winnerSeat;
 }
 
 function matchView(match) {
@@ -125,6 +157,10 @@ function matchView(match) {
     nextDeadlineIso: match.nextDeadlineIso,
     state: match.state,
     ...(match.forfeitedPlayer === undefined ? {} : { forfeitedPlayer: match.forfeitedPlayer }),
+    ...(match.winnerSeat === undefined ? {} : { winnerSeat: match.winnerSeat }),
+    ...(match.attestations === undefined
+      ? {}
+      : { attestations: Object.keys(match.attestations).length }),
   };
 }
 
@@ -252,6 +288,10 @@ export const server = createServer(async (request, response) => {
       }
 
       evaluateMatch(match, Date.now());
+      if (match.pendingForfeitRating === true) {
+        rateOutcome(store, match, 1 - match.forfeitedPlayer);
+        delete match.pendingForfeitRating;
+      }
 
       if (request.method === "GET" && matchRoute[2] === undefined) {
         saveStore(store);
@@ -304,6 +344,68 @@ export const server = createServer(async (request, response) => {
       }
     }
 
+    // POST /matches/:id/results — dual attestation: both players sign
+    // the outcome (winner seat + final checksum). Agreement rates the
+    // match; disagreement quarantines it as disputed.
+    const resultRoute = url.pathname.match(/^\/matches\/([0-9a-f-]{36})\/results$/);
+    if (request.method === "POST" && resultRoute !== null) {
+      const match = store.matches[resultRoute[1]];
+      if (match === undefined) {
+        send(response, 404, { error: "not-found" });
+        return;
+      }
+
+      evaluateMatch(match, Date.now());
+      if (match.state === "forfeited") {
+        send(response, 409, { error: "match-not-active", message: "The match is forfeited." });
+        return;
+      }
+
+      if (match.state === "ended" && match.rated === true) {
+        send(response, 409, { error: "already-rated", message: "The match already rated." });
+        return;
+      }
+
+      const body = JSON.parse((await readBody(request)) || "{}");
+      const { seat, winnerSeat, finalChecksum, signedAtIso, signature } = body;
+      if (![0, 1].includes(seat) || ![0, 1].includes(winnerSeat) || !Number.isInteger(finalChecksum)) {
+        send(response, 400, { error: "malformed", message: "Missing result fields." });
+        return;
+      }
+
+      const signer = match.players[seat];
+      const payload = `result|${match.matchId}|${winnerSeat}|${finalChecksum}|${signedAtIso}`;
+      if (!(await verifySignature(signer.publicKeyJwk, payload, signature))) {
+        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+        return;
+      }
+
+      match.attestations ??= {};
+      match.attestations[seat] = { winnerSeat, finalChecksum };
+      const seats = Object.keys(match.attestations);
+      if (seats.length === 2) {
+        const [a, b] = [match.attestations[0], match.attestations[1]];
+        if (a.winnerSeat === b.winnerSeat && a.finalChecksum === b.finalChecksum) {
+          match.state = "ended";
+          rateOutcome(store, match, a.winnerSeat);
+        } else {
+          // Quarantine: someone is lying; nobody rates.
+          match.state = "disputed";
+        }
+      }
+
+      saveStore(store);
+      send(response, 200, { match: matchView(match) });
+      return;
+    }
+
+    // GET /ladder — ratings, best first.
+    if (request.method === "GET" && url.pathname === "/ladder") {
+      const entries = Object.values(store.ratings).sort((left, right) => right.rating - left.rating);
+      send(response, 200, { ladder: entries });
+      return;
+    }
+
     // GET /players/:keyId/matches — a player's open matches ("your turn"
     // surfacing).
     const playerRoute = url.pathname.match(/^\/players\/([0-9a-f]{64})\/matches$/);
@@ -311,7 +413,15 @@ export const server = createServer(async (request, response) => {
       const keyId = playerRoute[1];
       const matches = Object.values(store.matches)
         .filter((match) => match.players.some((player) => player.keyId === keyId))
-        .map((match) => evaluateMatch(match, Date.now()))
+        .map((match) => {
+          evaluateMatch(match, Date.now());
+          if (match.pendingForfeitRating === true) {
+            rateOutcome(store, match, 1 - match.forfeitedPlayer);
+            delete match.pendingForfeitRating;
+          }
+
+          return match;
+        })
         .map((match) => ({
           ...matchView(match),
           yourSeat: match.players.findIndex((player) => player.keyId === keyId),

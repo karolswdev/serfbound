@@ -22,8 +22,10 @@ export type MailboxMatchView = {
   readonly moves: readonly CorrespondenceWindowMove[];
   readonly nextPlayer: number;
   readonly nextDeadlineIso: string;
-  readonly state: "active" | "forfeited" | "ended";
+  readonly state: "active" | "forfeited" | "ended" | "disputed";
   readonly forfeitedPlayer?: number;
+  readonly winnerSeat?: number;
+  readonly attestations?: number;
   readonly yourSeat?: number;
 };
 
@@ -102,6 +104,41 @@ export async function postMove(
     signature,
   })) as { match: MailboxMatchView };
   return result.match;
+}
+
+export async function submitResult(
+  serviceUrl: string,
+  keys: IdentityKeys,
+  matchId: string,
+  seat: number,
+  winnerSeat: number,
+  finalChecksum: number,
+): Promise<MailboxMatchView> {
+  const signedAtIso = new Date().toISOString();
+  const signature = await signIdentityPayload(
+    keys,
+    `result|${matchId}|${winnerSeat}|${finalChecksum}|${signedAtIso}`,
+  );
+  const result = (await requestJson(`${serviceUrl}/matches/${matchId}/results`, "POST", {
+    seat,
+    winnerSeat,
+    finalChecksum,
+    signedAtIso,
+    signature,
+  })) as { match: MailboxMatchView };
+  return result.match;
+}
+
+export type LadderEntry = {
+  readonly keyId: string;
+  readonly name: string;
+  readonly rating: number;
+  readonly matches: number;
+};
+
+export async function fetchLadder(serviceUrl: string): Promise<readonly LadderEntry[]> {
+  const result = (await requestJson(`${serviceUrl}/ladder`, "GET")) as { ladder: LadderEntry[] };
+  return result.ladder;
 }
 
 export async function listMatchesForKey(

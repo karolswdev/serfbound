@@ -119,6 +119,14 @@ world and your commands execute on both. It runs entirely in your
 browser (no servers; your game data never leaves the machine). Internet
 play arrives with the online-play phase.
 
+Online correspondence (optional, experimental): a community-hosted
+identity + mailbox service lets you register an anonymous account (a
+keypair generated in your browser — no email, no password), challenge
+players to correspondence matches with agreed terms and pickup
+deadlines, and climb a ladder where only dual-attested results count.
+Your game data never touches any server; every received move is
+re-verified by your own simulation.
+
 Hot-seat 2P (pass and play): two players share one machine in
 correspondence style — you play a session window, hand the seat over
 (Enter picks the turn up before the countdown runs out), your opponent
