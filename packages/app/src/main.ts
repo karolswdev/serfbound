@@ -2434,6 +2434,16 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       } else {
         onlineLobbyElement.innerHTML = onlineSurface.lobby
           .map((entry) => {
+            // Ghost guard (SB-30-04 finding): a nameless challenge is
+            // never offered for pairing — it renders unclaimable.
+            if (!entry.challengerName) {
+              return `
+            <div class="lobby-card lobby-card--ghost">
+              <p class="lobby-card__name">A HERALD WITH NO NAME</p>
+              <p class="lobby-card__terms">Unclaimable — the scribes have been told.</p>
+            </div>`;
+            }
+
             const rating = onlineSurface.ratingForName(entry.challengerName);
             return `
             <div class="lobby-card">

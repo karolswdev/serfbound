@@ -408,6 +408,11 @@ h1 {
   font-size: var(--sb-text-sm);
 }
 
+.lobby-card--ghost {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
 .lobby-card__rating {
   color: var(--sb-gold);
   font-size: var(--sb-text-sm);

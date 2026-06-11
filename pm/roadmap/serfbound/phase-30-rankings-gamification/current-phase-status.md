@@ -1,7 +1,7 @@
 # Phase 30 — Rankings and Gamification
 
 **Last updated:** 2026-06-11 (SB-30-05 added and started by maintainer direction).
-**Status:** in progress (01, 02, 03, 05 done; the SB-30-04 gate remains).
+**Status:** complete — see [final-summary.md](./final-summary.md).
 
 ## Goal
 
@@ -48,7 +48,7 @@ second-class.
   (SB-30-02)
 - [x] Achievements unlock from real play, render in original art,
   and persist locally. (SB-30-03)
-- [ ] The gamification gate: a rated match completes, the rating
+- [x] The gamification gate: a rated match completes, the rating
   change appears on the leaderboard, the profile updates, an
   achievement unlocks — e2e; the privacy regression stays green.
   (SB-30-04)
@@ -60,7 +60,7 @@ second-class.
 | SB-30-01 | Ladder and leaderboard surface | done | story-01-ladder-leaderboard-surface.md | evidence-story-01.md |
 | SB-30-02 | Profiles, history, statistics | done | story-02-profiles-history-statistics.md | evidence-story-02.md |
 | SB-30-03 | Achievements in original art | done | story-03-achievements-original-art.md | evidence-story-03.md |
-| SB-30-04 | Gamification gate | backlog | story-04-gamification-gate.md | — |
+| SB-30-04 | Gamification gate | done | story-04-gamification-gate.md | evidence-story-04.md |
 | SB-30-05 | Avatars and guild heraldry | done | story-05-avatars-and-guilds.md | evidence-story-05.md |
 
 ## Where we are

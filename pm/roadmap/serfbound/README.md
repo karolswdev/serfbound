@@ -24,16 +24,18 @@ from the maintainer's LKE cluster, with the shell online surface
 (device-key sign-in, challenge lobby, your-turn badge, online
 correspondence to dual attestation) closing the Phase 25 named gap
 (see [phase-29-hosting-backbone/final-summary.md](./phase-29-hosting-backbone/final-summary.md)).
+Phase 30 closed same-day too: the ladder is a product surface, the
+Chronicle is a profile (statistics, campaign ledger, deeds in decoded
+original art), the identity library (avatars + guild heraldry) ships,
+and the gamification gate proved the whole loop on the public
+backbone with the privacy sweep green (see
+[phase-30-rankings-gamification/final-summary.md](./phase-30-rankings-gamification/final-summary.md)).
 Remaining: realtime WebRTC online play (27), open-source readiness
-(28 — enticing README, e2e-captured screenshots, contributor onramp),
-rankings and gamification (30 — leaderboard, profiles, achievements;
-unblocked by 29), licensed asset delivery (31 — hosted converted
-assets, hard-gated on the rights-holder permission being documented
-in writing), and product experience (32 — the shell's design
-standard, chrome redesign, first-run journey, and platform-grade
-competitive surfaces; scaffolded 2026-06-11 from maintainer
-direction; 28's media and 30's surfaces should land on 32's
-standard).
+(28), licensed asset delivery (31 — hard-gated on written
+permission), product experience (32 — at the maintainer gate), and
+the social realm (33 — scaffolded from the maintainer's product
+evolution: opt-in social Serfbound with familiar sign-in; supersedes
+the Phase 25 identity decision by recorded direction).
 
 ## Vision
 
@@ -146,7 +148,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 27 | Realtime online play: WebRTC transport, signaling, resilience | scaffolded | [phase-27-realtime-online-play](./phase-27-realtime-online-play/) |
 | 28 | Open-source readiness: README, e2e screenshots, contributor onramp | scaffolded | [phase-28-open-source-readiness](./phase-28-open-source-readiness/) |
 | 29 | Hosting backbone: serfbound.com, LKE cluster, online surface | complete | [phase-29-hosting-backbone](./phase-29-hosting-backbone/) |
-| 30 | Rankings and gamification: leaderboard, profiles, achievements | scaffolded | [phase-30-rankings-gamification](./phase-30-rankings-gamification/) |
+| 30 | Rankings and gamification: leaderboard, profiles, achievements | complete | [phase-30-rankings-gamification](./phase-30-rankings-gamification/) |
 | 31 | Licensed asset delivery: documented permission, hosted converted assets | scaffolded | [phase-31-licensed-asset-delivery](./phase-31-licensed-asset-delivery/) |
 | 32 | Product experience: design standard, shell redesign, first-run, platform feel | scaffolded | [phase-32-product-experience](./phase-32-product-experience/) |
 
