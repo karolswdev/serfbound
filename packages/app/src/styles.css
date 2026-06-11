@@ -455,6 +455,48 @@ h1 {
   font-weight: var(--sb-weight-black);
 }
 
+.chronicle__badges {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sb-space-2);
+}
+
+.deed {
+  display: flex;
+  align-items: center;
+  gap: var(--sb-space-2);
+  border: 1px solid var(--sb-gold);
+  border-radius: var(--sb-radius-sm);
+  padding: var(--sb-space-2);
+  background: var(--sb-surface);
+}
+
+.deed__icon {
+  image-rendering: pixelated;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.deed__medallion {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--sb-on-gold);
+  background: var(--sb-gold);
+  font-size: var(--sb-text-xs);
+  font-weight: var(--sb-weight-black);
+}
+
+.deed__name {
+  color: var(--sb-parchment-bright);
+  font-size: var(--sb-text-xs);
+  font-weight: var(--sb-weight-bold);
+  letter-spacing: var(--sb-track-wide);
+}
+
 .chronicle__history {
   display: grid;
   gap: var(--sb-space-1);

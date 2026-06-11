@@ -149,6 +149,12 @@ inventory first). Each component defines **all of its states**;
   the empty state is designed ("the first dual-attested result starts
   the ledger"); the honest-limits line is part of the component, and
   the player's disputed count speaks when nonzero.
+- **Deed badge** (`.deed`, SB-30-03): a gold-bordered chip — the
+  player's own decoded DOS icon (pixelated canvas) or, until data
+  decodes, a gold medallion initial — beside the deed's name in
+  tracked small caps; the description rides the title. Unlocks speak
+  once through the original in-game notice ("DEED DONE - …") and
+  never interrupt play.
 - **Dev ledger** (`.dev-ledger`, SB-32-06): the one home for
   diagnostics and dev controls — a collapsed disclosure at the
   chrome's foot, moss uppercase summary, honest copy ("playing never

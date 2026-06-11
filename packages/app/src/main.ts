@@ -18,6 +18,7 @@ import {
   withAccount,
   withAvatar,
   withGuild,
+  withAchievement,
   withMatchHistoryEntry,
   withMissionCompleted,
   withProfileName,
@@ -25,6 +26,11 @@ import {
 } from "./profile-store.js";
 import { avatarById, guildById, serfboundAvatars, serfboundGuilds } from "./identity-art.js";
 import { deriveProfileStatistics, matchModeLabels } from "./profile-stats.js";
+import {
+  achievementById,
+  evaluateAchievements,
+  type AchievementFacts,
+} from "./achievements.js";
 import { resolveOnlineConfig } from "./online-config.js";
 import { SerfboundOnlineSurface } from "./online-surface.js";
 import { SerfboundOnlineMatch } from "./online-match.js";
@@ -134,6 +140,7 @@ export * from "./online-surface.js";
 export * from "./online-match.js";
 export * from "./identity-art.js";
 export * from "./profile-stats.js";
+export * from "./achievements.js";
 
 export {
   BrowserIndexedDbImportedArchiveStore,
@@ -371,6 +378,59 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             </div>`,
         )
         .join("");
+    }
+
+    // Deeds (SB-30-03): badges drawn from the player's own decoded
+    // icon sheet; a medallion initial stands in until data decodes.
+    const badgesElement = root.querySelector<HTMLElement>("[data-testid='chronicle-badges']");
+    if (badgesElement !== null) {
+      badgesElement.replaceChildren();
+      root.dataset.serfboundAchievementCount = String(currentProfile.achievements?.length ?? 0);
+      const unlocked = currentProfile.achievements ?? [];
+      if (unlocked.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "status-panel__detail";
+        empty.textContent = "Deeds await their doer.";
+        badgesElement.append(empty);
+      }
+
+      for (const { id } of unlocked) {
+        const definition = achievementById(id);
+        if (definition === undefined) {
+          continue;
+        }
+
+        const badge = document.createElement("div");
+        badge.className = "deed";
+        badge.title = definition.description;
+        badge.dataset["achievementId"] = definition.id;
+        const sprite = currentDecodedAssets?.rawIcons.get(definition.icon);
+        if (sprite !== undefined) {
+          const canvas = document.createElement("canvas");
+          canvas.className = "deed__icon";
+          canvas.width = sprite.width;
+          canvas.height = sprite.height;
+          canvas
+            .getContext("2d")
+            ?.putImageData(
+              new ImageData(new Uint8ClampedArray(sprite.rgba), sprite.width, sprite.height),
+              0,
+              0,
+            );
+          badge.append(canvas);
+        } else {
+          const medallion = document.createElement("span");
+          medallion.className = "deed__medallion";
+          medallion.textContent = definition.name.slice(0, 1);
+          badge.append(medallion);
+        }
+
+        const label = document.createElement("span");
+        label.className = "deed__name";
+        label.textContent = definition.name;
+        badge.append(label);
+        badgesElement.append(badge);
+      }
     }
 
     // The identity row (SB-30-05): who you are, in the library's art.
@@ -633,6 +693,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             <div>
               <p class="status-panel__label">Campaign</p>
               <p class="status-panel__value" data-testid="chronicle-campaign">Not yet begun</p>
+            </div>
+            <div>
+              <p class="status-panel__label">Deeds</p>
+              <div class="chronicle__badges" data-testid="chronicle-badges"></div>
             </div>
             <div class="chronicle__history" data-testid="chronicle-history"></div>
           </details>
@@ -2649,6 +2713,48 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       }
     });
   }, 2000);
+  // Deeds evaluator (SB-30-03): a slow pure check over facts the app
+  // already tracks. Never blocks play, never networks; unlocks write
+  // the profile and speak once through the original notice path.
+  setInterval(() => {
+    const stats = deriveProfileStatistics(currentProfile.history);
+    const facts: AchievementFacts = {
+      dataImported: currentImportedDataSource !== undefined,
+      hasCastle: root.dataset.serfboundWorldHasCastle === "true",
+      buildingsDone: Number(root.dataset.serfboundWorldBuildingDoneCount ?? "0"),
+      savedOnce:
+        root.querySelector<HTMLButtonElement>("[data-testid='clear-save-button']")?.disabled ===
+        false,
+      played: stats.played,
+      won: stats.won,
+      bestStreak: stats.bestStreak,
+      onlinePlayed: currentProfile.history.filter((entry) => entry.mode === "online").length,
+      onlineWon: currentProfile.history.filter(
+        (entry) => entry.mode === "online" && entry.result === "won",
+      ).length,
+      missionsWon: currentProfile.missionsCompleted?.length ?? 0,
+    };
+    const satisfied = evaluateAchievements(facts);
+    const unlockedIds = new Set((currentProfile.achievements ?? []).map((entry) => entry.id));
+    const fresh = satisfied.filter((id) => !unlockedIds.has(id));
+    if (fresh.length === 0) {
+      return;
+    }
+
+    let next = currentProfile;
+    const now = new Date().toISOString();
+    for (const id of fresh) {
+      next = withAchievement(next, id, now);
+    }
+
+    saveProfile(next);
+    const [firstId] = fresh;
+    const first = firstId === undefined ? undefined : achievementById(firstId);
+    if (first !== undefined) {
+      setNotice(uiText("notice.achievement", { name: first.name }));
+    }
+  }, 4000);
+
   // A previously linked account signs back in silently — the keypair
   // is the account (SB-25-02); restoring it is the player's standing
   // opt-in to online traffic.

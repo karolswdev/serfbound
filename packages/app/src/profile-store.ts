@@ -44,6 +44,8 @@ export type StoredSerfboundProfile = {
   // The campaign ledger (SB-30-02): mission ids the player has won on
   // this device. A game record like the saves — never uploaded.
   readonly missionsCompleted?: readonly string[];
+  // Unlocked deeds (SB-30-03): achievement ids with their moment.
+  readonly achievements?: readonly { readonly id: string; readonly unlockedAtIso: string }[];
 };
 
 export type ProfileStore = {
@@ -126,6 +128,19 @@ export function withMissionCompleted(
   }
 
   return { ...profile, missionsCompleted: [...existing, missionId] };
+}
+
+export function withAchievement(
+  profile: StoredSerfboundProfile,
+  id: string,
+  unlockedAtIso: string,
+): StoredSerfboundProfile {
+  const existing = profile.achievements ?? [];
+  if (existing.some((entry) => entry.id === id)) {
+    return profile;
+  }
+
+  return { ...profile, achievements: [...existing, { id, unlockedAtIso }] };
 }
 
 // Newest first, capped — a local record, not a ladder.
