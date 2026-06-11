@@ -20,6 +20,8 @@ const namePrefix = process.env["SERFBOUND_CAPTURE_PREFIX"] ?? "capture";
 // SB-21-03: capture at a high-DPI scale factor to prove native-resolution
 // rendering (defaults to 1, today's baseline).
 const deviceScaleFactor = Math.max(1, Number(process.env["SERFBOUND_CAPTURE_DPR"] ?? "1") || 1);
+// SB-26-04: capture in a specific language (en/de).
+const captureLanguage = process.env["SERFBOUND_CAPTURE_LANG"] === "de" ? "de" : "en";
 
 if (!enabled || configuredPath === undefined || configuredPath.trim() === "") {
   console.log(
@@ -69,7 +71,7 @@ try {
     viewport: { width: 1280, height: 720 },
     deviceScaleFactor,
   });
-  await page.goto(previewUrl);
+  await page.goto(`${previewUrl}?lang=${captureLanguage}`);
 
   await page.getByTestId("data-import-input").setInputFiles(resolve(configuredPath));
   await page
@@ -107,7 +109,7 @@ try {
   // window plays out to the hand-over screen with its countdown. Reuse
   // the page — its IndexedDB holds the imported data.
   const turnPage = page;
-  await turnPage.goto(`${previewUrl}?seed=6235842872325272&window=512`);
+  await turnPage.goto(`${previewUrl}?seed=6235842872325272&window=512&lang=${captureLanguage}`);
   await turnPage
     .locator("#app[data-serfbound-scene-source='dos-pa-decoded']")
     .waitFor({ timeout: 15_000 });

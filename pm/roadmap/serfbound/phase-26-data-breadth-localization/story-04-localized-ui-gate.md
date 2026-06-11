@@ -2,10 +2,10 @@
 
 - **Project:** serfbound
 - **Phase:** 26
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-26-03
 - **Unblocks:** SB-27-01
-- **Owner:** unassigned
+- **Owner:** Claude
 
 ## Problem
 
@@ -24,10 +24,10 @@ record of what the original glyph set cannot carry.
 
 ## Acceptance criteria
 
-- [ ] Language switch persists and the in-game UI follows everywhere the
+- [x] Language switch persists and the in-game UI follows everywhere the
   e2e touches.
-- [ ] Longer translated strings fit or wrap per the audited layouts.
-- [ ] The extended-script decision record ships; all standing gates
+- [x] Longer translated strings fit or wrap per the audited layouts.
+- [x] The extended-script decision record ships; all standing gates
   rerun green.
 
 ## Test plan

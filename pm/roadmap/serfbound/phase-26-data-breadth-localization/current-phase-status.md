@@ -1,7 +1,7 @@
 # Phase 26 — Data Breadth and Localization
 
 **Last updated:** 2026-06-10.
-**Status:** in progress — SB-26-01..03 done.
+**Status:** complete — see final-summary.md.
 
 ## Goal
 
@@ -44,7 +44,7 @@ ship a localized interface within the original glyph set's limits.
   arrival.)
 - [x] UI strings live in language tables with English extracted as the
   reference language and a second language proving the path. (SB-26-03)
-- [ ] The localized-UI gate passes: language switch in the shell, glyph
+- [x] The localized-UI gate passes: language switch in the shell, glyph
   coverage audited, real-data captures recorded. (SB-26-04)
 
 ## Story status
@@ -54,16 +54,15 @@ ship a localized interface within the original glyph set's limits.
 | SB-26-01 | Amiga corpus evaluation | done | story-01-amiga-corpus-evaluation.md | evidence-story-01.md |
 | SB-26-02 | Amiga decoders behind the typed catalog | done (n/a) | story-02-amiga-decoders.md | evidence-story-02.md |
 | SB-26-03 | String extraction and language tables | done | story-03-string-extraction-language-tables.md | evidence-story-03.md |
-| SB-26-04 | Localized UI gate | backlog | story-04-localized-ui-gate.md | — |
+| SB-26-04 | Localized UI gate | done | story-04-localized-ui-gate.md | evidence-story-04.md |
 
 ## Where we are
 
-SB-26-01..03 shipped: the Amiga no-go is on record (02 closed
-not-applicable, reopening on corpus arrival), and the whole in-game
-text surface now lives in keyed language tables — English identical to
-before (the e2e suite is the proof), German complete inside the
-original glyph set, coverage enforced by test. Next: SB-26-04 the
-language switch and the phase gate.
+The phase is closed: the Amiga no-go is on record with its reopening
+condition, and the game is localized — the language switch persists,
+the German sweep runs in e2e, real-data captures show "SPIELER 2
+ENTER - 60" in the shadowed game font, and all gates are green
+(225/225 unit, 14/14 browser). See final-summary.md.
 
 ## Active risks
 

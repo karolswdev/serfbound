@@ -20,7 +20,7 @@ import {
   type StoredSerfboundProfile,
 } from "./profile-store.js";
 import { digestLines } from "./recap.js";
-import { uiText } from "./strings.js";
+import { getUiLanguage, setUiLanguage, uiText } from "./strings.js";
 export * from "./strings.js";
 import {
   SerfboundAiPlayer,
@@ -279,6 +279,26 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     options.importedArchiveStore ?? new BrowserIndexedDbImportedArchiveStore();
   const localGameSaveStore =
     options.localGameSaveStore ?? new BrowserIndexedDbLocalGameSaveStore();
+  // Language (SB-26-04): ?lang= wins, then the persisted choice, then
+  // English. The whole game-font surface follows (SB-26-03 tables).
+  const languageStorageKey = "serfbound.language";
+  const initialLanguage = (() => {
+    try {
+      const fromUrl = new URLSearchParams(globalThis.location?.search ?? "").get("lang");
+      if (fromUrl === "en" || fromUrl === "de") {
+        globalThis.localStorage?.setItem(languageStorageKey, fromUrl);
+        return fromUrl;
+      }
+
+      const stored = globalThis.localStorage?.getItem(languageStorageKey);
+      return stored === "de" ? "de" : "en";
+    } catch {
+      return "en";
+    }
+  })();
+  setUiLanguage(initialLanguage);
+  root.dataset.serfboundLanguage = initialLanguage;
+
   // Local-first identity (SB-25-01): the profile loads with the shell
   // and persists on edit; no account required, ever.
   const profileStore = new BrowserIndexedDbProfileStore();
@@ -444,6 +464,11 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
           type="button"
           disabled
         >Load game</button>
+        <button
+          class="secondary-action"
+          data-testid="language-button"
+          type="button"
+        >Language</button>
         <button
           class="secondary-action"
           data-testid="view-scale-button"
@@ -766,6 +791,21 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     };
     renderCurrentScene();
   };
+  // SB-26-04: the language toggle persists and re-renders the scene.
+  root
+    .querySelector<HTMLButtonElement>("[data-testid='language-button']")
+    ?.addEventListener("click", () => {
+      const next = getUiLanguage() === "en" ? "de" : "en";
+      setUiLanguage(next);
+      root.dataset.serfboundLanguage = next;
+      try {
+        globalThis.localStorage?.setItem(languageStorageKey, next);
+      } catch {
+        // storage failures never take the shell down
+      }
+
+      renderCurrentScene();
+    });
   // SB-21-03: the shell's view-scale control cycles the world zoom
   // (1x/2x/3x), same as the 'v' key.
   root
