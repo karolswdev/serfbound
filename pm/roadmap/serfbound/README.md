@@ -156,6 +156,15 @@ and either prove the new behavior intentionally or defer the decision.
 | 32 | Product experience: design standard, shell redesign, first-run, platform feel | scaffolded | [phase-32-product-experience](./phase-32-product-experience/) |
 | 33 | The social realm: familiar sign-in, identity v2, the opt-in social game | scaffolded | [phase-33-social-realm](./phase-33-social-realm/) |
 | 34 | Touch playability: real-touch gates, founding confirm, DPR-3 truth, the device gate | in progress | [phase-34-touch-playability](./phase-34-touch-playability/) |
+| 35 | Locomotion fidelity: one reference-paced walker, doors, working poses | scaffolded | [phase-35-locomotion-fidelity](./phase-35-locomotion-fidelity/) |
+| 36 | The transport economy in full: out the castle door, flag scheduling, split roads staff themselves | scaffolded | [phase-36-transport-economy](./phase-36-transport-economy/) |
+| 37 | The living map: trees grow, fields age, fish migrate | scaffolded | [phase-37-living-map](./phase-37-living-map/) |
+| 38 | Professions, tools, and fire — ends at the alpha gate | scaffolded | [phase-38-professions-tools-fire](./phase-38-professions-tools-fire/) |
+
+The simulation-fidelity sequence (35–38) is derived from the
+[reference parity audit](./reference-parity-audit.md) — the honest
+accounting, system by system, of what the engine condensed or
+skipped against Freeserf.Core, with the alpha bar defined.
 
 ## Delivery Gates
 

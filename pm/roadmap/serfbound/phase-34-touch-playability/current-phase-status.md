@@ -18,6 +18,31 @@ Real phone, real fingers: "LITERALLY unplayable."
 5. Could not build a road — "could not even click into it."
 6. The build-building menu shows buildings cropped after ~5 pixels.
 
+## Round 8 (seventh device pass, 2026-06-11) — escalated to the audit
+
+"The lumberjack is teleporting to the tree in a couple of
+milliseconds… nobody brings out the raw materials, they literally
+just appear at the castle door… when I created a flag in the middle
+of the road no new worker came up, the old one decided to sit right
+on the flag… do an ACTUAL audit against the reference project of
+what is missing and phase it out. We SKIPPED SO MUCH this isn't even
+an alpha yet."
+
+The maintainer is right, and the response is structural, not another
+round: the **reference parity audit**
+(pm/roadmap/serfbound/reference-parity-audit.md) accounts for every
+condensed or missing system against Freeserf.Core and phases the
+work out into Phases 35–38 (locomotion fidelity, the full transport
+economy, the living map, professions/tools/fire — ending at the
+defined alpha bar). The three round-8 symptoms map directly:
+teleporting lumberjack → Phase 35 (the harvest walk bypasses the
+reference counter tables); materializing materials → Phase 36
+(MoveResourceOut chain missing); the unstaffed split road → Phase 36
+(BuildFlagSplitPath serf reassignment, deferred since Phase 13).
+
+**Phase 34 takes no new simulation stories.** It remains open only
+for its original scope — touch input/UI truth on device (SB-34-05).
+
 ## Round 7 (sixth device pass, 2026-06-11)
 
 Construction rises — but:
