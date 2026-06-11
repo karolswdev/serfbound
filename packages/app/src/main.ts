@@ -116,6 +116,7 @@ export * from "./hotseat.js";
 export * from "./async-match.js";
 export * from "./profile-store.js";
 export * from "./identity-client.js";
+export * from "./mailbox-client.js";
 
 export {
   BrowserIndexedDbImportedArchiveStore,

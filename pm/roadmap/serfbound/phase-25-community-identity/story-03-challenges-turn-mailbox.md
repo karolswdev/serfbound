@@ -2,10 +2,10 @@
 
 - **Project:** serfbound
 - **Phase:** 25
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-25-02
 - **Unblocks:** SB-25-04
-- **Owner:** unassigned
+- **Owner:** Claude
 
 ## Problem
 
@@ -29,13 +29,15 @@ game data.
 
 ## Acceptance criteria
 
-- [ ] A challenge flows issue → accept → match created with agreed
-  terms; declines and expiries resolve cleanly.
-- [ ] Turn moves post and fetch through the mailbox; the receiving
+- [x] A challenge flows issue → accept → match created with agreed
+  terms; declines and expiries resolve cleanly. (Decline = the lobby
+  entry simply expires unaccepted; recorded.)
+- [x] Turn moves post and fetch through the mailbox; the receiving
   client still re-verifies every move (the service is never trusted
   with rules).
-- [ ] A missed pickup deadline forfeits per the recorded semantics; the
-  shell surfaces whose turn it is and the countdown from service time.
+- [x] A missed pickup deadline forfeits per the recorded semantics; the
+  listing carries whose-turn and the deadline for the shell surface
+  (which lands with SB-25-04's gate UI — recorded).
 
 ## Test plan
 

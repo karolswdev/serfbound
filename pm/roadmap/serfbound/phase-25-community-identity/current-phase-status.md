@@ -1,7 +1,7 @@
 # Phase 25 — Community and Identity
 
 **Last updated:** 2026-06-10.
-**Status:** in progress — SB-25-01..02 done.
+**Status:** in progress — SB-25-01..03 done.
 
 ## Goal
 
@@ -39,7 +39,7 @@ accounts and zero servers.
   no hosted dependency. (SB-25-01)
 - [x] The identity decision record ships and the optional account
   service implements exactly it. (SB-25-02)
-- [ ] Challenges create matches with agreed terms; turn moves flow
+- [x] Challenges create matches with agreed terms; turn moves flow
   through the mailbox (re-verified client-side, always) and missed
   pickups forfeit per the recorded semantics. (SB-25-03)
 - [ ] Verified match results produce a ladder with an honest
@@ -51,17 +51,17 @@ accounts and zero servers.
 |---|---|---|---|---|
 | SB-25-01 | Local-first profiles | done | story-01-local-first-profiles.md | evidence-story-01.md |
 | SB-25-02 | Identity decision and account service | done | story-02-identity-account-service.md | evidence-story-02.md |
-| SB-25-03 | Challenges and the turn mailbox | backlog | story-03-challenges-turn-mailbox.md | — |
+| SB-25-03 | Challenges and the turn mailbox | done | story-03-challenges-turn-mailbox.md | evidence-story-03.md |
 | SB-25-04 | Ladder and operations gate | backlog | story-04-ladder-operations-gate.md | — |
 
 ## Where we are
 
-SB-25-01..02 shipped: local profiles, and the identity layer — an
-account IS a device keypair (no email, no password, nothing to leak),
-the zero-dependency service enforces its four-field schema by contract
-test, mutations are signed, deletion is verifiable, and the local
-profile links/unlinks losing nothing. Next: SB-25-03 challenges and
-the turn mailbox.
+SB-25-01..03 shipped: local profiles, the device-key identity layer,
+and now the turn mailbox — a real correspondence match plays through
+the real service in CI (challenge → lobby → accept → signed moves →
+client-side re-verification → agreeing checksums), with whose-turn
+listings and deadline forfeits enforced. Next: SB-25-04 closes the
+phase with the ladder, the ops posture, and the shell surface.
 
 ## Active risks
 

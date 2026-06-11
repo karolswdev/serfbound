@@ -1,0 +1,334 @@
+// The Serfbound turn mailbox (SB-25-03): challenges with match terms,
+// store-and-forward of window moves, and pickup deadlines with forfeit
+// — the correspondence post office. The service stores moves and
+// checksums ONLY (structurally validated, size-capped) and never
+// referees: clients re-simulate and verify every move themselves.
+// Zero dependencies, JSON-file storage, self-hostable anywhere.
+
+import { createServer } from "node:http";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { randomUUID, webcrypto } from "node:crypto";
+
+const port = Number(process.env.SERFBOUND_MAILBOX_PORT ?? "4320");
+const storePath = process.env.SERFBOUND_MAILBOX_STORE ?? ".tmp/mailbox-matches.json";
+const moveByteCap = 256 * 1024;
+
+function loadStore() {
+  if (!existsSync(storePath)) {
+    return { challenges: {}, matches: {} };
+  }
+
+  try {
+    return JSON.parse(readFileSync(storePath, "utf8"));
+  } catch {
+    return { challenges: {}, matches: {} };
+  }
+}
+
+function saveStore(store) {
+  writeFileSync(storePath, JSON.stringify(store, null, 2));
+}
+
+async function verifySignature(publicKeyJwk, payloadText, signatureBase64) {
+  try {
+    const key = await webcrypto.subtle.importKey(
+      "jwk",
+      publicKeyJwk,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["verify"],
+    );
+    return await webcrypto.subtle.verify(
+      { name: "ECDSA", hash: "SHA-256" },
+      key,
+      Buffer.from(signatureBase64, "base64"),
+      new TextEncoder().encode(payloadText),
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function keyFingerprint(publicKeyJwk) {
+  const canonical = JSON.stringify({
+    crv: publicKeyJwk.crv,
+    kty: publicKeyJwk.kty,
+    x: publicKeyJwk.x,
+    y: publicKeyJwk.y,
+  });
+  const digest = await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+  return Buffer.from(digest).toString("hex");
+}
+
+function validTerms(terms) {
+  return (
+    typeof terms === "object" &&
+    terms !== null &&
+    typeof terms.seedString === "string" &&
+    /^[1-8]{16}$/.test(terms.seedString) &&
+    Number.isInteger(terms.mapSize) &&
+    Number.isInteger(terms.playerCount) &&
+    Number.isInteger(terms.initialSupplies) &&
+    Number.isInteger(terms.windowTicks) &&
+    terms.windowTicks >= 64 &&
+    Number.isInteger(terms.pickupSeconds) &&
+    terms.pickupSeconds >= 0
+  );
+}
+
+// The wire carries world actions and checksums only — structurally
+// pinned here, trustlessly re-verified by the receiving client.
+function validMove(move) {
+  return (
+    typeof move === "object" &&
+    move !== null &&
+    Number.isInteger(move.window) &&
+    Number.isInteger(move.player) &&
+    Number.isInteger(move.endTick) &&
+    Number.isInteger(move.endChecksum) &&
+    Array.isArray(move.actions) &&
+    move.actions.every(
+      (stamped) =>
+        typeof stamped === "object" &&
+        stamped !== null &&
+        Number.isInteger(stamped.tick) &&
+        typeof stamped.action === "object" &&
+        stamped.action !== null &&
+        typeof stamped.action.kind === "string",
+    )
+  );
+}
+
+// Whose turn a match is on, and whether the pickup deadline forfeited
+// it (evaluated lazily — no clocks run server-side). pickupSeconds 0
+// means no clock (casual matches).
+function evaluateMatch(match, nowMs) {
+  if (match.state !== "active") {
+    return match;
+  }
+
+  if (match.terms.pickupSeconds > 0 && nowMs > Date.parse(match.nextDeadlineIso)) {
+    match.state = "forfeited";
+    match.forfeitedPlayer = match.moves.length % 2;
+  }
+
+  return match;
+}
+
+function matchView(match) {
+  return {
+    matchId: match.matchId,
+    terms: match.terms,
+    players: match.players.map((player) => ({ name: player.name, keyId: player.keyId })),
+    moves: match.moves,
+    nextPlayer: match.moves.length % 2,
+    nextDeadlineIso: match.nextDeadlineIso,
+    state: match.state,
+    ...(match.forfeitedPlayer === undefined ? {} : { forfeitedPlayer: match.forfeitedPlayer }),
+  };
+}
+
+function send(response, status, body) {
+  response.writeHead(status, {
+    "content-type": "application/json",
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "content-type",
+  });
+  response.end(JSON.stringify(body));
+}
+
+function readBody(request) {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    request.on("data", (chunk) => {
+      data += chunk;
+      if (data.length > moveByteCap) {
+        reject(new Error("payload too large"));
+        request.destroy();
+      }
+    });
+    request.on("end", () => resolve(data));
+    request.on("error", reject);
+  });
+}
+
+export const server = createServer(async (request, response) => {
+  try {
+    const url = new URL(request.url ?? "/", `http://localhost:${port}`);
+    if (request.method === "OPTIONS") {
+      send(response, 204, {});
+      return;
+    }
+
+    const store = loadStore();
+
+    // POST /challenges — open a challenge with match terms.
+    if (request.method === "POST" && url.pathname === "/challenges") {
+      const body = JSON.parse((await readBody(request)) || "{}");
+      const { publicKeyJwk, name, terms, signedAtIso, signature } = body;
+      if (!validTerms(terms)) {
+        send(response, 400, { error: "invalid-terms", message: "Challenge terms are malformed." });
+        return;
+      }
+
+      const payload = `challenge|${JSON.stringify(terms)}|${signedAtIso}`;
+      if (!(await verifySignature(publicKeyJwk, payload, signature))) {
+        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+        return;
+      }
+
+      const challengeId = randomUUID();
+      store.challenges[challengeId] = {
+        challengeId,
+        terms,
+        challenger: { publicKeyJwk, name: String(name ?? "PLAYER"), keyId: await keyFingerprint(publicKeyJwk) },
+        openedAtIso: new Date().toISOString(),
+      };
+      saveStore(store);
+      send(response, 200, { challengeId });
+      return;
+    }
+
+    // GET /challenges — the open lobby.
+    if (request.method === "GET" && url.pathname === "/challenges") {
+      send(response, 200, {
+        challenges: Object.values(store.challenges).map((challenge) => ({
+          challengeId: challenge.challengeId,
+          terms: challenge.terms,
+          challengerName: challenge.challenger.name,
+          openedAtIso: challenge.openedAtIso,
+        })),
+      });
+      return;
+    }
+
+    // POST /challenges/:id/accept — the match begins; the pickup clock
+    // starts for the challenger's first window.
+    const acceptMatch = url.pathname.match(/^\/challenges\/([0-9a-f-]{36})\/accept$/);
+    if (request.method === "POST" && acceptMatch !== null) {
+      const challenge = store.challenges[acceptMatch[1]];
+      if (challenge === undefined) {
+        send(response, 404, { error: "not-found" });
+        return;
+      }
+
+      const body = JSON.parse((await readBody(request)) || "{}");
+      const { publicKeyJwk, name, signedAtIso, signature } = body;
+      const payload = `accept|${challenge.challengeId}|${signedAtIso}`;
+      if (!(await verifySignature(publicKeyJwk, payload, signature))) {
+        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+        return;
+      }
+
+      const matchId = randomUUID();
+      const match = {
+        matchId,
+        terms: challenge.terms,
+        players: [
+          challenge.challenger,
+          { publicKeyJwk, name: String(name ?? "PLAYER"), keyId: await keyFingerprint(publicKeyJwk) },
+        ],
+        moves: [],
+        state: "active",
+        nextDeadlineIso: new Date(
+          Date.now() + challenge.terms.pickupSeconds * 1000,
+        ).toISOString(),
+      };
+      store.matches[matchId] = match;
+      delete store.challenges[challenge.challengeId];
+      saveStore(store);
+      send(response, 200, { matchId, match: matchView(match) });
+      return;
+    }
+
+    // GET /matches/:id — the match record (deadline evaluated lazily).
+    const matchRoute = url.pathname.match(/^\/matches\/([0-9a-f-]{36})(\/moves)?$/);
+    if (matchRoute !== null) {
+      const match = store.matches[matchRoute[1]];
+      if (match === undefined) {
+        send(response, 404, { error: "not-found" });
+        return;
+      }
+
+      evaluateMatch(match, Date.now());
+
+      if (request.method === "GET" && matchRoute[2] === undefined) {
+        saveStore(store);
+        send(response, 200, { match: matchView(match) });
+        return;
+      }
+
+      // POST /matches/:id/moves — the active player's window move.
+      if (request.method === "POST" && matchRoute[2] === "/moves") {
+        if (match.state !== "active") {
+          saveStore(store);
+          send(response, 409, {
+            error: "match-not-active",
+            message: `The match is ${match.state}.`,
+            match: matchView(match),
+          });
+          return;
+        }
+
+        const body = JSON.parse((await readBody(request)) || "{}");
+        const { move, signedAtIso, signature } = body;
+        if (!validMove(move)) {
+          send(response, 400, { error: "invalid-move", message: "The move payload is malformed." });
+          return;
+        }
+
+        const expectedPlayer = match.moves.length % 2;
+        if (move.window !== match.moves.length || move.player !== expectedPlayer) {
+          send(response, 409, {
+            error: "out-of-turn",
+            message: `Expected window ${match.moves.length} from player ${expectedPlayer}.`,
+          });
+          return;
+        }
+
+        const signer = match.players[expectedPlayer];
+        const payload = `move|${match.matchId}|${move.window}|${move.endChecksum}|${signedAtIso}`;
+        if (!(await verifySignature(signer.publicKeyJwk, payload, signature))) {
+          send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+          return;
+        }
+
+        match.moves.push(move);
+        match.nextDeadlineIso = new Date(
+          Date.now() + match.terms.pickupSeconds * 1000,
+        ).toISOString();
+        saveStore(store);
+        send(response, 200, { match: matchView(match) });
+        return;
+      }
+    }
+
+    // GET /players/:keyId/matches — a player's open matches ("your turn"
+    // surfacing).
+    const playerRoute = url.pathname.match(/^\/players\/([0-9a-f]{64})\/matches$/);
+    if (request.method === "GET" && playerRoute !== null) {
+      const keyId = playerRoute[1];
+      const matches = Object.values(store.matches)
+        .filter((match) => match.players.some((player) => player.keyId === keyId))
+        .map((match) => evaluateMatch(match, Date.now()))
+        .map((match) => ({
+          ...matchView(match),
+          yourSeat: match.players.findIndex((player) => player.keyId === keyId),
+        }));
+      saveStore(store);
+      send(response, 200, { matches });
+      return;
+    }
+
+    send(response, 404, { error: "unknown-route" });
+  } catch (error) {
+    send(response, 400, { error: "bad-request", message: String(error?.message ?? error) });
+  }
+});
+
+if (process.env.SERFBOUND_MAILBOX_AUTOSTART !== "0") {
+  server.listen(port, () => {
+    console.log(`serfbound-mailbox listening on :${port} (store: ${storePath})`);
+  });
+}
