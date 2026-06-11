@@ -1,6 +1,6 @@
 # Phase 29 — Hosting Backbone
 
-**Last updated:** 2026-06-11 (after SB-29-02).
+**Last updated:** 2026-06-11 (after SB-29-03).
 **Status:** in progress.
 
 ## Goal
@@ -59,7 +59,7 @@ Serverless, accountless play remains first-class forever.
 |---|---|---|---|---|
 | SB-29-01 | Infrastructure decision and secrets boundary | done | story-01-infrastructure-decision.md | evidence-story-01.md |
 | SB-29-02 | Service containers and manifests | done | story-02-service-containers-manifests.md | evidence-story-02.md |
-| SB-29-03 | Cluster deployment, DNS, TLS | in-progress | story-03-cluster-deploy-dns-tls.md | — |
+| SB-29-03 | Cluster deployment, DNS, TLS | done | story-03-cluster-deploy-dns-tls.md | evidence-story-03.md |
 | SB-29-04 | Online surface and hosting gate | backlog | story-04-online-surface-hosting-gate.md | — |
 
 ## Where we are
@@ -74,14 +74,14 @@ own namespace, reuses the platform TLS/ingress, and the resilience
 criterion is pod-restart + backup/restore. SB-29-02 shipped: images
 on GHCR (public, digests in evidence), kubeconform-valid manifests
 under `deploy/`, and the contract suites proven against containers
-including a store-survives-restart check. SB-29-03 in progress:
-services deployed to the cluster (contract suites green via
-port-forward), listeners for `api.serfbound.com` on the shared
-catalyst-gateway (maintainer-approved), Certificate cleanly pending
-on ACME, pod-restart persistence and a backup/restore drill proven,
-runbook updated. Blocked on the Cloudflare A record
-(`api.serfbound.com → 172.234.209.38`); rate-limiting approach to be
-decided with the DNS mode (proxied vs DNS-only).
+including a store-survives-restart check. SB-29-03 shipped:
+`https://api.serfbound.com` is live — valid TLS, HTTP→HTTPS, all ten
+contract tests green over the public internet, Cloudflare-edge rate
+limiting proven (59× 429 on a 120-burst), pod-restart persistence
+and a backup/wipe/restore drill passed on the live cluster, stores
+wiped pristine for launch. Next: SB-29-04 (shell online surface +
+`serfbound.com` serving the game) — the Phase 25 named gap closes
+there.
 
 ## Active risks
 
@@ -102,6 +102,12 @@ decided with the DNS mode (proxied vs DNS-only).
   verification; installing duplicates is a stop-and-ask — SB-29-01.
 - 2026-06-11 — Cost ceiling: no new node pools, no new paid add-ons;
   Serfbound rides existing headroom — SB-29-01, decision record.
+- 2026-06-11 — `api.serfbound.com` rides the existing catalyst
+  LoadBalancer (maintainer decision: no new paid pieces); DNS is
+  Cloudflare-proxied and rate limiting lives at the Cloudflare edge
+  (free rule) since the shared cluster has no gateway policy CRDs —
+  trade-off (edge sees signed, trustless payloads) recorded in
+  evidence — maintainer + SB-29-03.
 
 ## Decisions deferred
 - Signaling-relay deployment — added to the manifests when Phase 27
