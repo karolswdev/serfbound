@@ -32,6 +32,7 @@ import {
 import { uiScaleFor } from "./panel-bar.js";
 import { initBoxHeight, initBoxWidth } from "./init-screen.js";
 import { popupBorderLayout, popupBorderSize } from "./popup.js";
+import { uiText } from "./strings.js";
 import {
   MapGeometry,
   MapProjectionTransform,
@@ -993,13 +994,17 @@ function createDecodedRenderScene(
       });
     }
 
-    pushText("SERFBOUND", 36, 10);
-    pushText("SEED", 8, 24);
+    pushText(uiText("init.title"), 36, 10);
+    pushText(uiText("init.seed"), 8, 24);
     pushText(initScreen.seedString, 8, 36);
-    pushText(`SUPPLIES ${initScreen.initialSupplies}`, 8, 56);
-    pushText(`MAP SIZE ${initScreen.mapSize}`, 8, 76);
-    pushText(`MISSION ${initScreen.mission ?? "CUSTOM"}`, 8, 88);
-    pushText("START", 52, 106);
+    pushText(uiText("init.supplies", { value: initScreen.initialSupplies }), 8, 56);
+    pushText(uiText("init.mapSize", { value: initScreen.mapSize }), 8, 76);
+    pushText(
+      uiText("init.mission", { value: initScreen.mission ?? uiText("init.missionCustom") }),
+      8,
+      88,
+    );
+    pushText(uiText("init.start"), 52, 106);
   }
 
   const sortedSprites = sprites.sort(compareSpritePrimitive);

@@ -5,6 +5,7 @@ import type {
   CorrespondenceWindowMove,
   WindowDigest,
 } from "@serfbound/engine";
+import { uiText } from "./strings.js";
 
 // The recap (SB-23-02): "while you waited, your opponent did X" — and
 // you can watch it. The driver wraps the engine's stepped move replay
@@ -62,34 +63,38 @@ export function createRecapDriver(
 // no '+', so deltas spell out gains as plain numbers and losses with
 // '-').
 export function digestLines(digest: WindowDigest): string[] {
-  const lines = [`WINDOW ${digest.window + 1} - PLAYER ${digest.activePlayer + 1} MOVED`];
+  const lines = [
+    uiText("digest.header", { window: digest.window + 1, player: digest.activePlayer + 1 }),
+  ];
   for (const player of digest.players) {
-    const parts = [`P${player.player + 1}:`];
+    const parts = [uiText("digest.seat", { player: player.player + 1 })];
     if (player.buildingsStarted !== 0) {
-      parts.push(`BLD ${player.buildingsStarted}`);
+      parts.push(uiText("digest.built", { value: player.buildingsStarted }));
     }
 
     if (player.buildingsCompleted !== 0) {
-      parts.push(`DONE ${player.buildingsCompleted}`);
+      parts.push(uiText("digest.completed", { value: player.buildingsCompleted }));
     }
 
     if (player.flagsBuilt !== 0) {
-      parts.push(`FLAGS ${player.flagsBuilt}`);
+      parts.push(uiText("digest.flags", { value: player.flagsBuilt }));
     }
 
     if (player.landAreaDelta !== 0) {
-      parts.push(`LAND ${player.landAreaDelta}`);
+      parts.push(uiText("digest.land", { value: player.landAreaDelta }));
     }
 
     if (player.stockDelta !== 0) {
-      parts.push(`STOCK ${player.stockDelta}`);
+      parts.push(uiText("digest.stock", { value: player.stockDelta }));
     }
 
     if (player.serfsDelta !== 0) {
-      parts.push(`SERFS ${player.serfsDelta}`);
+      parts.push(uiText("digest.serfs", { value: player.serfsDelta }));
     }
 
-    lines.push(parts.length === 1 ? `${parts[0]} QUIET` : parts.join(" "));
+    lines.push(
+      parts.length === 1 ? `${parts[0]} ${uiText("digest.quiet")}` : parts.join(" "),
+    );
   }
 
   return lines;

@@ -2,10 +2,10 @@
 
 - **Project:** serfbound
 - **Phase:** 26
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-26-02
 - **Unblocks:** SB-26-04
-- **Owner:** unassigned
+- **Owner:** Claude
 
 ## Problem
 
@@ -25,10 +25,10 @@ glyphs) — all still rendered through the decoded original font.
 
 ## Acceptance criteria
 
-- [ ] No user-facing in-game string remains inline; English renders
+- [x] No user-facing in-game string remains inline; English renders
   identically from the table (e2e unchanged).
-- [ ] The German table is complete and passes glyph coverage.
-- [ ] A table entry failing glyph coverage is a build/test error, not a
+- [x] The German table is complete and passes glyph coverage.
+- [x] A table entry failing glyph coverage is a build/test error, not a
   runtime blank.
 
 ## Test plan

@@ -1,4 +1,5 @@
 import { panelBackgroundLayout, panelBarRect, uiScaleFor } from "./panel-bar.js";
+import { uiText } from "./strings.js";
 import {
   buildPopupPages,
   minimapInterior,
@@ -807,7 +808,7 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
     const inventory = options.world.inventoryForPlayer(0);
     const plankCount = inventory === null ? 0 : inventory.resources[7];
     const stoneCount = inventory === null ? 0 : inventory.resources[9];
-    const hudText = `PLANK:${plankCount} STONE:${stoneCount}`;
+    const hudText = uiText("hud.stock", { planks: plankCount ?? 0, stones: stoneCount ?? 0 });
     pushUiText(sprites, atlas, hudText, 30 * uiScale, 6 * uiScale, uiScale);
 
     pushUiSprite(sprites, atlas, "uii:0", 6 * uiScale, 2 * uiScale, uiScale);
@@ -894,16 +895,19 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
       }
     } else if (kind === "sett") {
       const player = options.world.players[0];
-      pushPopupText("KNIGHTS", 8, 8);
+      pushPopupText(uiText("sett.knights"), 8, 8);
       settOccupationRows.forEach((row, threat) => {
         const occupation = player?.knightOccupation[threat] ?? 0;
         const maxLevel = (occupation >> 4) & 0xf;
-        pushPopupText(`THREAT ${threat} LEVEL ${maxLevel}`, 8, row.y);
+        pushPopupText(uiText("sett.threatRow", { threat, level: maxLevel }), 8, row.y);
       });
-      pushPopupText(`MORALE ${player?.knightMorale ?? 0}`, 8, 132);
+      pushPopupText(uiText("sett.morale", { morale: player?.knightMorale ?? 0 }), 8, 132);
       const audio = options.audio;
       pushPopupText(
-        `SFX ${audio?.sfxMuted === true ? "OFF" : "ON"} MUSIC ${audio?.musicMuted === true ? "OFF" : "ON"}`,
+        uiText("sett.audio", {
+          sfx: uiText(audio?.sfxMuted === true ? "audio.off" : "audio.on"),
+          music: uiText(audio?.musicMuted === true ? "audio.off" : "audio.on"),
+        }),
         8,
         settAudioRowY,
       );

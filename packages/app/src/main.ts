@@ -20,6 +20,8 @@ import {
   type StoredSerfboundProfile,
 } from "./profile-store.js";
 import { digestLines } from "./recap.js";
+import { uiText } from "./strings.js";
+export * from "./strings.js";
 import {
   SerfboundAiPlayer,
   buildingType,
@@ -536,6 +538,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   let currentHotseat: HotseatController | undefined;
   // Two-tab async correspondence (SB-23-04).
   let currentAsync: SerfboundAsyncLoopbackMatch | undefined;
+  let lastHotseatMode: "recap" | "your-window" | "" = "";
   // Game speed: ticks per frame scale by the reference-style multiplier
   // (0 pauses). Keys: 1/2/4 set speeds, 0 pauses.
   let gameSpeedMultiplier = 1;
@@ -816,16 +819,16 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
           currentSerfEngine = match.serfEngine;
           const status = currentAsync.status;
           if (status.mode === "awaiting-move") {
-            setNotice("WAITING FOR OPPONENT");
+            setNotice(uiText("notice.waiting"));
           } else if (status.mode === "move-arrived") {
-            setNotice("OPPONENT MOVED - PRESS ENTER");
+            setNotice(uiText("notice.moveArrived"));
           } else if (status.mode === "recap") {
-            setNotice("RECAP - WATCHING");
+            setNotice(uiText("notice.recapWatching"));
           } else if (
             status.mode === "your-window" &&
-            root.dataset.serfboundNotification !== "YOUR WINDOW"
+            root.dataset.serfboundNotification !== uiText("notice.yourWindow")
           ) {
-            setNotice("YOUR WINDOW");
+            setNotice(uiText("notice.yourWindow"));
           }
 
           syncAsyncState();
@@ -842,15 +845,21 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
           commandRouter.localPlayer = currentHotseat.activePlayer;
           if (currentHotseat.mode === "handover") {
             setNotice(
-              `PLAYER ${currentHotseat.activePlayer + 1} PRESS ENTER - ${currentHotseat.countdownSeconds ?? 0}`,
+              uiText("notice.hotseatPickup", {
+                player: currentHotseat.activePlayer + 1,
+                seconds: currentHotseat.countdownSeconds ?? 0,
+              }),
             );
           } else if (currentHotseat.mode === "recap") {
-            setNotice(`RECAP - PLAYER ${(currentHotseat.activePlayer + 1)} WATCHES`);
-          } else if (
-            currentHotseat.mode === "your-window" &&
-            root.dataset.serfboundNotification?.startsWith("RECAP") === true
-          ) {
-            setNotice(`PLAYER ${currentHotseat.activePlayer + 1} - YOUR WINDOW`);
+            lastHotseatMode = "recap";
+            setNotice(
+              uiText("notice.hotseatRecap", { player: currentHotseat.activePlayer + 1 }),
+            );
+          } else if (currentHotseat.mode === "your-window" && lastHotseatMode === "recap") {
+            lastHotseatMode = "your-window";
+            setNotice(
+              uiText("notice.hotseatYourWindow", { player: currentHotseat.activePlayer + 1 }),
+            );
           }
 
           syncHotseatState();
@@ -908,19 +917,19 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
               (building) => building.isDone,
             ).length;
             if (doneCount > lastDoneBuildingCount && lastDoneBuildingCount > 0) {
-              setNotice("BUILDING COMPLETE");
+              setNotice(uiText("notice.buildingComplete"));
               audioService.playSfx(sfxType.hammerBlow);
               syncAudioState();
             }
 
             lastDoneBuildingCount = doneCount;
             if (currentWorld.players[0]?.defeated === true) {
-              if (root.dataset.serfboundNotification !== "GAME OVER") {
+              if (root.dataset.serfboundNotification !== uiText("notice.gameOver")) {
                 audioService.playSfx(sfxType.ahhh);
                 syncAudioState();
               }
 
-              setNotice("GAME OVER");
+              setNotice(uiText("notice.gameOver"));
             }
           }
         }
@@ -1716,7 +1725,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     currentLocalPlayer = 0;
     root.dataset.serfboundGameState = "running";
     getGameStateElement(root).textContent = "Running";
-    setNotice("PLAYER 1 - YOUR WINDOW");
+    setNotice(uiText("notice.hotseatYourWindow", { player: 1 }));
     syncHotseatState();
     syncWorldState(root, currentWorld);
     renderCurrentScene();

@@ -1,7 +1,7 @@
 # Phase 26 — Data Breadth and Localization
 
 **Last updated:** 2026-06-10.
-**Status:** in progress — SB-26-01..02 done (Amiga: NO-GO; 02 closed not-applicable).
+**Status:** in progress — SB-26-01..03 done.
 
 ## Goal
 
@@ -42,7 +42,7 @@ ship a localized interface within the original glyph set's limits.
   typed catalog with opt-in parity tests. (SB-26-02: the "if go"
   condition is false — closed not-applicable, reopening on corpus
   arrival.)
-- [ ] UI strings live in language tables with English extracted as the
+- [x] UI strings live in language tables with English extracted as the
   reference language and a second language proving the path. (SB-26-03)
 - [ ] The localized-UI gate passes: language switch in the shell, glyph
   coverage audited, real-data captures recorded. (SB-26-04)
@@ -53,16 +53,17 @@ ship a localized interface within the original glyph set's limits.
 |---|---|---|---|---|
 | SB-26-01 | Amiga corpus evaluation | done | story-01-amiga-corpus-evaluation.md | evidence-story-01.md |
 | SB-26-02 | Amiga decoders behind the typed catalog | done (n/a) | story-02-amiga-decoders.md | evidence-story-02.md |
-| SB-26-03 | String extraction and language tables | backlog | story-03-string-extraction-language-tables.md | — |
+| SB-26-03 | String extraction and language tables | done | story-03-string-extraction-language-tables.md | evidence-story-03.md |
 | SB-26-04 | Localized UI gate | backlog | story-04-localized-ui-gate.md | — |
 
 ## Where we are
 
-SB-26-01 shipped: the Amiga decision is NO-GO (no lawful corpus
-locally; amiga-evaluation.md carries the loader inventory and the
-re-opening condition), so SB-26-02 closes as not-applicable and the
-phase's delivered breadth is localization. Next: SB-26-03 string
-extraction and language tables.
+SB-26-01..03 shipped: the Amiga no-go is on record (02 closed
+not-applicable, reopening on corpus arrival), and the whole in-game
+text surface now lives in keyed language tables — English identical to
+before (the e2e suite is the proof), German complete inside the
+original glyph set, coverage enforced by test. Next: SB-26-04 the
+language switch and the phase gate.
 
 ## Active risks
 
