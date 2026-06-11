@@ -1,7 +1,7 @@
 # Phase 26 — Data Breadth and Localization
 
 **Last updated:** 2026-06-10.
-**Status:** not started.
+**Status:** in progress — SB-26-01 done (Amiga: NO-GO recorded).
 
 ## Goal
 
@@ -34,8 +34,10 @@ ship a localized interface within the original glyph set's limits.
 
 ## Exit criteria (evidence required)
 
-- [ ] The Amiga evaluation runs against a real corpus and the go/no-go
-  decision is recorded with evidence. (SB-26-01)
+- [x] The Amiga evaluation runs against a real corpus and the go/no-go
+  decision is recorded with evidence. (SB-26-01: NO-GO — no lawful
+  corpus exists locally; the record carries the full loader inventory
+  and the re-opening condition.)
 - [ ] If go: Amiga archives import, decode, and play behind the same
   typed catalog with opt-in parity tests. (SB-26-02)
 - [ ] UI strings live in language tables with English extracted as the
@@ -47,16 +49,18 @@ ship a localized interface within the original glyph set's limits.
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-26-01 | Amiga corpus evaluation | backlog | story-01-amiga-corpus-evaluation.md | — |
+| SB-26-01 | Amiga corpus evaluation | done | story-01-amiga-corpus-evaluation.md | evidence-story-01.md |
 | SB-26-02 | Amiga decoders behind the typed catalog | backlog | story-02-amiga-decoders.md | — |
 | SB-26-03 | String extraction and language tables | backlog | story-03-string-extraction-language-tables.md | — |
 | SB-26-04 | Localized UI gate | backlog | story-04-localized-ui-gate.md | — |
 
 ## Where we are
 
-Scaffolded; starts after Phase 24 closes (SB-26-03/04 do not actually
-depend on multiplayer and may be pulled earlier if priorities shift —
-record the re-ordering decision here if so).
+SB-26-01 shipped: the Amiga decision is NO-GO (no lawful corpus
+locally; amiga-evaluation.md carries the loader inventory and the
+re-opening condition), so SB-26-02 closes as not-applicable and the
+phase's delivered breadth is localization. Next: SB-26-03 string
+extraction and language tables.
 
 ## Active risks
 

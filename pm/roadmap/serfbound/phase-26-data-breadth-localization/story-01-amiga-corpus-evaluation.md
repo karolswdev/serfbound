@@ -2,10 +2,10 @@
 
 - **Project:** serfbound
 - **Phase:** 26
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-25-04
 - **Unblocks:** SB-26-02
-- **Owner:** unassigned
+- **Owner:** Claude
 
 ## Problem
 
@@ -25,11 +25,13 @@ parity standard be met?
 
 ## Acceptance criteria
 
-- [ ] The decision record ships with corpus provenance, format
+- [x] The decision record ships with corpus provenance, format
   inventory, parity-standard feasibility, and a clear go/no-go.
-- [ ] If a corpus exists locally, metadata oracle outputs are captured
+- [x] If a corpus exists locally, metadata oracle outputs are captured
   under the ignored reference-output path with committed checksums.
-- [ ] No-go (if so) names the blocking facts honestly.
+  (No corpus exists; the capture step is part of the recorded
+  re-opening plan.)
+- [x] No-go (if so) names the blocking facts honestly.
 
 ## Test plan
 
