@@ -254,6 +254,13 @@ export const mapBuildingFrameSprite: readonly number[] = [
   0xb7, 0xb5, 0xb6, 0xb0, 0xb8, 0xb3, 0xaf, 0xb4,
 ];
 
+// RenderBuilding.CrossSprite: the construction cross every freshly
+// placed site shows while the ground is leveled (progress 0).
+export const constructionCrossSprite = 0x90;
+
+// RenderFlag: flags cycle four wave frames (map objects 128..131).
+export const flagWaveFrames = 4;
+
 export function buildLandscapeRenderAssets(
   decodedAssets: DecodedRenderAssets,
   landscape: ClassicMapLandscape,
@@ -326,9 +333,28 @@ export function buildLandscapeRenderAssets(
     }
   }
 
-  // All building sprites (done + frame stages) precompose so construction at
+  // Flag wave frames (reference RenderFlag: map objects 128..131 cycle
+  // by (tick >> 3) & 3). Frame 0 doubles as the static "obj:flag".
+  for (let frame = 0; frame < flagWaveFrames; frame += 1) {
+    const decoded = decodedAssets.rawMapObjects.get(128 + frame);
+    if (decoded === undefined) {
+      continue;
+    }
+
+    sprites[`objflag:${frame}`] = decoded.sprite;
+    if (decoded.shadow !== null) {
+      sprites[`objflagshadow:${frame}`] = decoded.shadow;
+    }
+  }
+
+  // All building sprites (done + frame stages + the construction cross
+  // that marks a freshly placed site) precompose so construction at
   // any time resolves.
-  for (const spriteIndex of [...mapBuildingSprite, ...mapBuildingFrameSprite]) {
+  for (const spriteIndex of [
+    ...mapBuildingSprite,
+    ...mapBuildingFrameSprite,
+    constructionCrossSprite,
+  ]) {
     if (spriteIndex === 0) {
       continue;
     }
@@ -502,6 +528,8 @@ export type LandscapeSceneOptions = {
     readonly animation: number;
     readonly counter: number;
   }[];
+  // The selected tile: the map cursor draws here (SB-34 round 3).
+  readonly selected?: { readonly column: number; readonly row: number };
   // The authentic panel bar: the five slots' panel_button sprite ids
   // (SB-16-02; computed from game state by the shell).
   readonly panel?: { readonly buttons: readonly number[] };
@@ -557,6 +585,16 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
     });
   };
 
+  // The flag wave frame for this scene build (reference RenderFlag);
+  // falls back to the static sprite when the frames are not decoded.
+  const flagFrame = ((options.tick ?? 0) >> 3) & (flagWaveFrames - 1);
+  const flagKey =
+    atlas.regions[`objflag:${flagFrame}`] !== undefined ? `objflag:${flagFrame}` : "obj:flag";
+  const flagShadowKey =
+    atlas.regions[`objflagshadow:${flagFrame}`] !== undefined
+      ? `objflagshadow:${flagFrame}`
+      : "objshadow:flag";
+
   const latticeColumns = Math.ceil(options.size.width / (tileWidth * viewScale)) + extraColumns;
   const latticeRows = Math.ceil(options.size.height / (tileHeight * viewScale)) + extraRowsBelow;
 
@@ -601,20 +639,22 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
         pushSprite("shadows", `mos:${spriteIndex}`, apexX, apexY, apexY, apexX);
         pushSprite("objects", `mo:${spriteIndex}`, apexX, apexY, apexY, apexX);
       } else if (objectType === 1) {
-        // World flags (map object 1) render the real flag sprite.
-        pushSprite("shadows", "objshadow:flag", apexX, apexY, apexY, apexX);
-        pushSprite("markers", "obj:flag", apexX, apexY, apexY, apexX);
+        // World flags (map object 1) wave through the reference frames;
+        // the static sprite is the fallback when frames are missing.
+        pushSprite("shadows", flagShadowKey, apexX, apexY, apexY, apexX);
+        pushSprite("markers", flagKey, apexX, apexY, apexY, apexX);
       } else if (objectType >= 2 && objectType <= 4 && options.world !== undefined) {
         // Buildings render their reference map_object sprite by type.
         const building = options.world.buildingAt(position);
         if (building !== null) {
-          // Leveling sites show no sprite yet; framed sites show the frame;
+          // Leveling sites show the construction cross (the placement is
+          // visible the instant it happens); framed sites show the frame;
           // completed buildings show the finished sprite.
           const spriteIndex = building.isDone
             ? (mapBuildingSprite[building.type] ?? 0)
             : building.progress >= 1
               ? (mapBuildingFrameSprite[building.type] ?? 0)
-              : 0;
+              : constructionCrossSprite;
           if (spriteIndex !== 0) {
             pushSprite("shadows", `mos:${spriteIndex}`, apexX, apexY, apexY, apexX);
             pushSprite("objects", `mo:${spriteIndex}`, apexX, apexY, apexY, apexX);
@@ -796,8 +836,35 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
       continue;
     }
 
-    pushSprite("shadows", "objshadow:flag", screen.x, screen.y, screen.y, screen.x);
-    pushSprite("markers", "obj:flag", screen.x, screen.y, screen.y + structure.id / 1000, screen.x);
+    pushSprite("shadows", flagShadowKey, screen.x, screen.y, screen.y, screen.x);
+    pushSprite("markers", flagKey, screen.x, screen.y, screen.y + structure.id / 1000, screen.x);
+  }
+
+  // The map cursor (SB-34 round 3): the selection marker draws AT the
+  // selected tile — the player must always see where their tap landed.
+  if (options.selected !== undefined && atlas.regions["uic"] !== undefined) {
+    const screen = mapTileToScreen(
+      landscape,
+      options.selected,
+      { column: scrollColumn, row: scrollRow },
+    );
+    if (
+      screen !== null &&
+      screen.x >= -tileWidth &&
+      screen.x <= options.size.width + tileWidth &&
+      screen.y >= -2 * tileHeight &&
+      screen.y <= options.size.height + 2 * tileHeight
+    ) {
+      const region = atlas.regions["uic"];
+      pushSprite(
+        "markers",
+        "uic",
+        screen.x - Math.trunc(region.width / 2),
+        screen.y - Math.trunc(region.height / 2),
+        screen.y + 1000,
+        screen.x,
+      );
+    }
   }
 
   // UI chrome overlay (SB-16-01 foundation): decoded font text, an icon,
@@ -812,10 +879,8 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
     pushUiText(sprites, atlas, hudText, 30 * uiScale, 6 * uiScale, uiScale);
 
     pushUiSprite(sprites, atlas, "uii:0", 6 * uiScale, 2 * uiScale, uiScale);
-    pushUiSprite(
-      sprites, atlas, "uic",
-      options.size.width - 20 * uiScale, 2 * uiScale, uiScale,
-    );
+    // The cursor is a map marker at the selected tile (round 3 of the
+    // touch punch list) — never corner decoration.
   }
 
   // The authentic panel bar (SB-16-02): frame_bottom background pieces

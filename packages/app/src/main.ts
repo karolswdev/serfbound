@@ -175,7 +175,9 @@ export {
 } from "./local-game-save-store.js";
 export {
   buildLandscapeRenderAssets,
+  constructionCrossSprite,
   createLandscapeScene,
+  flagWaveFrames,
   mapBuildingSprite,
   mapTileToScreen,
   screenToMapTile,
@@ -1151,6 +1153,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       currentNotice,
       initScreenSettings(),
       { sfxMuted: audioService.sfxMuted, musicMuted: audioService.musicMuted },
+      selectedInteraction?.tile,
     );
 
     // SB-34-03: publish the chrome's hit rectangles in canvas CSS space
@@ -1784,6 +1787,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     onSelection(interaction) {
       selectedInteraction = interaction;
       syncBuildFlagEnabled(root, selectedInteraction, currentBuiltStructures);
+      // The map cursor draws at the selection — repaint immediately so
+      // the tap lands visibly, not on the next animation tick.
+      renderCurrentScene();
     },
   });
 
@@ -3447,6 +3453,7 @@ function renderScene(
   notice?: string,
   initScreen?: InitScreenSettings,
   audio?: { sfxMuted: boolean; musicMuted: boolean },
+  selected?: { readonly column: number; readonly row: number },
 ): void {
   const canvas = root.querySelector<HTMLCanvasElement>("[data-testid='terrain-preview']");
   if (canvas === null) {
@@ -3468,6 +3475,7 @@ function renderScene(
           ...(popup === undefined ? {} : { popup: { kind: popup } }),
           ...(notice === undefined ? {} : { notice }),
           ...(audio === undefined ? {} : { audio }),
+          ...(selected === undefined ? {} : { selected }),
           ...(decodedAssets === undefined
             ? {}
             : { definedArchiveEntries: decodedAssets.definedArchiveEntries }),

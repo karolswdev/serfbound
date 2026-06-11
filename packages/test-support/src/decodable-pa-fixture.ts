@@ -166,9 +166,10 @@ export function createDecodableGeneratedPaArchive(): Uint8Array {
     bytes: concatBytes([spriteHeader(16, 16, -8, -15), fullCoverageRuns(16 * 16, 32)]),
   });
 
-  // Building sprites (map_object 0x98..0xc0 -> entries 1402..1442) with
-  // shadows, plus 10 territory border sprites (map_border 610..619).
-  for (let sprite = 0x98; sprite <= 0xc0; sprite += 1) {
+  // Building sprites plus the construction cross/corner stone
+  // (map_object 0x90..0xc0 -> entries 1394..1442) with shadows, plus
+  // 10 territory border sprites (map_border 610..619).
+  for (let sprite = 0x90; sprite <= 0xc0; sprite += 1) {
     entries.push({
       index: 1250 + sprite,
       bytes: concatBytes([spriteHeader(48, 40, -24, -39), fullCoverageRuns(48 * 40, 60 + sprite)]),
@@ -242,15 +243,21 @@ export function createDecodableGeneratedPaArchive(): Uint8Array {
     bytes: concatBytes([spriteHeader(16, 16), fullCoverageRuns(16 * 16, 250)]),
   });
 
-  // Flag frame 0 (map_object 128 -> entry 1378) with its shadow (1628).
-  entries.push({
-    index: 1378,
-    bytes: concatBytes([spriteHeader(16, 19, 0, -18), fullCoverageRuns(16 * 19, 210)]),
-  });
-  entries.push({
-    index: 1628,
-    bytes: concatBytes([spriteHeader(16, 8, -8, -2), fullCoverageRuns(16 * 8, null)]),
-  });
+  // Flag wave frames 0..3 (map_object 128..131 -> entries 1378..1381)
+  // with their shadows (1628..1631) — the reference flag cycle.
+  for (let frame = 0; frame < 4; frame += 1) {
+    entries.push({
+      index: 1378 + frame,
+      bytes: concatBytes([
+        spriteHeader(16, 19, 0, -18),
+        fullCoverageRuns(16 * 19, 210 + frame * 5),
+      ]),
+    });
+    entries.push({
+      index: 1628 + frame,
+      bytes: concatBytes([spriteHeader(16, 8, -8, -2), fullCoverageRuns(16 * 8, null)]),
+    });
+  }
 
   const tableStart = 8;
   const tableEnd = tableStart + entryCount * 8;

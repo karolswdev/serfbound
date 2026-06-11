@@ -153,7 +153,19 @@ test("the UI overlay renders text, icon, frame, and cursor at 2x over the world"
     );
   }
   assert.equal(uiSprites.some((sprite) => sprite.key === "uii:0"), true, "icon on screen");
-  assert.equal(uiSprites.some((sprite) => sprite.key === "uic"), true, "cursor on screen");
+  // The cursor is a map marker at the selected tile (SB-34 round 3),
+  // never unconditional corner decoration in the HUD.
+  assert.equal(uiSprites.some((sprite) => sprite.key === "uic"), false, "no corner cursor");
+  const selectedScene = createLandscapeScene({
+    size: { width: 1280, height: 720 },
+    assets,
+    scroll: { column: 0, row: 0 },
+    world,
+    selected: { column: 6, row: 6 },
+  });
+  const mapCursor = selectedScene.sprites.find((sprite) => sprite.key === "uic");
+  assert.notEqual(mapCursor, undefined, "cursor at the selected tile");
+  assert.equal(mapCursor.layer, "markers", "cursor rides the map layers");
 
   // The ui layer draws last: every ui sprite sorts after every map sprite.
   const lastMapIndex = scene.sprites.reduce(

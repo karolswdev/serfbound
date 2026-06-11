@@ -64,11 +64,11 @@ test("the world view scale zooms map layers and leaves UI chrome alone", () => {
   assert.equal(zoomedTerrain.y, baseTerrain.y * 2);
   assert.equal(zoomedTerrain.scale, 2);
 
-  // Fewer map tiles fit at 2x; the UI cursor still draws at the ui scale.
+  // Fewer map tiles fit at 2x; the UI chrome still draws at the ui scale.
   assert.equal(zoomed.tilePrimitiveCount < base.tilePrimitiveCount, true);
-  const cursor = zoomed.sprites.find((sprite) => sprite.key === "uic");
-  assert.notEqual(cursor, undefined, "cursor on screen at 2x");
-  assert.equal(cursor.scale, 2, "ui chrome keeps uiScaleFor, not the view scale");
+  const hudIcon = zoomed.sprites.find((sprite) => sprite.key === "uii:0");
+  assert.notEqual(hudIcon, undefined, "HUD icon on screen at 2x");
+  assert.equal(hudIcon.scale, 2, "ui chrome keeps uiScaleFor, not the view scale");
 });
 
 test("screen-to-tile picking divides by the view scale", () => {

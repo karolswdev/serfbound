@@ -1,7 +1,8 @@
 # Phase 34 — Touch Playability
 
-**Last updated:** 2026-06-11 (after SB-34-04: all six punches
-addressed and gated; only the device verdict remains — SB-34-05).
+**Last updated:** 2026-06-11 (after SB-34-06: the round-3 punch
+list — invisible cursor, invisible construction, frozen flags —
+fixed and gated; the third device pass is the open gate).
 **Status:** in progress — opened by the maintainer's real-device
 play test, which the previous touch gates failed to predict.
 
@@ -15,6 +16,22 @@ Real phone, real fingers: "LITERALLY unplayable."
 4. Zero animations — flags don't wave.
 5. Could not build a road — "could not even click into it."
 6. The build-building menu shows buildings cropped after ~5 pixels.
+
+## Round 3 (second device pass, 2026-06-11)
+
+"Some improvements" — the build menu renders — but:
+
+7. A placed building does not render at all; just its flag.
+   (Root: progress-0 sites drew no sprite; the reference shows the
+   construction cross 0x90 instantly. Fixed + gated, SB-34-06.)
+8. Still no visible indication where the tap landed.
+   (Root: the 5-point cursor was HUD decoration pinned top-right by
+   design — punch 2's literal cause. It now draws at the selected
+   tile. Fixed + gated, SB-34-06.)
+9. Flags still don't wave.
+   (Root: flags rendered the single static frame 128 on every
+   platform; the reference cycles 128..131. Fixed + gated,
+   SB-34-06 — this was never device-specific.)
 
 ## Honest diagnosis of the gate failure
 
@@ -61,7 +78,8 @@ their device and saying so.
 | SB-34-02 | Founding confirmation on touch | done | story-02-founding-confirmation.md | evidence-story-02.md |
 | SB-34-03 | DPR-3 coordinate spaces: cursor, panel, popups | done | story-03-dpr3-coordinate-truth.md | evidence-story-03.md |
 | SB-34-04 | Selection bleed + on-device animation | done | story-04-selection-bleed-and-motion.md | evidence-story-04.md |
-| SB-34-05 | The device gate | backlog | — | — |
+| SB-34-05 | The device gate | looped — round-2 pass rejected; round 3 shipped, third pass pending | — | — |
+| SB-34-06 | The visible world: cursor, construction, waving flags | done | story-06-the-visible-world.md | evidence-story-06.md |
 
 ## Active risks
 

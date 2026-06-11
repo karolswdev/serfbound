@@ -4,11 +4,16 @@ import { test } from "node:test";
 import {
   buildDecodedRenderAssets,
   buildLandscapeRenderAssets,
+  constructionCrossSprite,
   createLandscapeScene,
   mapTileToScreen,
   screenToMapTile,
 } from "@serfbound/app";
-import { generateClassicMap } from "@serfbound/engine";
+import {
+  SerfboundCommandRouter,
+  generateClassicMap,
+  startSerfboundLocalGame,
+} from "@serfbound/engine";
 import { createDecodableGeneratedPaArchive } from "@serfbound/test-support";
 
 const decodedAssets = buildDecodedRenderAssets(createDecodableGeneratedPaArchive());
@@ -54,7 +59,8 @@ test("the landscape scene covers the viewport from the generated world", () => {
     );
   }
 
-  assert.equal(scene.sprites.filter((sprite) => sprite.key === "obj:flag").length, 1);
+  // Flags render the wave frame for the scene's tick (frame 0 here).
+  assert.equal(scene.sprites.filter((sprite) => sprite.key === "objflag:0").length, 1);
 });
 
 test("scrolling changes the visible window and wraps at map edges", () => {
@@ -107,6 +113,8 @@ test("map/screen mappings agree and respect scroll", () => {
   }
 });
 
+const isFlagKey = (key) => key === "obj:flag" || /^objflag:\d$/.test(key);
+
 test("built flags track their map tile across scrolls", () => {
   const tile = { column: 20, row: 8, position: 8 * 64 + 20 };
   const near = createLandscapeScene({
@@ -115,7 +123,7 @@ test("built flags track their map tile across scrolls", () => {
     scroll: { column: 16, row: 4 },
     builtStructures: [{ id: 1, kind: "flag", tile }],
   });
-  const flag = near.sprites.find((sprite) => sprite.key === "obj:flag");
+  const flag = near.sprites.find((sprite) => isFlagKey(sprite.key));
   assert.notEqual(flag, undefined, "flag visible when scrolled near its tile");
 
   const far = createLandscapeScene({
@@ -125,10 +133,37 @@ test("built flags track their map tile across scrolls", () => {
     builtStructures: [{ id: 1, kind: "flag", tile }],
   });
   assert.equal(
-    far.sprites.find((sprite) => sprite.key === "obj:flag"),
+    far.sprites.find((sprite) => isFlagKey(sprite.key)),
     undefined,
     "flag culled when far outside the viewport",
   );
+});
+
+test("flags wave through the reference frames as the tick advances", () => {
+  // RenderFlag: map objects 128..131, frame = (tick >> 3) & 3.
+  for (let frame = 0; frame < 4; frame += 1) {
+    assert.notEqual(
+      landscapeAssets.atlas.regions[`objflag:${frame}`],
+      undefined,
+      `flag frame ${frame} composed`,
+    );
+  }
+
+  const tile = { column: 20, row: 8, position: 8 * 64 + 20 };
+  const flagAtTick = (tick) =>
+    createLandscapeScene({
+      size: { width: 960, height: 540 },
+      assets: landscapeAssets,
+      scroll: { column: 16, row: 4 },
+      tick,
+      builtStructures: [{ id: 1, kind: "flag", tile }],
+    }).sprites.find((sprite) => sprite.key.startsWith("objflag:"));
+
+  assert.equal(flagAtTick(0).key, "objflag:0");
+  assert.equal(flagAtTick(8).key, "objflag:1");
+  assert.equal(flagAtTick(16).key, "objflag:2");
+  assert.equal(flagAtTick(24).key, "objflag:3");
+  assert.equal(flagAtTick(32).key, "objflag:0", "the cycle wraps");
 });
 
 test("waves animate on water and mask at shores per the reference rules", () => {
@@ -170,6 +205,83 @@ test("waves animate on water and mask at shores per the reference rules", () => 
       "wave frame advanced by one",
     );
   }
+});
+
+test("a freshly placed building shows the construction cross immediately", () => {
+  // The maintainer's phone: "the building literally doesn't render —
+  // just a flag." The reference shows CrossSprite 0x90 the moment a
+  // site is placed (progress 0, leveling); invisible placement is a bug.
+  const started = startSerfboundLocalGame({
+    data: {
+      kind: "imported-dos-pa-catalog",
+      archiveName: "SPAU.PA",
+      byteLength: 1_282_805,
+      entryCount: 4000,
+      definedArchiveEntries: 3805,
+      fixupCount: 252,
+    },
+  });
+  assert.equal(started.status, "started");
+  const world = started.game.world();
+  const router = new SerfboundCommandRouter(started.game.state, world);
+  const tileFor = (position) => ({
+    column: position & world.geometry.columnMask,
+    row: (position >>> world.geometry.rowShift) & world.geometry.rowMask,
+    position,
+  });
+
+  let castlePosition = -1;
+  for (let position = 0; position < world.tileCount; position += 1) {
+    if (world.canBuildCastle(position, 0)) {
+      castlePosition = position;
+      break;
+    }
+  }
+  assert.notEqual(castlePosition, -1, "a castle spot exists");
+  assert.equal(
+    router.dispatch({ type: "game.build-castle", source: "pointer", tile: tileFor(castlePosition) })
+      .status,
+    "accepted",
+  );
+
+  let sitePosition = -1;
+  for (let offset = 0; offset < 200; offset += 1) {
+    const candidate = world.positionAddSpirally(castlePosition, offset);
+    if (world.canBuildBuilding(candidate, 2, 0)) {
+      sitePosition = candidate;
+      break;
+    }
+  }
+  assert.notEqual(sitePosition, -1, "a lumberjack site exists");
+  assert.equal(
+    router.dispatch({
+      type: "game.build-building",
+      source: "pointer",
+      tile: tileFor(sitePosition),
+      buildingKind: "lumberjack",
+    }).status,
+    "accepted",
+  );
+  const building = world.buildingAt(sitePosition);
+  assert.notEqual(building, null);
+  assert.equal(building.progress, 0, "the site has not been leveled yet");
+
+  const worldAssets = buildLandscapeRenderAssets(
+    buildDecodedRenderAssets(createDecodableGeneratedPaArchive()),
+    started.game.landscape(),
+  );
+  const tile = tileFor(sitePosition);
+  const scene = createLandscapeScene({
+    size: { width: 960, height: 540 },
+    assets: worldAssets,
+    scroll: { column: Math.max(0, tile.column - 8), row: Math.max(0, tile.row - 8) },
+    world,
+  });
+  assert.equal(
+    scene.sprites.some((sprite) => sprite.key === `mo:${constructionCrossSprite}`),
+    true,
+    "the construction cross renders at the placed site",
+  );
 });
 
 test("serfs render torso sprites from the animation table chain", () => {

@@ -67,7 +67,8 @@ test("built roads and world flags render in the landscape scene", () => {
     "flat right-direction segments use the reference mask/ground pair",
   );
 
-  const flagSprites = scene.sprites.filter((sprite) => sprite.key === "obj:flag");
+  // Flags render the wave frame for the scene's tick (frame 0 here).
+  const flagSprites = scene.sprites.filter((sprite) => sprite.key === "objflag:0");
   assert.equal(flagSprites.length, 2, "both world flags render the real flag sprite");
 
   for (const sprite of scene.sprites) {
