@@ -17,15 +17,19 @@ the challenge/mailbox services, the dual-attested ladder; shell online
 surface pending service deployment); Phase 26 shipped localization
 (persisted language switch, complete German inside the original
 glyphs) and recorded the Amiga no-go with its reopening condition.
-Remaining: realtime WebRTC online play (27); then the 2026-06-11
-expansion wave, scaffolded from maintainer direction: open-source
-readiness (28 — enticing README, e2e-captured screenshots,
-contributor onramp), the hosting backbone (29 — `serfbound.com` and
-the maintainer's Linode LKE cluster serving the Phase 25 services,
-closing that phase's named online-surface gap), rankings and
-gamification (30 — leaderboard, profiles, achievements), and licensed
-asset delivery (31 — hosted converted assets, hard-gated on the
-rights-holder permission being documented in writing).
+The 2026-06-11 expansion wave: Phase 29 shipped same-day — the
+hosting backbone is **live**: `https://serfbound.com` serves the game
+and `https://api.serfbound.com` serves the identity/mailbox services
+from the maintainer's LKE cluster, with the shell online surface
+(device-key sign-in, challenge lobby, your-turn badge, online
+correspondence to dual attestation) closing the Phase 25 named gap
+(see [phase-29-hosting-backbone/final-summary.md](./phase-29-hosting-backbone/final-summary.md)).
+Remaining: realtime WebRTC online play (27), open-source readiness
+(28 — enticing README, e2e-captured screenshots, contributor onramp),
+rankings and gamification (30 — leaderboard, profiles, achievements;
+unblocked by 29), and licensed asset delivery (31 — hosted converted
+assets, hard-gated on the rights-holder permission being documented
+in writing).
 
 ## Vision
 
@@ -137,7 +141,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 26 | Data breadth and localization: Amiga evaluation, language tables | complete | [phase-26-data-breadth-localization](./phase-26-data-breadth-localization/) |
 | 27 | Realtime online play: WebRTC transport, signaling, resilience | scaffolded | [phase-27-realtime-online-play](./phase-27-realtime-online-play/) |
 | 28 | Open-source readiness: README, e2e screenshots, contributor onramp | scaffolded | [phase-28-open-source-readiness](./phase-28-open-source-readiness/) |
-| 29 | Hosting backbone: serfbound.com, LKE cluster, online surface | scaffolded | [phase-29-hosting-backbone](./phase-29-hosting-backbone/) |
+| 29 | Hosting backbone: serfbound.com, LKE cluster, online surface | complete | [phase-29-hosting-backbone](./phase-29-hosting-backbone/) |
 | 30 | Rankings and gamification: leaderboard, profiles, achievements | scaffolded | [phase-30-rankings-gamification](./phase-30-rankings-gamification/) |
 | 31 | Licensed asset delivery: documented permission, hosted converted assets | scaffolded | [phase-31-licensed-asset-delivery](./phase-31-licensed-asset-delivery/) |
 

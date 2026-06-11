@@ -1,7 +1,8 @@
 # Phase 29 — Hosting Backbone
 
-**Last updated:** 2026-06-11 (after SB-29-03).
-**Status:** in progress.
+**Last updated:** 2026-06-11 (after SB-29-04 — phase closed; see
+[final-summary.md](./final-summary.md)).
+**Status:** complete.
 
 ## Goal
 
@@ -40,15 +41,15 @@ Serverless, accountless play remains first-class forever.
 
 ## Exit criteria (evidence required)
 
-- [ ] The infrastructure decision record exists; the kubeconfig is
+- [x] The infrastructure decision record exists; the kubeconfig is
   local-only and provably ignored; no secret is in the repo.
   (SB-29-01)
-- [ ] Container images build and the manifests validate; the services
+- [x] Container images build and the manifests validate; the services
   pass their contract tests running containerized. (SB-29-02)
-- [ ] `https://api.serfbound.com` serves both services with TLS,
-  ingress rate limiting, persistent stores that survive pod
+- [x] `https://api.serfbound.com` serves both services with TLS,
+  edge rate limiting, persistent stores that survive pod
   restarts, and a working backup/restore path. (SB-29-03)
-- [ ] `serfbound.com` serves the game, the shell online surface works
+- [x] `serfbound.com` serves the game, the shell online surface works
   against the public URL, and a real correspondence match completes
   through it end to end — the Phase 25 follow-up is closed.
   (SB-29-04)
@@ -60,7 +61,7 @@ Serverless, accountless play remains first-class forever.
 | SB-29-01 | Infrastructure decision and secrets boundary | done | story-01-infrastructure-decision.md | evidence-story-01.md |
 | SB-29-02 | Service containers and manifests | done | story-02-service-containers-manifests.md | evidence-story-02.md |
 | SB-29-03 | Cluster deployment, DNS, TLS | done | story-03-cluster-deploy-dns-tls.md | evidence-story-03.md |
-| SB-29-04 | Online surface and hosting gate | in-progress | story-04-online-surface-hosting-gate.md | — |
+| SB-29-04 | Online surface and hosting gate | done | story-04-online-surface-hosting-gate.md | evidence-story-04.md |
 
 ## Where we are
 
@@ -79,9 +80,14 @@ including a store-survives-restart check. SB-29-03 shipped:
 contract tests green over the public internet, Cloudflare-edge rate
 limiting proven (59× 429 on a 120-burst), pod-restart persistence
 and a backup/wipe/restore drill passed on the live cluster, stores
-wiped pristine for launch. Next: SB-29-04 (shell online surface +
-`serfbound.com` serving the game) — the Phase 25 named gap closes
-there.
+wiped pristine for launch. SB-29-04 shipped and closed the phase:
+the shell online surface (sign-in, lobby, your-turn badge, online
+correspondence to dual attestation) is live against
+`https://api.serfbound.com`, `https://serfbound.com` serves the game
+with HTTPS enforced, the public-backbone match agreed on boundary
+checksum 1088464342, and the outage regression is in CI. The
+Phase 25 named gap is closed. This document is frozen; the phase
+record continues in [final-summary.md](./final-summary.md).
 
 ## Active risks
 
