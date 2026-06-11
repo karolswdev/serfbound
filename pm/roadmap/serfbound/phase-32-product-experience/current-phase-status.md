@@ -1,0 +1,112 @@
+# Phase 32 — Product Experience
+
+**Last updated:** 2026-06-11.
+**Status:** not started.
+
+## Goal
+
+Make everything around the simulation worthy of what's inside it.
+The in-game UI is decoded original art (Phases 16/21); the shell
+wrapping it — landing, import, panels, buttons, the online surface —
+still looks like the engineering rig it grew up as. This phase writes
+the design standard the shell never had, rebuilds the chrome to it,
+turns first-run into a welcome instead of a checklist, styles the
+competitive surfaces like a platform that means it, and gates on the
+maintainer looking at the product and recognizing care.
+
+## Background
+
+Maintainer direction, 2026-06-11, verbatim in spirit: the player UI
+and shell "look like a development tool" — where is the design
+standard, where is the soul, where is the caring? Diagnosis accepted:
+every shell story to date gated on function and testids; the standing
+visual gate (Phase 10 rule) covered the game world, never the chrome.
+No written standard existed, so no bar could fail. The fix is
+structural, not cosmetic: a standard first, then conformance,
+mechanically encouraged.
+
+## Scope
+
+- **In:** A design-standard canon (tokens, components, layout, voice,
+  accessibility floor) with a PMO project extension making UI-facing
+  changes answer to it; the shell chrome rebuilt to the standard
+  (landing/title composition, the game as hero, designed panels and
+  controls, state-driven views); the first-run/import journey as a
+  designed experience; the online/multiplayer/profile surfaces styled
+  as a competitive platform (cards, badges, empty/loading/error
+  states); the experience gate with full-journey captures and the
+  maintainer's sign-off.
+- **Out:** The in-game original-art UI (Phases 16/21 — untouchable;
+  the shell defers to it), new features or surfaces (this phase
+  redesigns what exists), UI frameworks/component libraries (the
+  zero-dependency posture holds; first-party CSS with design tokens),
+  rebranding the name/logo.
+
+## Non-negotiable constraints
+
+- The in-game decoded-art UI is the soul; the shell extends its
+  language (palette derived from the game's own decoded palette,
+  its typographic feel, its materials) — it never competes with it.
+- Every existing test keeps passing: testids and dataset attributes
+  are a compatibility contract; restyling must not rewire behavior.
+- Accessibility floor: the Phase 8 contrast/focus/reduced-motion
+  checks remain green; the redesign raises them, never trades them.
+- No new dependencies for UI. Tokens and CSS are first-party.
+- Player-facing copy carries the game's voice — no lorem, no
+  developer jargon leaking into the product.
+
+## Exit criteria (evidence required)
+
+- [ ] The design standard exists as canon (tokens, component
+  inventory, layout system, voice, a11y floor) and the PMO extension
+  holds UI-facing changes to it. (SB-32-01)
+- [ ] The shell chrome conforms: landing/title, panels, controls,
+  state-driven views — desktop and mobile captures from real data.
+  (SB-32-02)
+- [ ] First-run is a designed journey: a stranger lands, understands,
+  imports, and plays — captured end to end. (SB-32-03)
+- [ ] The competitive surfaces (sign-in, lobby, your-turn, attest,
+  profile) read as a platform — all states designed, captured.
+  (SB-32-04)
+- [ ] The experience gate: full-journey before/after captures, the
+  conformance checklist green, existing visual-artifact suite
+  regenerated, and the maintainer's recorded sign-off. (SB-32-05)
+
+## Story status
+
+| ID | Story | Status | Story file | Evidence |
+|---|---|---|---|---|
+| SB-32-01 | The design standard and its enforcement | backlog | story-01-design-standard.md | — |
+| SB-32-02 | Shell chrome rebuilt to the standard | backlog | story-02-shell-chrome-redesign.md | — |
+| SB-32-03 | First-run and import as a designed journey | backlog | story-03-first-run-experience.md | — |
+| SB-32-04 | Competitive surfaces styled as a platform | backlog | story-04-competitive-surfaces.md | — |
+| SB-32-05 | Experience gate | backlog | story-05-experience-gate.md | — |
+
+## Where we are
+
+Scaffolded 2026-06-11 from direct maintainer direction after the
+Phase 29 artifacts made the shell's state impossible to unsee. Can
+start immediately; SB-32-02..04 depend on the standard (SB-32-01).
+Phase 28's README media should be captured after this phase lands
+(noted in phase 28) — the landing screenshots will be worth showing.
+
+## Active risks
+
+| Risk | Likelihood | Mitigation | Stop signal |
+|---|---|---|---|
+| Taste loops without convergence | high | The standard doc decides; disagreements amend the doc, then the UI | A second rework of the same surface with no standard change |
+| Restyle breaks the test contract | medium | Testids/dataset attrs frozen; ci:release after every story | Any suite needing edits beyond additive selectors |
+| Shell upstages the in-game art | medium | Palette/type derive from decoded assets; the game stays the hero | A shell element louder than the game canvas |
+| A11y regression under prettier paint | low | Phase 8 checks in the gate; contrast tokens in the standard | Any Phase 8 position going red |
+
+## Decisions made (this phase)
+
+- none yet.
+
+## Decisions deferred
+
+- A custom display font for shell headings (license + glyph
+  questions) — default: system stack tuned by tokens until decided.
+- Animated/asset-rich landing hero — decide in SB-32-02 against
+  performance and the no-bundled-assets boundary.
+- Dark-only vs dual themes — default: the game's dark idiom only.

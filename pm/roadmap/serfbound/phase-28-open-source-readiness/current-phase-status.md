@@ -59,7 +59,11 @@ OSS-readiness gate proven from the outside looking in.
 Scaffolded 2026-06-11 from user direction: README needs to be
 enticing, call out features, carry screenshots of an active game
 captured via e2e. Independent of Phase 27 — can proceed in parallel
-or after it.
+or after it. Ordering note (2026-06-11): Phase 32 (product
+experience) should land before this phase's shell-visible media —
+in-game screenshots are unaffected, but landing/shell captures and
+the social preview should show the redesigned chrome, and SB-28-02's
+play-now path now points at `https://serfbound.com`.
 
 ## Active risks
 

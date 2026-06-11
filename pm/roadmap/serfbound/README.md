@@ -27,9 +27,13 @@ correspondence to dual attestation) closing the Phase 25 named gap
 Remaining: realtime WebRTC online play (27), open-source readiness
 (28 — enticing README, e2e-captured screenshots, contributor onramp),
 rankings and gamification (30 — leaderboard, profiles, achievements;
-unblocked by 29), and licensed asset delivery (31 — hosted converted
+unblocked by 29), licensed asset delivery (31 — hosted converted
 assets, hard-gated on the rights-holder permission being documented
-in writing).
+in writing), and product experience (32 — the shell's design
+standard, chrome redesign, first-run journey, and platform-grade
+competitive surfaces; scaffolded 2026-06-11 from maintainer
+direction; 28's media and 30's surfaces should land on 32's
+standard).
 
 ## Vision
 
@@ -144,6 +148,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 29 | Hosting backbone: serfbound.com, LKE cluster, online surface | complete | [phase-29-hosting-backbone](./phase-29-hosting-backbone/) |
 | 30 | Rankings and gamification: leaderboard, profiles, achievements | scaffolded | [phase-30-rankings-gamification](./phase-30-rankings-gamification/) |
 | 31 | Licensed asset delivery: documented permission, hosted converted assets | scaffolded | [phase-31-licensed-asset-delivery](./phase-31-licensed-asset-delivery/) |
+| 32 | Product experience: design standard, shell redesign, first-run, platform feel | scaffolded | [phase-32-product-experience](./phase-32-product-experience/) |
 
 ## Delivery Gates
 
@@ -199,6 +204,9 @@ when the previous phase has evidence:
 - Phase 31 proves licensed asset delivery honestly: nothing ships
   until the rights-holder permission exists in writing; then converted
   assets download once and cache locally.
+- Phase 32 proves the product looks like we care: a written design
+  standard, the shell rebuilt to it, and the maintainer's own eyes as
+  the gate.
 
 Phases 11 onward inherit the Phase 10 standing rule: a phase gates on something
 a player can see or play, captured from real local data via the visual gate —
