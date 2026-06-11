@@ -143,8 +143,26 @@ h1 {
   display: block;
 }
 
-[data-serfbound-chrome="pre-import"] .scene {
-  overflow-y: auto;
+/* Pre-import the PAGE scrolls. Scrollable containers join the tab
+   order (Firefox: always; Chromium: when childless of focusables) and
+   would steal the keyboard contract's first Tab from the Import
+   control — so pre-import, neither the scene nor the panel scrolls
+   itself. */
+[data-serfbound-chrome="pre-import"] .serfbound-shell {
+  height: auto;
+  min-height: 100vh;
+}
+
+[data-serfbound-chrome="pre-import"] .status-panel {
+  overflow-y: visible;
+}
+
+/* Pre-import the preview is a fixed vignette (the auto-height grid
+   would otherwise stretch the canvas to the chrome column's full
+   height — thousands of pixels of empty map). */
+[data-serfbound-chrome="pre-import"] .terrain-preview {
+  flex: 0 0 auto;
+  height: min(48vh, 480px);
 }
 
 .welcome__card {

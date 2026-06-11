@@ -181,6 +181,11 @@ Non-negotiable, tested (Phase 8 suite + the conformance pass):
 - `prefers-reduced-motion` honored globally.
 - Color never carries meaning alone (the badge has words, not just
   green).
+- One canonical keyboard path per action: a duplicate pointer
+  affordance (e.g. the welcome drop zone, which mirrors the Import
+  control) is keyboard-skipped (`aria-hidden`, no tab stop) so the
+  first Tab from a cold page lands on the canonical control — the
+  Phase 8 keyboard contract.
 
 ## 7. Conformance (rule #8)
 

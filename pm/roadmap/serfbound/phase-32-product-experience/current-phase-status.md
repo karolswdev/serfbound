@@ -80,7 +80,7 @@ mechanically encouraged.
 | SB-32-02 | Shell chrome rebuilt to the standard | done | story-02-shell-chrome-redesign.md | evidence-story-02.md |
 | SB-32-03 | First-run and import as a designed journey | done | story-03-first-run-experience.md | evidence-story-03.md |
 | SB-32-04 | Competitive surfaces styled as a platform | done | story-04-competitive-surfaces.md | evidence-story-04.md |
-| SB-32-05 | Experience gate | backlog | story-05-experience-gate.md | — |
+| SB-32-05 | Experience gate | in-progress | story-05-experience-gate.md | — |
 
 ## Where we are
 

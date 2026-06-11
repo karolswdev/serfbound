@@ -397,8 +397,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
                 class="welcome__drop"
                 data-testid="welcome-drop-zone"
                 for="data-import"
-                role="button"
-                tabindex="0"
+                aria-hidden="true"
               >
                 <strong>Drop your SPAU.PA here</strong>
                 <span>or click to browse</span>
@@ -1728,15 +1727,6 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     welcomeDropZone.classList.remove("is-dragover");
     applyImportFile(event.dataTransfer?.files.item(0));
   });
-  welcomeDropZone?.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") {
-      return;
-    }
-
-    event.preventDefault();
-    input.click();
-  });
-
   const importControl = root.querySelector<HTMLElement>("[data-testid='data-import-control']");
   if (importControl === null) {
     throw new Error("Serfbound shell import control did not mount.");
