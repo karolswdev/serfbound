@@ -10,7 +10,7 @@ const decodedSceneScreenshotPath =
 test("importing a decodable archive renders the decoded sprite scene", async ({ page }) => {
   test.setTimeout(300_000);
   await mkdir(dirname(decodedSceneScreenshotPath), { recursive: true });
-  await page.goto("/?seed=6235842872325272");
+  await page.goto("/?dev=1&seed=6235842872325272");
 
   await expect(page.locator("#app")).toHaveAttribute(
     "data-serfbound-scene-source",
@@ -91,7 +91,7 @@ test("importing a decodable archive renders the decoded sprite scene", async ({ 
   // The seed-row test above randomized the world; re-pin the
   // deterministic seed before starting so the founding flow plays the
   // same world every run (?seed wins on load), and restore supplies 35.
-  await page.goto("/?seed=6235842872325272");
+  await page.goto("/?dev=1&seed=6235842872325272");
   await expect(page.getByTestId("data-state")).toHaveText("Data imported");
   await expect(page.locator("#app")).toHaveAttribute(
     "data-serfbound-init-seed",

@@ -38,7 +38,7 @@ test("static app shell renders without original data or a desktop companion", as
   await mkdir(dirname(basicPanelsDesktopScreenshotPath), { recursive: true });
   await mkdir(dirname(localGameStartedScreenshotPath), { recursive: true });
   await mkdir(dirname(firstBuildFlagScreenshotPath), { recursive: true });
-  await page.goto("/");
+  await page.goto("/?dev=1");
 
   const shell = page.getByTestId("serfbound-shell");
   await expect(shell).toBeVisible();
@@ -374,7 +374,7 @@ test("render layer scene stays framed on desktop and mobile viewports", async ({
     },
   ] as const) {
     await page.setViewportSize(viewport.size);
-    await page.goto("/");
+    await page.goto("/?dev=1");
     await expect(page.getByTestId("scene-state")).toHaveText("Preview terrain");
     await expect(page.locator("#app")).toHaveAttribute("data-serfbound-renderer", "webgl2");
     await waitForCanvasResize(page);
@@ -390,7 +390,7 @@ test("render layer scene stays framed on desktop and mobile viewports", async ({
 });
 
 test("corrupt imported data can be reset from the browser shell", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?dev=1");
   await resetSerfboundDatabases(page);
   await seedInvalidImportedArchiveRecord(page);
   await page.reload();
@@ -434,7 +434,7 @@ test("corrupt imported data can be reset from the browser shell", async ({ page 
 });
 
 test("corrupt save data can be reset without losing imported data", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?dev=1");
   await resetSerfboundDatabases(page);
   await seedValidImportedArchiveRecord(page);
   await seedInvalidLocalGameSaveRecord(page);
@@ -485,7 +485,7 @@ test("corrupt save data can be reset without losing imported data", async ({ pag
 });
 
 test("quota and write errors produce recoverable browser feedback", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?dev=1");
   await resetSerfboundDatabases(page);
   await page.reload();
   await installIndexedDbPutFailures(page);
@@ -816,7 +816,7 @@ test("the error report copies actionable, data-free context on demand", async ({
   context,
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.goto("/");
+  await page.goto("/?dev=1");
 
   // A runtime error lands in the local buffer (nothing is sent anywhere).
   await page.evaluate(() => {

@@ -1,6 +1,6 @@
 # Phase 32 — Product Experience
 
-**Last updated:** 2026-06-11 (after SB-32-04).
+**Last updated:** 2026-06-11 (after SB-32-06; the SB-32-05 gate re-presents).
 **Status:** in progress.
 
 ## Goal
@@ -81,6 +81,7 @@ mechanically encouraged.
 | SB-32-03 | First-run and import as a designed journey | done | story-03-first-run-experience.md | evidence-story-03.md |
 | SB-32-04 | Competitive surfaces styled as a platform | done | story-04-competitive-surfaces.md | evidence-story-04.md |
 | SB-32-05 | Experience gate | in-progress | story-05-experience-gate.md | — |
+| SB-32-06 | The product cut | done | story-06-the-product-cut.md | evidence-story-06.md |
 
 ## Where we are
 
@@ -107,7 +108,18 @@ lands straight on the title — three new first-run tests, all tokens
 consumed (43/43, reserved list empty), ci:release exit 0 captured
 directly. The first overlay design stole the preview's pointer
 contract and static-shell.spec caught it — the app yielded (in-flow
-welcome), the test stood. SB-32-04 shipped: the lobby is challenge cards with a designed quiet state, the sign-in moment presents the device-key model, the match strip narrates the correspondence through its closing ceremony, the badge pulses once on arrival, and the Chronicle row joins the company group — online suites green unchanged, ci:release exit 0. Next: SB-32-05, the maintainer gate.
+welcome), the test stood. SB-32-04 shipped: the lobby is challenge cards, the sign-in moment
+presents the device-key model, the match strip narrates through the
+closing ceremony. The first SB-32-05 gate verdict REJECTED the round
+("still feels like a debugging tool") — the stop signal fired as
+designed: SB-32-06 added the missing laws to the standard (*no
+diagnostics on the player surface*, *one surface one moment*),
+retired the diagnostic rows and dev controls into the collapsed
+"Under the hood" ledger (?dev=1 for the suite), gated groups by
+chrome state, and made START the title's hero. Both gates green
+(ci:release, compatibility 5/5); three dev suites moved to ?dev=1 —
+the recorded contract evolution. SB-32-05 re-presents on this
+surface.
 
 ## Active risks
 
@@ -128,6 +140,10 @@ welcome), the test stood. SB-32-04 shipped: the lobby is challenge cards with a 
 - 2026-06-11 — Rule #8 structural check covers CSS/index.html/public;
   `main.ts` markup conformance is certified by checkbox 8 (too much
   non-UI code in that file for a path-based check) — SB-32-01.
+- 2026-06-11 — Gate verdict #1 rejected the restyle; diagnostics and
+  dev controls are not product UI (standard §4 laws added) and the
+  dev surface lives behind `?dev=1` — three suites' goto URLs updated,
+  authorized by the maintainer verdict — SB-32-06.
 
 ## Decisions deferred
 

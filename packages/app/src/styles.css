@@ -573,7 +573,48 @@ input.secondary-action {
   outline-offset: 3px;
 }
 
-/* ── Chrome states (standard §4): pre-import, title, running ──── */
+/* The under-the-hood ledger (SB-32-06): diagnostics and dev controls
+   live behind one quiet disclosure. Playing never needs it; the test
+   suite opens it with ?dev=1. */
+.dev-ledger {
+  border-top: 1px solid var(--sb-line-soft);
+  padding-top: var(--sb-space-3);
+}
+
+.dev-ledger summary {
+  color: var(--sb-moss);
+  cursor: pointer;
+  font-size: var(--sb-text-xs);
+  font-weight: var(--sb-weight-bold);
+  letter-spacing: var(--sb-track-wide);
+  text-transform: uppercase;
+}
+
+.dev-ledger summary:focus-visible {
+  outline: 3px solid var(--sb-steel);
+  outline-offset: 3px;
+}
+
+.dev-ledger[open] {
+  display: grid;
+  gap: var(--sb-space-3);
+}
+
+/* ── Chrome states (standard §4): pre-import, title, running ────
+   One surface, one moment: each state shows only what the player
+   acts on now. ?dev=1 restores everything, everywhere. */
+
+[data-serfbound-chrome="pre-import"]:not([data-serfbound-dev="1"]) .panel-group--realm,
+[data-serfbound-chrome="pre-import"]:not([data-serfbound-dev="1"]) .panel-group--ledger,
+[data-serfbound-chrome="running"]:not([data-serfbound-dev="1"]) .panel-group--realm {
+  display: none;
+}
+
+/* Title: starting the game is the moment. */
+[data-serfbound-chrome="title"] .panel-group--realm .primary-action {
+  min-height: 56px;
+  font-size: var(--sb-text-lg);
+}
 
 /* Pre-import: the data group carries the journey — a gold accent
    marks where the player begins. */

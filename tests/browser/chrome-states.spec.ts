@@ -35,9 +35,12 @@ test("the chrome walks pre-import -> title -> running", async ({ page }) => {
     .evaluate((el) => Number.parseFloat(getComputedStyle(el).fontSize));
   expect(heroSize).toBeLessThan(24);
 
-  // Every control the running game needs stays reachable (build
-  // buttons enable on tile selection — visibility is what the
-  // receding chrome must not cost).
+  // One surface, one moment: running hides the start surface, keeps
+  // the session controls, and the diagnostics stay in the closed
+  // ledger (the in-game original-art UI is the control surface).
   await expect(page.getByTestId("save-game-button")).toBeEnabled();
-  await expect(page.getByTestId("build-flag-button")).toBeVisible();
+  await expect(page.getByTestId("start-game-button")).toBeHidden();
+  await expect(page.getByTestId("build-flag-button")).toBeHidden();
+  await expect(page.getByTestId("dev-ledger")).toBeVisible();
+  await expect(page.getByTestId("pointer-state")).toBeHidden();
 });

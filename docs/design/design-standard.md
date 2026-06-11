@@ -143,6 +143,12 @@ inventory first). Each component defines **all of its states**;
   choices on a 4-column grid — line border at rest, moss on hover,
   gold when chosen (`aria-pressed`). Library art follows §8; the
   selection is local-first and never crosses the wire.
+- **Dev ledger** (`.dev-ledger`, SB-32-06): the one home for
+  diagnostics and dev controls — a collapsed disclosure at the
+  chrome's foot, moss uppercase summary, honest copy ("playing never
+  needs this"). `?dev=1` opens it and restores every group in every
+  chrome state; the test suite drives that surface, players never
+  see it.
 
 ## 4. Layout
 
@@ -153,6 +159,16 @@ inventory first). Each component defines **all of its states**;
   composition), `title` (start-focused), `running` (chrome minimized;
   the canvas owns the viewport). The state lives on the root dataset
   and CSS keys off it.
+- **No diagnostics on the player surface** (SB-32-06, maintainer
+  verdict): pipeline state, coordinates, command logs, and dev
+  controls are not product UI — they live in the dev ledger (§3),
+  collapsed. If a player must read it to play, it isn't a
+  diagnostic; design it properly instead.
+- **One surface, one moment** (SB-32-06): each chrome state shows
+  only the groups a player acts on in that moment — pre-import hides
+  the realm and the saves; running hides the start surface. The
+  in-game original-art UI (Phase 16) is the only in-game control
+  surface; the shell never duplicates it.
 - **Density**: panels use space-4 padding desktop, space-3 mobile;
   never more than two type sizes inside one component.
 

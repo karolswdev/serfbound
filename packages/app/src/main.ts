@@ -477,10 +477,6 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             <p class="status-panel__value" data-testid="data-state">No game data</p>
           </div>
           <p class="status-panel__detail" data-testid="data-detail">Import SPAU.PA to start a local game.</p>
-          <div>
-            <p class="status-panel__label">Source</p>
-            <p class="status-panel__value" data-testid="source-state">No data</p>
-          </div>
           <div class="panel-group__actions">
             <input
               id="data-import"
@@ -512,26 +508,6 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             <p class="status-panel__value" data-testid="game-state">Data needed</p>
           </div>
           <p class="status-panel__detail" data-testid="game-detail">Import game data first.</p>
-          <div>
-            <p class="status-panel__label">Map</p>
-            <p class="status-panel__value" data-testid="scene-state">Waiting for data</p>
-          </div>
-          <p class="status-panel__detail" data-testid="scene-detail">Select land to inspect it.</p>
-          <div>
-            <p class="status-panel__label">Hover</p>
-            <p class="status-panel__value" data-testid="pointer-state">No map target</p>
-          </div>
-          <p class="status-panel__detail" data-testid="pointer-detail">Move over the map.</p>
-          <div>
-            <p class="status-panel__label">Selected Tile</p>
-            <p class="status-panel__value" data-testid="selected-tile-state">No tile selected</p>
-          </div>
-          <p class="status-panel__detail" data-testid="selected-tile-detail">Select land to see its position.</p>
-          <div>
-            <p class="status-panel__label">Action</p>
-            <p class="status-panel__value" data-testid="command-state">No action selected</p>
-          </div>
-          <p class="status-panel__detail" data-testid="command-detail">Select a tile to inspect available actions.</p>
           <div class="panel-group__actions">
             <button
               class="primary-action"
@@ -539,29 +515,6 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
               type="button"
               disabled
             >Start game</button>
-            <button
-              class="secondary-action"
-              data-testid="build-flag-button"
-              type="button"
-              disabled
-            >Build flag</button>
-            <button
-              class="secondary-action"
-              data-testid="build-road-button"
-              type="button"
-              disabled
-            >Build road</button>
-            <button
-              class="secondary-action"
-              data-testid="build-lumberjack-button"
-              type="button"
-              disabled
-            >Build lumberjack</button>
-            <button
-              class="secondary-action"
-              data-testid="view-scale-button"
-              type="button"
-            >View scale</button>
           </div>
         </section>
         <section class="panel-group panel-group--ledger">
@@ -722,14 +675,82 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             >Language</button>
             <button
               class="secondary-action"
+              data-testid="view-scale-button"
+              type="button"
+            >View scale</button>
+          </div>
+        </section>
+        <details class="dev-ledger" data-testid="dev-ledger">
+          <summary>Under the hood</summary>
+          <p class="status-panel__detail">The realm's inner workings — for the curious and the bug-hunters. Playing never needs this.</p>
+          <div>
+            <p class="status-panel__label">Source</p>
+            <p class="status-panel__value" data-testid="source-state">No data</p>
+          </div>
+          <div>
+            <p class="status-panel__label">Map</p>
+            <p class="status-panel__value" data-testid="scene-state">Waiting for data</p>
+          </div>
+          <p class="status-panel__detail" data-testid="scene-detail">Select land to inspect it.</p>
+          <div>
+            <p class="status-panel__label">Hover</p>
+            <p class="status-panel__value" data-testid="pointer-state">No map target</p>
+          </div>
+          <p class="status-panel__detail" data-testid="pointer-detail">Move over the map.</p>
+          <div>
+            <p class="status-panel__label">Selected Tile</p>
+            <p class="status-panel__value" data-testid="selected-tile-state">No tile selected</p>
+          </div>
+          <p class="status-panel__detail" data-testid="selected-tile-detail">Select land to see its position.</p>
+          <div>
+            <p class="status-panel__label">Action</p>
+            <p class="status-panel__value" data-testid="command-state">No action selected</p>
+          </div>
+          <p class="status-panel__detail" data-testid="command-detail">Select a tile to inspect available actions.</p>
+          <div class="panel-group__actions">
+            <button
+              class="secondary-action"
+              data-testid="build-flag-button"
+              type="button"
+              disabled
+            >Build flag</button>
+            <button
+              class="secondary-action"
+              data-testid="build-road-button"
+              type="button"
+              disabled
+            >Build road</button>
+            <button
+              class="secondary-action"
+              data-testid="build-lumberjack-button"
+              type="button"
+              disabled
+            >Build lumberjack</button>
+            <button
+              class="secondary-action"
               data-testid="error-report-button"
               type="button"
             >Copy error report</button>
           </div>
-        </section>
+        </details>
       </aside>
     </main>
   `;
+
+  // Dev mode (SB-32-06): `?dev=1` opens the under-the-hood ledger and
+  // keeps every group visible in every chrome state — the surface the
+  // test suite and bug-hunters drive. Players get the product.
+  try {
+    if (new URLSearchParams(globalThis.location?.search ?? "").get("dev") === "1") {
+      root.dataset.serfboundDev = "1";
+      root.querySelector<HTMLDetailsElement>("[data-testid='dev-ledger']")?.setAttribute(
+        "open",
+        "",
+      );
+    }
+  } catch {
+    // No location (tests without DOM navigation): player surface.
+  }
 
   // Chrome states (SB-32-02, standard §4): the shell composition
   // follows the player's journey — pre-import, title, running. CSS
