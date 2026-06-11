@@ -829,6 +829,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             <p class="status-panel__label">Action</p>
             <p class="status-panel__value" data-testid="command-state">No action selected</p>
           </div>
+          <div>
+            <p class="status-panel__label">Pulse</p>
+            <p class="status-panel__value" data-testid="pulse-state">Not running</p>
+          </div>
           <p class="status-panel__detail" data-testid="command-detail">Select a tile to inspect available actions.</p>
           <div class="panel-group__actions">
             <button
@@ -1215,20 +1219,25 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       waveTimer = undefined;
     }
   };
+  // SB-34-04: prefers-reduced-motion pins the decorative wave frame —
+  // it must never stop the world. This timer drives the simulation,
+  // serfs, AI, and autosave, not just waves; on a phone with Reduce
+  // Motion enabled the old gate froze the entire game.
+  let reducedMotionActive = false;
   const syncWaveAnimation = () => {
-    const reducedMotion =
+    reducedMotionActive =
       typeof globalThis.matchMedia === "function" &&
       globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    root.dataset.serfboundMotion = reducedMotionActive ? "reduced" : "full";
     // A running lockstep session must keep pumping even in a hidden
     // tab — the peer's simulation waits on our turn bundles (the
     // browser may still throttle the cadence; lockstep holds safely).
     const multiplayerRunning =
       currentMultiplayer !== undefined && currentMultiplayer.status.phase === "running";
-    const shouldAnimate =
+    const shouldRun =
       currentLandscapeAssets !== undefined &&
-      currentLandscapeAssets.waveFrameCount > 0 &&
-      ((!reducedMotion && !root.ownerDocument.hidden) || multiplayerRunning);
-    if (!shouldAnimate) {
+      (!root.ownerDocument.hidden || multiplayerRunning);
+    if (!shouldRun) {
       stopWaveAnimation();
       return;
     }
@@ -1237,7 +1246,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     // 175ms reproduces the original cadence without per-frame rebuilds. The
     // same driver advances the simulation clock and interim construction.
     waveTimer ??= setInterval(() => {
-      currentTick = (currentTick + 8) % 1024;
+      if (!reducedMotionActive && (currentLandscapeAssets?.waveFrameCount ?? 0) > 0) {
+        currentTick = (currentTick + 8) % 1024;
+      }
       if (
         currentWorld !== undefined &&
         root.dataset.serfboundGameState === "running" &&
@@ -1436,10 +1447,25 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
       }
 
+      // The dev ledger's visible heartbeat (SB-34-04): on a device,
+      // "do flags wave" splits into sim tick vs wave frame vs motion
+      // preference at a glance.
+      const pulseElement = root.querySelector("[data-testid='pulse-state']");
+      if (pulseElement !== null) {
+        pulseElement.textContent =
+          `tick ${commandRouter.state.tick} · wave ${currentTick} · motion ` +
+          (reducedMotionActive ? "reduced" : "full");
+      }
+
       renderCurrentScene();
     }, 175);
   };
   root.ownerDocument.addEventListener("visibilitychange", syncWaveAnimation);
+  if (typeof globalThis.matchMedia === "function") {
+    globalThis
+      .matchMedia("(prefers-reduced-motion: reduce)")
+      .addEventListener?.("change", syncWaveAnimation);
+  }
   const startLandscapeRendering = (game: { landscape(): Parameters<typeof buildLandscapeRenderAssets>[1] }) => {
     if (currentDecodedAssets === undefined) {
       currentLandscapeAssets = undefined;

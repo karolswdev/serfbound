@@ -132,6 +132,42 @@ async function publishedRect(
   return { x: x!, y: y!, width: width!, height: height! };
 }
 
+test("punch 3: play taps never text-select the chrome", async ({ page }) => {
+  await importAndStart(page);
+  const selectable = await page.evaluate(() => {
+    const probe = (selector: string): string => {
+      const element = document.querySelector(selector);
+      return element === null ? "missing" : getComputedStyle(element).userSelect;
+    };
+
+    return {
+      body: getComputedStyle(document.body).userSelect,
+      statusPanel: probe(".status-panel"),
+    };
+  });
+  expect(selectable.body).toBe("none");
+  expect(selectable.statusPanel).toBe("none");
+});
+
+test("punch 4: Reduce Motion must never freeze the world", async ({ page }) => {
+  // iOS "Reduce Motion" is a common accessibility setting. It may pin
+  // the decorative wave frame — it must not stop the simulation.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await importAndStart(page);
+  await foundCastle(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-serfbound-motion", "reduced");
+  const tickBefore = Number(
+    await page.locator("#app").getAttribute("data-serfbound-game-tick"),
+  );
+  await page.waitForTimeout(1200);
+  const tickAfter = Number(
+    await page.locator("#app").getAttribute("data-serfbound-game-tick"),
+  );
+  expect(tickAfter, "the simulation froze under prefers-reduced-motion").toBeGreaterThan(
+    tickBefore,
+  );
+});
+
 test("punch 5: road mode engages from a panel-bar tap at DPR 3", async ({ page }) => {
   await importAndStart(page);
   await foundCastle(page);

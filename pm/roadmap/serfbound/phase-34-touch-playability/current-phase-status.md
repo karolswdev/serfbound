@@ -1,7 +1,7 @@
 # Phase 34 — Touch Playability
 
-**Last updated:** 2026-06-11 (after SB-34-03: punches 1–3, 5, 6
-fixed and touch-proven; punch 4 needs the device).
+**Last updated:** 2026-06-11 (after SB-34-04: all six punches
+addressed and gated; only the device verdict remains — SB-34-05).
 **Status:** in progress — opened by the maintainer's real-device
 play test, which the previous touch gates failed to predict.
 
@@ -46,8 +46,10 @@ their device and saying so.
   are hit-true and fully visible at every DPR including 3.
   (SB-34-03 — the build-menu crop turned out to be a UI paint-order
   bug, broken at every scale; see evidence-story-03.md.)
-- [ ] The chrome never text-selects mid-play; animations verified on
-  device (flags wave). (SB-34-04)
+- [x] The chrome never text-selects mid-play; the reduced-motion
+  world-freeze is fixed and gated; the Pulse diagnostic ships for
+  the device run. (SB-34-04 — "flags wave on the device" is owned
+  by SB-34-05.)
 - [ ] The maintainer plays on their phone and signs off — or the next
   punch list loops. (SB-34-05)
 
@@ -58,7 +60,7 @@ their device and saying so.
 | SB-34-01 | The real-touch repro harness | done | story-01-real-touch-harness.md | evidence-story-01.md |
 | SB-34-02 | Founding confirmation on touch | done | story-02-founding-confirmation.md | evidence-story-02.md |
 | SB-34-03 | DPR-3 coordinate spaces: cursor, panel, popups | done | story-03-dpr3-coordinate-truth.md | evidence-story-03.md |
-| SB-34-04 | Selection bleed + on-device animation | backlog | — | — |
+| SB-34-04 | Selection bleed + on-device animation | done | story-04-selection-bleed-and-motion.md | evidence-story-04.md |
 | SB-34-05 | The device gate | backlog | — | — |
 
 ## Active risks
@@ -66,7 +68,7 @@ their device and saying so.
 | Risk | Likelihood | Mitigation | Stop signal |
 |---|---|---|---|
 | Emulation flatters again | high | DPR-3 + hasTouch + touchscreen.tap as the spec floor; the device gate is the maintainer | Any "fixed" claim without a device pass |
-| Symptom 4 not reproducible off-device | medium | Diagnostic overlay (?dev=1 frame counter) for the maintainer's run | — |
+| Symptom 4 not reproducible off-device | medium | Shipped: the dev-ledger Pulse row (`?dev=1`) splits sim tick / wave frame / motion preference on device; the reduced-motion world-freeze found en route is fixed and gated | — |
 
 ## Decisions made (this phase)
 
@@ -81,3 +83,7 @@ their device and saying so.
   (`data-serfbound-panel-rect`, `data-serfbound-popup-rect`, canvas
   CSS space) so gates verify against the geometry the code uses,
   not a parallel re-derivation.
+- 2026-06-11 — Reduced motion never pauses the world (SB-34-04):
+  `prefers-reduced-motion` pins decorative frame cycling only; the
+  simulation timer always runs while a game is live. An
+  accessibility preference must never read as a frozen game.
