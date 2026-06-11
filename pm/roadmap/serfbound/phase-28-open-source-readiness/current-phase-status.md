@@ -1,0 +1,81 @@
+# Phase 28 — Open-Source Readiness
+
+**Last updated:** 2026-06-11.
+**Status:** not started.
+
+## Goal
+
+Make the repository's public face worthy of the game behind it: an
+enticing README with real gameplay screenshots captured through the
+e2e pipeline, a feature showcase where every claim maps to shipped
+evidence, a contributor onramp that survives a fresh clone, and an
+OSS-readiness gate proven from the outside looking in.
+
+## Scope
+
+- **In:** A recorded decision on committing gameplay media (the
+  asset/legal boundary extended to screenshots of decoded original
+  art), an e2e-driven capture pipeline producing a curated README
+  media set, the README overhaul (hero, features, play-now,
+  quickstart), CONTRIBUTING + issue/PR templates + repo metadata, a
+  fresh-clone contributor dry run as the gate.
+- **Out:** Hosting and serfbound.com (Phase 29), rankings surfaces
+  (Phase 30), marketing site, social media operations.
+
+## Non-negotiable constraints
+
+- Every feature claim in the README maps to a shipped phase or
+  evidence file — no overclaims.
+- Committed media is curated and small; heavy visual artifacts stay
+  in the archive repository per the Phase 24 posture.
+- The data boundary stays loud: Serfbound bundles no original assets;
+  screenshots depict art decoded from the maintainer's own data.
+
+## Exit criteria (evidence required)
+
+- [ ] The gameplay-media decision record exists and the e2e capture
+  pipeline regenerates the curated README media set from a
+  seed-pinned game. (SB-28-01)
+- [ ] The README sells the project: hero, screenshots, feature
+  showcase with evidence-grounded claims, play-now and quickstart
+  paths. (SB-28-02)
+- [ ] A contributor onramp exists: CONTRIBUTING, templates, repo
+  metadata, hook setup documented. (SB-28-03)
+- [ ] A fresh-clone dry run goes clone → install → test → e2e green
+  with no local data, and the GitHub landing page is captured as the
+  visual gate. (SB-28-04)
+
+## Story status
+
+| ID | Story | Status | Story file | Evidence |
+|---|---|---|---|---|
+| SB-28-01 | Gameplay media pipeline | backlog | story-01-gameplay-media-pipeline.md | — |
+| SB-28-02 | README overhaul | backlog | story-02-readme-overhaul.md | — |
+| SB-28-03 | Contributor onramp | backlog | story-03-contributor-onramp.md | — |
+| SB-28-04 | OSS readiness gate | backlog | story-04-oss-readiness-gate.md | — |
+
+## Where we are
+
+Scaffolded 2026-06-11 from user direction: README needs to be
+enticing, call out features, carry screenshots of an active game
+captured via e2e. Independent of Phase 27 — can proceed in parallel
+or after it.
+
+## Active risks
+
+| Risk | Likelihood | Mitigation | Stop signal |
+|---|---|---|---|
+| Overclaiming features | medium | Every claim cites a shipped phase | A README claim with no evidence behind it |
+| Media bloat in the repo | medium | Curated set with a size budget; heavy artifacts stay archived | Repo clone size jumps materially |
+| Screenshot/IP objection | low | Decision record with rationale and precedent; media is decoded-from-owned-data captures | A rights-holder objection or takedown |
+
+## Decisions made (this phase)
+
+- none yet.
+
+## Decisions deferred
+
+- Animated capture (GIF/video) in the README — decide in SB-28-01
+  against the size budget; default is stills only.
+- Social preview image — default: derived from the curated media set
+  in SB-28-03.

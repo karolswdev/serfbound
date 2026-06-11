@@ -1,6 +1,6 @@
 # Serfbound — Roadmap
 
-**Last updated:** 2026-06-10.
+**Last updated:** 2026-06-11.
 **Current phase:** [27 — Realtime Online Play](./phase-27-realtime-online-play/)
 **Status:** Phases 0–23 complete; Serfbound v0.1.0 shipped launch-ready
 (see [phase-20-launch-operations/final-summary.md](./phase-20-launch-operations/final-summary.md)).
@@ -17,7 +17,15 @@ the challenge/mailbox services, the dual-attested ladder; shell online
 surface pending service deployment); Phase 26 shipped localization
 (persisted language switch, complete German inside the original
 glyphs) and recorded the Amiga no-go with its reopening condition.
-Remaining: realtime WebRTC online play (27).
+Remaining: realtime WebRTC online play (27); then the 2026-06-11
+expansion wave, scaffolded from maintainer direction: open-source
+readiness (28 — enticing README, e2e-captured screenshots,
+contributor onramp), the hosting backbone (29 — `serfbound.com` and
+the maintainer's Linode LKE cluster serving the Phase 25 services,
+closing that phase's named online-surface gap), rankings and
+gamification (30 — leaderboard, profiles, achievements), and licensed
+asset delivery (31 — hosted converted assets, hard-gated on the
+rights-holder permission being documented in writing).
 
 ## Vision
 
@@ -125,6 +133,10 @@ and either prove the new behavior intentionally or defer the decision.
 | 25 | Community and identity: profiles, accounts, challenges, mailbox, ladder | complete | [phase-25-community-identity](./phase-25-community-identity/) |
 | 26 | Data breadth and localization: Amiga evaluation, language tables | complete | [phase-26-data-breadth-localization](./phase-26-data-breadth-localization/) |
 | 27 | Realtime online play: WebRTC transport, signaling, resilience | scaffolded | [phase-27-realtime-online-play](./phase-27-realtime-online-play/) |
+| 28 | Open-source readiness: README, e2e screenshots, contributor onramp | scaffolded | [phase-28-open-source-readiness](./phase-28-open-source-readiness/) |
+| 29 | Hosting backbone: serfbound.com, LKE cluster, online surface | scaffolded | [phase-29-hosting-backbone](./phase-29-hosting-backbone/) |
+| 30 | Rankings and gamification: leaderboard, profiles, achievements | scaffolded | [phase-30-rankings-gamification](./phase-30-rankings-gamification/) |
+| 31 | Licensed asset delivery: documented permission, hosted converted assets | scaffolded | [phase-31-licensed-asset-delivery](./phase-31-licensed-asset-delivery/) |
 
 ## Delivery Gates
 
@@ -169,6 +181,17 @@ when the previous phase has evidence:
 - Phase 26 proves data breadth (Amiga, evidence-gated) and localization
   within the original fonts.
 - Phase 27 proves realtime online play works peer-to-peer over WebRTC.
+- Phase 28 proves the repository is worth a stranger's evening: real
+  screenshots, evidence-grounded claims, a fresh-clone path that works.
+- Phase 29 proves the optional backbone is real: the Phase 25 services
+  live behind HTTPS at `api.serfbound.com`, the game at
+  `serfbound.com`, with serverless play untouched.
+- Phase 30 proves competition and progress are visible without eroding
+  the privacy posture: leaderboard, profiles, achievements —
+  local-first.
+- Phase 31 proves licensed asset delivery honestly: nothing ships
+  until the rights-holder permission exists in writing; then converted
+  assets download once and cache locally.
 
 Phases 11 onward inherit the Phase 10 standing rule: a phase gates on something
 a player can see or play, captured from real local data via the visual gate —
