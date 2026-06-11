@@ -1,7 +1,7 @@
 # Phase 30 — Rankings and Gamification
 
 **Last updated:** 2026-06-11 (SB-30-05 added and started by maintainer direction).
-**Status:** in progress (SB-30-01 and SB-30-05 done; 02-04 remain).
+**Status:** in progress (01, 02, 05 done; 03-04 remain).
 
 ## Goal
 
@@ -43,7 +43,7 @@ second-class.
 - [x] The shell shows the live ladder and a leaderboard; challenges
   display opponent ratings; disputed outcomes are visibly
   quarantined. (SB-30-01)
-- [ ] A player profile shows match history, win/loss/streaks, and
+- [x] A player profile shows match history, win/loss/streaks, and
   campaign progress, fully populated in accountless offline play.
   (SB-30-02)
 - [ ] Achievements unlock from real play, render in original art,
@@ -58,7 +58,7 @@ second-class.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-30-01 | Ladder and leaderboard surface | done | story-01-ladder-leaderboard-surface.md | evidence-story-01.md |
-| SB-30-02 | Profiles, history, statistics | backlog | story-02-profiles-history-statistics.md | — |
+| SB-30-02 | Profiles, history, statistics | done | story-02-profiles-history-statistics.md | evidence-story-02.md |
 | SB-30-03 | Achievements in original art | backlog | story-03-achievements-original-art.md | — |
 | SB-30-04 | Gamification gate | backlog | story-04-gamification-gate.md | — |
 | SB-30-05 | Avatars and guild heraldry | done | story-05-avatars-and-guilds.md | evidence-story-05.md |
@@ -85,7 +85,13 @@ identity on the full profile surface.
 
 ## Decisions made (this phase)
 
-- none yet.
+- 2026-06-11 — The campaign ledger exists: mission victories persist
+  locally on the profile (`missionsCompleted`) — a game record like
+  the saves, never uploaded. Created because both SB-30-02 and
+  SB-30-03 assumed a record that nothing had ever written — SB-30-02.
+- 2026-06-11 — Profile surface lives in the DOM shell chronicle (the
+  Phase 32 standard's components); original-art popups remain
+  SB-30-03's option for celebration moments — SB-30-02.
 
 ## Decisions deferred
 

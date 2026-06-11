@@ -19,10 +19,12 @@ import {
   withAvatar,
   withGuild,
   withMatchHistoryEntry,
+  withMissionCompleted,
   withProfileName,
   type StoredSerfboundProfile,
 } from "./profile-store.js";
 import { avatarById, guildById, serfboundAvatars, serfboundGuilds } from "./identity-art.js";
+import { deriveProfileStatistics, matchModeLabels } from "./profile-stats.js";
 import { resolveOnlineConfig } from "./online-config.js";
 import { SerfboundOnlineSurface } from "./online-surface.js";
 import { SerfboundOnlineMatch } from "./online-match.js";
@@ -131,6 +133,7 @@ export * from "./online-config.js";
 export * from "./online-surface.js";
 export * from "./online-match.js";
 export * from "./identity-art.js";
+export * from "./profile-stats.js";
 
 export {
   BrowserIndexedDbImportedArchiveStore,
@@ -328,6 +331,46 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       const count = currentProfile.history.length;
       chronicle.textContent =
         count === 0 ? "No matches yet" : `${count} ${count === 1 ? "match" : "matches"} recorded`;
+    }
+
+    // The chronicle proper (SB-30-02): statistics derived, never
+    // collected; the campaign ledger; the recent record.
+    const stats = deriveProfileStatistics(currentProfile.history);
+    const statsElement = root.querySelector<HTMLElement>("[data-testid='chronicle-stats']");
+    if (statsElement !== null) {
+      statsElement.innerHTML =
+        stats.played === 0
+          ? `<p class="status-panel__detail">Your first match writes the first line.</p>`
+          : `
+            <div class="chronicle__stat"><span>${stats.won}</span> won</div>
+            <div class="chronicle__stat"><span>${stats.lost}</span> lost</div>
+            <div class="chronicle__stat"><span>${stats.currentStreak}</span> streak</div>
+            <div class="chronicle__stat"><span>${stats.bestStreak}</span> best</div>`;
+    }
+
+    const campaignElement = root.querySelector<HTMLElement>("[data-testid='chronicle-campaign']");
+    if (campaignElement !== null) {
+      const completed = currentProfile.missionsCompleted?.length ?? 0;
+      campaignElement.textContent =
+        completed === 0
+          ? "Not yet begun"
+          : `${completed} of ${serfboundMissions.length} missions won`;
+    }
+
+    const historyElement = root.querySelector<HTMLElement>("[data-testid='chronicle-history']");
+    if (historyElement !== null) {
+      historyElement.innerHTML = currentProfile.history
+        .slice(0, 8)
+        .map(
+          (entry) => `
+            <div class="chronicle__entry chronicle__entry--${entry.result}">
+              <span class="chronicle__opponent">${entry.opponentName}</span>
+              <span class="chronicle__mode">${matchModeLabels[entry.mode]}</span>
+              <span class="chronicle__result">${entry.result}</span>
+              <span class="chronicle__date">${entry.endedAtIso.slice(0, 10)}</span>
+            </div>`,
+        )
+        .join("");
     }
 
     // The identity row (SB-30-05): who you are, in the library's art.
@@ -579,10 +622,20 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             <p class="status-panel__label">Guild</p>
             <div class="identity-choices" data-testid="guild-choices"></div>
           </details>
-          <div>
-            <p class="status-panel__label">Chronicle</p>
-            <p class="status-panel__value" data-testid="profile-chronicle">No matches yet</p>
-          </div>
+          <details class="chronicle" data-testid="chronicle">
+            <summary>
+              <span class="status-panel__label">Chronicle</span>
+              <span class="status-panel__value" data-testid="profile-chronicle">No matches yet</span>
+            </summary>
+            <p class="status-panel__detail">Kept on this device, like your saves — never uploaded.</p>
+            <div class="chronicle__stats" data-testid="chronicle-stats"></div>
+            <p class="status-panel__detail" data-testid="chronicle-rating" hidden></p>
+            <div>
+              <p class="status-panel__label">Campaign</p>
+              <p class="status-panel__value" data-testid="chronicle-campaign">Not yet begun</p>
+            </div>
+            <div class="chronicle__history" data-testid="chronicle-history"></div>
+          </details>
           <div class="panel-group__actions">
             <input
               class="secondary-action"
@@ -1239,6 +1292,24 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
               }
 
               setNotice(uiText("notice.gameOver"));
+            }
+
+            // The campaign ledger (SB-30-02): a mission victory
+            // writes itself — every rival's castle fallen, yours
+            // standing. A local game record, like the saves.
+            if (
+              initMission !== undefined &&
+              currentProfile.missionsCompleted?.includes(initMission) !== true
+            ) {
+              const players = currentWorld.players as readonly { defeated?: boolean }[];
+              const rivals = players.slice(1);
+              if (
+                rivals.length > 0 &&
+                rivals.every((rival) => rival.defeated === true) &&
+                players[0]?.defeated !== true
+              ) {
+                saveProfile(withMissionCompleted(currentProfile, initMission));
+              }
             }
           }
         }
@@ -2356,6 +2427,15 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         disputed === 0
           ? ""
           : `${disputed} of your ${disputed === 1 ? "match is" : "matches are"} disputed — quarantined, unrated.`;
+    }
+
+    // The chronicle shows the rating once the ladder has been read —
+    // never fetched on the profile's account (SB-30-02).
+    const chronicleRating = root.querySelector<HTMLElement>("[data-testid='chronicle-rating']");
+    if (chronicleRating !== null) {
+      const own = onlineSurface.ladder.find((entry) => entry.keyId === onlineSurface.accountId);
+      chronicleRating.hidden = own === undefined;
+      chronicleRating.textContent = own === undefined ? "" : `Rated ${own.rating} on the ladder.`;
     }
   };
   root

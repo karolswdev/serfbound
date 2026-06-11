@@ -41,6 +41,9 @@ export type StoredSerfboundProfile = {
   // them, by the Phase 30 schema constraint.
   readonly avatarId?: string;
   readonly guildId?: string;
+  // The campaign ledger (SB-30-02): mission ids the player has won on
+  // this device. A game record like the saves — never uploaded.
+  readonly missionsCompleted?: readonly string[];
 };
 
 export type ProfileStore = {
@@ -111,6 +114,18 @@ export function withGuild(
   guildId: string,
 ): StoredSerfboundProfile {
   return { ...profile, guildId };
+}
+
+export function withMissionCompleted(
+  profile: StoredSerfboundProfile,
+  missionId: string,
+): StoredSerfboundProfile {
+  const existing = profile.missionsCompleted ?? [];
+  if (existing.includes(missionId)) {
+    return profile;
+  }
+
+  return { ...profile, missionsCompleted: [...existing, missionId] };
 }
 
 // Newest first, capped — a local record, not a ladder.
