@@ -1,30 +1,73 @@
 # Serfbound
 
-A faithful, pure-browser remake of **The Settlers I / Serf City: Life is
-Feudal** (Blue Byte, 1993) — TypeScript, WebGL2, and WebAudio, with no
-servers required to play. Import your own original game data file
-(`SPAU.PA`) and the complete classic game runs in your browser: the
-original world generator, every production chain, knights and conquest,
-the original interface decoded from your data, sound and music, the
-31-mission campaign, classic AI opponents, DOS savegame import — plus
-browser-native extras the original never had: an installable offline
-PWA, touch play with gestures, native-resolution view scales, realtime
-two-player lockstep, and correspondence ("offline chess") matches.
+**The complete classic Settlers, running in your browser — play it now
+at [serfbound.com](https://serfbound.com).**
+
+A faithful, pure-browser remake of **The Settlers I / Serf City: Life
+is Feudal** (Blue Byte, 1993) — TypeScript, WebGL2, and WebAudio, with
+no servers required to play. Bring your own original data file
+(`SPAU.PA`) and the whole game comes to life: the original world,
+every production chain, knights and conquest, the 1993 interface
+decoded pixel-for-pixel from your data.
+
+![A living settlement: decoded terrain, the castle founded, serfs at work](docs/media/settlement.png)
 
 **Your game data never leaves your machine.** Serfbound contains no
 original assets and never uploads, hosts, bundles, or caches them; the
 data you import lives only in your browser's local storage.
 
+## What's inside
+
+Everything below is shipped and end-to-end tested — every claim maps
+to an evidenced delivery phase in
+[`pm/roadmap/serfbound/`](pm/roadmap/serfbound/).
+
+**The complete classic game**
+- The original world generator, tile-for-tile against reference
+  fixtures — seeded, scrollable, wrapping.
+- Every production chain of the classic economy, running concurrently
+  without deadlock; demand-driven dispatch and food-gated mining.
+- Knights, territory, and conquest with the exact reference combat
+  math — games are won and lost.
+- The original interface, decoded from your data: the game font,
+  icons, panel bar, popups, minimap, notifications, and the start
+  screen with the real logo.
+- Sound effects and music from your own files through WebAudio —
+  byte-exact clip conversion, XMI music playback.
+- The 31-mission campaign, classic AI opponents, and original DOS
+  savegame import.
+- English and German, rendered in the original glyphs.
+
+**Born in the browser**
+- Installable offline PWA; once your data is in, no network is ever
+  needed to play.
+- Touch play with gestures, native-resolution view scales, high-DPI
+  sharp.
+- ~2M ticks/s simulation headroom; the full game in a static page.
+
+**Play together (every mode optional)**
+- Hot-seat pass-and-play and two-tab async matches — zero servers.
+- Realtime two-player lockstep.
+- Online correspondence at [serfbound.com](https://serfbound.com):
+  anonymous device-key accounts (nothing to leak), a challenge lobby,
+  trustless turn windows where your client re-verifies every move,
+  and a dual-attested Elo ladder. Pick an avatar and a guild banner;
+  earn deeds drawn from your own decoded icons.
+
+| The welcome | The title screen | On the move |
+|---|---|---|
+| ![The first-visit welcome](docs/media/welcome.png) | ![The decoded original start screen](docs/media/title.png) | ![Serfbound on a phone](docs/media/mobile.png) |
+
 ## Play
 
-1. Build and open the app (see Development), or use the published Pages
-   site.
-2. Import your `SPAU.PA` (from your own copy of the game — the demo
-   version's file works).
+1. Open **[serfbound.com](https://serfbound.com)** (or build locally —
+   see Development).
+2. Import your `SPAU.PA` — from your own copy of the game; the demo
+   version's file works too. Drop it on the welcome screen.
 3. START. The [player guide](docs/player-guide.md) covers everything:
    controls, keyboard/touch play, saves, sound, offline play, and the
-   two-player modes. Tip: `?seed=` in the URL (16 digits, 1–8) pins the
-   world.
+   multiplayer modes. Tip: `?seed=` in the URL (16 digits, 1–8) pins
+   the world.
 
 ## Development
 
@@ -45,6 +88,13 @@ carries evidence. Contributors: enable the contract hook with
 `git config core.hooksPath .githooks`. (Heavy visual-evidence artifacts
 from earlier phases remain in the archive repository noted below.)
 
+The screenshots above (and the repository's social preview,
+docs/media/social-preview.png) regenerate deterministically from one
+recorded seed via `npm run capture:readme:media` (opt-in, real local
+data; see `pm/roadmap/serfbound/adoption/gameplay-media-decision.md`);
+`npm run check:media` enforces reference integrity and the size budget
+in CI.
+
 ## Lineage and license
 
 Serfbound is **GPL-3.0** (see [LICENSE](LICENSE)). It is a
@@ -59,4 +109,5 @@ history before this repository lives in the archive at
 
 The Settlers is a trademark of its respective owners. This project is
 an unaffiliated preservation effort; it requires data files from a copy
-of the original game.
+of the original game. The screenshots in this README depict art decoded
+at runtime from the maintainer's own legally obtained data files.

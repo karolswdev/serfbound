@@ -2,7 +2,7 @@
 
 - **Project:** serfbound
 - **Phase:** 28
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** none
 - **Unblocks:** SB-28-02, SB-28-03
 - **Owner:** unassigned
@@ -56,3 +56,5 @@ image lands.
 - Phase gate advanced: exit criterion 1.
 - Open: animated capture (GIF) — decide against the size budget;
   default stills only.
+
+- Bundled ship (2026-06-11): SB-28-01 and SB-28-02 land in one commit — the README references the media; splitting them leaves main red on check:media. BUNDLE-OK recorded.

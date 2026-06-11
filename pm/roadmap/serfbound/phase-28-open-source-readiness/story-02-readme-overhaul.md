@@ -2,7 +2,7 @@
 
 - **Project:** serfbound
 - **Phase:** 28
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-28-01
 - **Unblocks:** SB-28-04
 - **Owner:** unassigned
@@ -52,3 +52,5 @@ list where nothing is aspirational.
 - Browser boundary: none — documentation.
 - .NET reference use: none.
 - Phase gate advanced: exit criterion 2.
+
+- Bundled ship (2026-06-11): SB-28-01 and SB-28-02 land in one commit — the README references the media; splitting them leaves main red on check:media. BUNDLE-OK recorded.

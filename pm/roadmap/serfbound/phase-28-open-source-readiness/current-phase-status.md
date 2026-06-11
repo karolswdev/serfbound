@@ -1,7 +1,7 @@
 # Phase 28 — Open-Source Readiness
 
-**Last updated:** 2026-06-11.
-**Status:** not started.
+**Last updated:** 2026-06-11 (after SB-28-01/02).
+**Status:** in progress.
 
 ## Goal
 
@@ -33,10 +33,10 @@ OSS-readiness gate proven from the outside looking in.
 
 ## Exit criteria (evidence required)
 
-- [ ] The gameplay-media decision record exists and the e2e capture
+- [x] The gameplay-media decision record exists and the e2e capture
   pipeline regenerates the curated README media set from a
   seed-pinned game. (SB-28-01)
-- [ ] The README sells the project: hero, screenshots, feature
+- [x] The README sells the project: hero, screenshots, feature
   showcase with evidence-grounded claims, play-now and quickstart
   paths. (SB-28-02)
 - [ ] A contributor onramp exists: CONTRIBUTING, templates, repo
@@ -49,8 +49,8 @@ OSS-readiness gate proven from the outside looking in.
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-28-01 | Gameplay media pipeline | backlog | story-01-gameplay-media-pipeline.md | — |
-| SB-28-02 | README overhaul | backlog | story-02-readme-overhaul.md | — |
+| SB-28-01 | Gameplay media pipeline | done | story-01-gameplay-media-pipeline.md | evidence-story-01.md |
+| SB-28-02 | README overhaul | done | story-02-readme-overhaul.md | evidence-story-02.md |
 | SB-28-03 | Contributor onramp | backlog | story-03-contributor-onramp.md | — |
 | SB-28-04 | OSS readiness gate | backlog | story-04-oss-readiness-gate.md | — |
 
