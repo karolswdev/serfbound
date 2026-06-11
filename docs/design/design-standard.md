@@ -143,6 +143,12 @@ inventory first). Each component defines **all of its states**;
   choices on a 4-column grid — line border at rest, moss on hover,
   gold when chosen (`aria-pressed`). Library art follows §8; the
   selection is local-first and never crosses the wire.
+- **Ladder list** (`.ladder`, SB-30-01): a disclosure of rank rows —
+  rank in moss, name in parchment-bright, rating in gold black-weight,
+  record in moss small; the player's own row carries the gold border;
+  the empty state is designed ("the first dual-attested result starts
+  the ledger"); the honest-limits line is part of the component, and
+  the player's disputed count speaks when nonzero.
 - **Dev ledger** (`.dev-ledger`, SB-32-06): the one home for
   diagnostics and dev controls — a collapsed disclosure at the
   chrome's foot, moss uppercase summary, honest copy ("playing never

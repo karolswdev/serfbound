@@ -650,6 +650,12 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
               disabled
             >Post online challenge</button>
             <div class="online-lobby" data-testid="online-lobby"></div>
+            <details class="ladder" data-testid="online-ladder">
+              <summary>The ladder</summary>
+              <div class="ladder__rows" data-testid="online-ladder-rows"></div>
+              <p class="status-panel__detail" data-testid="online-ladder-note" hidden></p>
+              <p class="status-panel__detail">Ratings are reputation, nothing more: only matches both players attest get rated, and disagreements sit quarantined, unrated.</p>
+            </details>
             <p class="status-panel__label" data-testid="online-seal-label" hidden>Seal the result</p>
             <button
               class="secondary-action"
@@ -2292,10 +2298,13 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             : "";
       } else {
         onlineLobbyElement.innerHTML = onlineSurface.lobby
-          .map(
-            (entry) => `
+          .map((entry) => {
+            const rating = onlineSurface.ratingForName(entry.challengerName);
+            return `
             <div class="lobby-card">
-              <p class="lobby-card__name">${entry.challengerName}</p>
+              <p class="lobby-card__name">${entry.challengerName}${
+                rating === undefined ? "" : ` <span class="lobby-card__rating">${rating}</span>`
+              }</p>
               <p class="lobby-card__terms">Map size ${entry.terms.mapSize} · ${entry.terms.windowTicks}-tick windows</p>
               <button
                 class="secondary-action"
@@ -2304,12 +2313,58 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
                 type="button"
                 ${canAccept ? "" : "disabled"}
               >Accept challenge from ${entry.challengerName}</button>
-            </div>`,
-          )
+            </div>`;
+          })
           .join("");
       }
     }
+
+    syncLadderState();
   };
+  // The ladder (SB-30-01): the Phase 25 Elo table, finally visible.
+  // Loads on explicit request; your row carries the gold accent;
+  // disputes are counted out loud.
+  const ladderRowsElement = root.querySelector<HTMLElement>("[data-testid='online-ladder-rows']");
+  const ladderNoteElement = root.querySelector<HTMLElement>("[data-testid='online-ladder-note']");
+  const syncLadderState = () => {
+    if (ladderRowsElement === null) {
+      return;
+    }
+
+    root.dataset.serfboundLadderCount = String(onlineSurface.ladder.length);
+    if (onlineSurface.ladder.length === 0) {
+      ladderRowsElement.innerHTML = `<p class="ladder__empty">No rated matches yet — the first dual-attested result starts the ledger.</p>`;
+    } else {
+      ladderRowsElement.innerHTML = onlineSurface.ladder
+        .map((entry, index) => {
+          const own = entry.keyId === onlineSurface.accountId;
+          return `
+            <div class="ladder__row${own ? " ladder__row--own" : ""}">
+              <span class="ladder__rank">${index + 1}</span>
+              <span class="ladder__name">${entry.name}${own ? " (you)" : ""}</span>
+              <span class="ladder__rating">${entry.rating}</span>
+              <span class="ladder__matches">${entry.matches} ${entry.matches === 1 ? "match" : "matches"}</span>
+            </div>`;
+        })
+        .join("");
+    }
+
+    if (ladderNoteElement !== null) {
+      const disputed = onlineSurface.disputedCount;
+      ladderNoteElement.hidden = disputed === 0;
+      ladderNoteElement.textContent =
+        disputed === 0
+          ? ""
+          : `${disputed} of your ${disputed === 1 ? "match is" : "matches are"} disputed — quarantined, unrated.`;
+    }
+  };
+  root
+    .querySelector<HTMLDetailsElement>("[data-testid='online-ladder']")
+    ?.addEventListener("toggle", (event) => {
+      if ((event.target as HTMLDetailsElement).open) {
+        void onlineSurface.loadLadder().then(syncOnlineState);
+      }
+    });
   const syncOnlineMatchState = () => {
     if (currentOnline === undefined) {
       return;

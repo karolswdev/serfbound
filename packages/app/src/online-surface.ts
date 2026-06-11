@@ -8,8 +8,10 @@ import {
 import {
   acceptChallenge,
   createChallenge,
+  fetchLadder,
   listChallenges,
   listMatchesForKey,
+  type LadderEntry,
   type MailboxMatchView,
   type MatchTerms,
 } from "./mailbox-client.js";
@@ -39,6 +41,7 @@ export class SerfboundOnlineSurface {
   #accountName: string | undefined;
   #lobby: readonly OnlineLobbyEntry[] = [];
   #myMatches: readonly MailboxMatchView[] = [];
+  #ladder: readonly LadderEntry[] = [];
   #lastError: string | null = null;
   #onAccountLinked: ((account: StoredProfileAccount) => void) | undefined;
 
@@ -89,6 +92,37 @@ export class SerfboundOnlineSurface {
 
   get activeMatches(): readonly MailboxMatchView[] {
     return this.#myMatches.filter((match) => match.state === "active");
+  }
+
+  // Quarantined, unrated — visible, never hidden (the Phase 25 model).
+  get disputedCount(): number {
+    return this.#myMatches.filter((match) => match.state === "disputed").length;
+  }
+
+  get ladder(): readonly LadderEntry[] {
+    return this.#ladder;
+  }
+
+  // The ladder loads on explicit request — an accountless player may
+  // read it, but only by asking (the zero-traffic posture holds until
+  // the player touches the online surface).
+  async loadLadder(): Promise<boolean> {
+    try {
+      this.#ladder = await fetchLadder(this.mailboxUrl);
+      this.#lastError = null;
+      return true;
+    } catch (error) {
+      this.#degrade(error);
+      return false;
+    }
+  }
+
+  // Best-effort rating lookup for lobby cards: the lobby carries
+  // names, not keys — a rating shows only when exactly one rated
+  // player bears the name (ambiguity shows nothing, honestly).
+  ratingForName(name: string): number | undefined {
+    const entries = this.#ladder.filter((entry) => entry.name === name);
+    return entries.length === 1 ? entries[0]?.rating : undefined;
   }
 
   // A previously linked account (from the stored profile) signs back

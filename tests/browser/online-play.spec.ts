@@ -163,6 +163,18 @@ test("two devices play an online match to dual attestation", async ({ browser })
   await expect(aliceApp).toHaveAttribute("data-serfbound-profile-history-count", "1");
   await expect(bobApp).toHaveAttribute("data-serfbound-profile-history-count", "1");
 
+  // The ladder (SB-30-01): the dual-attested result rates, the
+  // winner leads, and your own row is locatable.
+  await alice.getByTestId("online-ladder").locator("summary").click();
+  await expect(aliceApp).toHaveAttribute("data-serfbound-ladder-count", "2", {
+    timeout: 15_000,
+  });
+  const ownRow = alice.locator(".ladder__row--own");
+  await expect(ownRow).toContainText("ALICE (you)");
+  await expect(ownRow).toContainText("1516");
+  await expect(alice.locator(".ladder__row").nth(1)).toContainText("1484");
+  await expect(alice.getByTestId("online-ladder-note")).toBeHidden();
+
   await aliceContext.close();
   await bobContext.close();
 });

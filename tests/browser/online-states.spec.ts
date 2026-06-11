@@ -68,6 +68,14 @@ test("sign-in, the quiet lobby, the challenge card, the chronicle", async ({ pag
   await expect(page.locator(".panel-group--online")).toContainText("nothing to leak");
   await expect(page.getByTestId("profile-chronicle")).toHaveText("No matches yet");
 
+  // The ladder is readable without an account — by explicit request —
+  // and its empty state is designed, with the honest-limits line.
+  await page.getByTestId("online-ladder").locator("summary").click();
+  await expect(page.locator(".ladder__empty")).toContainText("first dual-attested result", {
+    timeout: 15_000,
+  });
+  await expect(page.getByTestId("online-ladder")).toContainText("Ratings are reputation");
+
   await page.getByTestId("data-import-input").setInputFiles({
     name: "SPAU.PA",
     mimeType: "application/octet-stream",
