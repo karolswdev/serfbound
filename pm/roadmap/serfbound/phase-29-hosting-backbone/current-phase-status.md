@@ -1,6 +1,6 @@
 # Phase 29 — Hosting Backbone
 
-**Last updated:** 2026-06-11 (after SB-29-01).
+**Last updated:** 2026-06-11 (after SB-29-02).
 **Status:** in progress.
 
 ## Goal
@@ -58,7 +58,7 @@ Serverless, accountless play remains first-class forever.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-29-01 | Infrastructure decision and secrets boundary | done | story-01-infrastructure-decision.md | evidence-story-01.md |
-| SB-29-02 | Service containers and manifests | in-progress | story-02-service-containers-manifests.md | — |
+| SB-29-02 | Service containers and manifests | done | story-02-service-containers-manifests.md | evidence-story-02.md |
 | SB-29-03 | Cluster deployment, DNS, TLS | backlog | story-03-cluster-deploy-dns-tls.md | — |
 | SB-29-04 | Online surface and hosting gate | backlog | story-04-online-surface-hosting-gate.md | — |
 
@@ -71,8 +71,11 @@ verified reachable read-only. Key finding: the cluster is shared —
 cert-manager and Envoy Gateway already installed, other tenants
 present, single `g6-standard-6` node — so Serfbound deploys into its
 own namespace, reuses the platform TLS/ingress, and the resilience
-criterion is pod-restart + backup/restore. Next: SB-29-02 (container
-images + manifests).
+criterion is pod-restart + backup/restore. SB-29-02 shipped: images
+on GHCR (public, digests in evidence), kubeconform-valid manifests
+under `deploy/`, and the contract suites proven against containers
+including a store-survives-restart check. Next: SB-29-03 (deploy,
+DNS, TLS at `api.serfbound.com`).
 
 ## Active risks
 
