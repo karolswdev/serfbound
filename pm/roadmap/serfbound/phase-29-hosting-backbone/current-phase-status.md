@@ -60,7 +60,7 @@ Serverless, accountless play remains first-class forever.
 | SB-29-01 | Infrastructure decision and secrets boundary | done | story-01-infrastructure-decision.md | evidence-story-01.md |
 | SB-29-02 | Service containers and manifests | done | story-02-service-containers-manifests.md | evidence-story-02.md |
 | SB-29-03 | Cluster deployment, DNS, TLS | done | story-03-cluster-deploy-dns-tls.md | evidence-story-03.md |
-| SB-29-04 | Online surface and hosting gate | backlog | story-04-online-surface-hosting-gate.md | — |
+| SB-29-04 | Online surface and hosting gate | in-progress | story-04-online-surface-hosting-gate.md | — |
 
 ## Where we are
 

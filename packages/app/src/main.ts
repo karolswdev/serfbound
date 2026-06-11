@@ -15,10 +15,15 @@ import { SerfboundAsyncLoopbackMatch } from "./async-match.js";
 import {
   BrowserIndexedDbProfileStore,
   createProfile,
+  withAccount,
   withMatchHistoryEntry,
   withProfileName,
   type StoredSerfboundProfile,
 } from "./profile-store.js";
+import { resolveOnlineConfig } from "./online-config.js";
+import { SerfboundOnlineSurface } from "./online-surface.js";
+import { SerfboundOnlineMatch } from "./online-match.js";
+import type { MailboxMatchView } from "./mailbox-client.js";
 import { digestLines } from "./recap.js";
 import { getUiLanguage, setUiLanguage, uiText } from "./strings.js";
 export * from "./strings.js";
@@ -119,6 +124,9 @@ export * from "./async-match.js";
 export * from "./profile-store.js";
 export * from "./identity-client.js";
 export * from "./mailbox-client.js";
+export * from "./online-config.js";
+export * from "./online-surface.js";
+export * from "./online-match.js";
 
 export {
   BrowserIndexedDbImportedArchiveStore,
@@ -319,7 +327,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     });
   };
   const recordMatchEnd = (
-    mode: "realtime-loopback" | "async-loopback",
+    mode: "realtime-loopback" | "async-loopback" | "online",
     opponentName: string | null,
     localPlayer: number,
     result: "won" | "lost" | "completed" | "abandoned",
@@ -507,6 +515,41 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
           data-testid="async-join-button"
           type="button"
         >Async 2P join (this browser)</button>
+        <div>
+          <p class="status-panel__label">Online</p>
+          <p class="status-panel__value" data-testid="online-state">Signed out</p>
+        </div>
+        <p class="status-panel__detail" data-testid="online-detail">Optional: play correspondence matches over the internet. Local play never needs this.</p>
+        <button
+          class="secondary-action"
+          data-testid="online-signin-button"
+          type="button"
+        >Sign in (device key)</button>
+        <button
+          class="secondary-action"
+          data-testid="online-refresh-button"
+          type="button"
+        >Refresh online</button>
+        <button
+          class="secondary-action"
+          data-testid="online-challenge-button"
+          type="button"
+          disabled
+        >Post online challenge</button>
+        <div data-testid="online-lobby"></div>
+        <p class="status-panel__detail" data-testid="online-your-turn" hidden>Your turn in 0 matches</p>
+        <button
+          class="secondary-action"
+          data-testid="online-attest-win-button"
+          type="button"
+          hidden
+        >Attest result: I won</button>
+        <button
+          class="secondary-action"
+          data-testid="online-attest-loss-button"
+          type="button"
+          hidden
+        >Attest result: I lost</button>
         <button
           class="secondary-action"
           data-testid="error-report-button"
@@ -563,6 +606,8 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   let currentHotseat: HotseatController | undefined;
   // Two-tab async correspondence (SB-23-04).
   let currentAsync: SerfboundAsyncLoopbackMatch | undefined;
+  // Online correspondence through the deployed mailbox (SB-29-04).
+  let currentOnline: SerfboundOnlineMatch | undefined;
   let lastHotseatMode: "recap" | "your-window" | "" = "";
   // Game speed: ticks per frame scale by the reference-style multiplier
   // (0 pauses). Keys: 1/2/4 set speeds, 0 pauses.
@@ -850,7 +895,30 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         root.dataset.serfboundGameState === "running" &&
         gameSpeedMultiplier > 0
       ) {
-        if (currentAsync !== undefined && currentAsync.match !== undefined) {
+        if (currentOnline !== undefined) {
+          // Online correspondence: same window discipline as async,
+          // with the deployed mailbox as the transport (SB-29-04).
+          currentOnline.tick(16);
+          const onlineMatch = currentOnline.match;
+          currentWorld = onlineMatch.world;
+          currentSerfEngine = onlineMatch.serfEngine;
+          const onlineStatus = currentOnline.status;
+          if (onlineStatus.mode === "awaiting-move" || onlineStatus.mode === "posting") {
+            setNotice(uiText("notice.waiting"));
+          } else if (onlineStatus.mode === "move-arrived") {
+            setNotice(uiText("notice.moveArrived"));
+          } else if (onlineStatus.mode === "recap") {
+            setNotice(uiText("notice.recapWatching"));
+          } else if (
+            onlineStatus.mode === "your-window" &&
+            root.dataset.serfboundNotification !== uiText("notice.yourWindow")
+          ) {
+            setNotice(uiText("notice.yourWindow"));
+          }
+
+          syncOnlineMatchState();
+          syncWorldState(root, currentWorld);
+        } else if (currentAsync !== undefined && currentAsync.match !== undefined) {
           // Async correspondence: this tab plays only its own windows;
           // between them it waits (or recaps the opponent's move).
           currentAsync.tick(16);
@@ -1352,8 +1420,14 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       return;
     }
 
-    // Correspondence: Enter picks an arrived turn up (async match or
-    // hot-seat hand-over).
+    // Correspondence: Enter picks an arrived turn up (online match,
+    // async match, or hot-seat hand-over).
+    if (event.key === "Enter" && currentOnline !== undefined) {
+      event.preventDefault();
+      currentOnline.pickup();
+      return;
+    }
+
     if (event.key === "Enter" && currentAsync !== undefined) {
       event.preventDefault();
       currentAsync.pickup();
@@ -1862,6 +1936,269 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   root
     .querySelector<HTMLButtonElement>("[data-testid='async-join-button']")
     ?.addEventListener("click", () => startAsync("join"));
+  // The online surface (SB-29-04): sign-in, lobby, your-turn badge
+  // against the deployed backbone. Strictly additive — nothing on the
+  // local play path waits on, or breaks with, the network. No request
+  // leaves this device until the player signs in (or restored a
+  // previously linked account).
+  const onlineConfig = resolveOnlineConfig(
+    globalThis.location?.search ?? "",
+    globalThis.localStorage,
+  );
+  const onlineSurface = new SerfboundOnlineSurface({
+    identityUrl: onlineConfig.identityUrl,
+    mailboxUrl: onlineConfig.mailboxUrl,
+    onAccountLinked: (account) => saveProfile(withAccount(currentProfile, account)),
+  });
+  const onlineStateElement = root.querySelector<HTMLElement>("[data-testid='online-state']");
+  const onlineDetailElement = root.querySelector<HTMLElement>("[data-testid='online-detail']");
+  const onlineLobbyElement = root.querySelector<HTMLElement>("[data-testid='online-lobby']");
+  const onlineBadgeElement = root.querySelector<HTMLElement>("[data-testid='online-your-turn']");
+  const onlineChallengeButton = root.querySelector<HTMLButtonElement>(
+    "[data-testid='online-challenge-button']",
+  );
+  const onlineAttestWinButton = root.querySelector<HTMLButtonElement>(
+    "[data-testid='online-attest-win-button']",
+  );
+  const onlineAttestLossButton = root.querySelector<HTMLButtonElement>(
+    "[data-testid='online-attest-loss-button']",
+  );
+  const syncOnlineState = () => {
+    root.dataset.serfboundOnlineStatus = onlineSurface.status;
+    root.dataset.serfboundOnlineYourTurn = String(onlineSurface.yourTurnCount);
+    root.dataset.serfboundOnlineLobbyCount = String(onlineSurface.lobby.length);
+    if (onlineStateElement !== null) {
+      onlineStateElement.textContent =
+        onlineSurface.status === "signed-in"
+          ? `Signed in as ${onlineSurface.accountName ?? ""}`
+          : onlineSurface.status === "signing-in"
+            ? "Signing in"
+            : onlineSurface.status === "unavailable"
+              ? "Online unavailable"
+              : "Signed out";
+    }
+
+    if (onlineDetailElement !== null) {
+      onlineDetailElement.textContent =
+        onlineSurface.status === "unavailable"
+          ? "The online service is unreachable. Local play is unaffected; use Refresh online to retry."
+          : "Optional: play correspondence matches over the internet. Local play never needs this.";
+    }
+
+    if (onlineChallengeButton !== null) {
+      onlineChallengeButton.disabled = onlineSurface.status !== "signed-in";
+    }
+
+    if (onlineBadgeElement !== null) {
+      onlineBadgeElement.hidden = onlineSurface.yourTurnCount === 0;
+      onlineBadgeElement.textContent = `Your turn in ${onlineSurface.yourTurnCount} ${
+        onlineSurface.yourTurnCount === 1 ? "match" : "matches"
+      }`;
+    }
+
+    if (onlineLobbyElement !== null) {
+      const canAccept =
+        onlineSurface.status === "signed-in" &&
+        currentImportedDataSource !== undefined &&
+        currentWorld === undefined;
+      onlineLobbyElement.innerHTML = onlineSurface.lobby
+        .map(
+          (entry) => `
+            <button
+              class="secondary-action"
+              data-testid="online-accept-button"
+              data-challenge-id="${entry.challengeId}"
+              type="button"
+              ${canAccept ? "" : "disabled"}
+            >Accept challenge from ${entry.challengerName}</button>`,
+        )
+        .join("");
+    }
+  };
+  const syncOnlineMatchState = () => {
+    if (currentOnline === undefined) {
+      return;
+    }
+
+    const status = currentOnline.status;
+    root.dataset.serfboundCorMode = status.mode;
+    root.dataset.serfboundCorWindow = String(status.window);
+    root.dataset.serfboundCorPlayer = String(status.localPlayer);
+    root.dataset.serfboundCorChecksum = String(status.checksum >>> 0);
+    root.dataset.serfboundOnlineMatchId = status.matchId;
+    if (status.boundaryChecksum !== null) {
+      root.dataset.serfboundCorBoundary = String(status.boundaryChecksum >>> 0);
+    }
+
+    if (status.digest !== null) {
+      root.dataset.serfboundCorDigest = digestLines(status.digest).join(" / ");
+    }
+
+    if (status.failureReason !== null) {
+      root.dataset.serfboundCorFailure = status.failureReason;
+    }
+
+    if (status.opponentName !== null) {
+      root.dataset.serfboundCorOpponent = status.opponentName;
+    }
+
+    const canAttest =
+      status.serviceState === "active" &&
+      status.boundaryChecksum !== null &&
+      (status.mode === "your-window" ||
+        status.mode === "awaiting-move" ||
+        status.mode === "move-arrived");
+    if (onlineAttestWinButton !== null) {
+      onlineAttestWinButton.hidden = !canAttest;
+    }
+
+    if (onlineAttestLossButton !== null) {
+      onlineAttestLossButton.hidden = !canAttest;
+    }
+  };
+  const startOnlineMatch = (view: MailboxMatchView, seat: number) => {
+    const keys = onlineSurface.keys;
+    if (currentImportedDataSource === undefined || currentWorld !== undefined || keys === undefined) {
+      return;
+    }
+
+    currentOnline = new SerfboundOnlineMatch({
+      view,
+      seat,
+      keys,
+      mailboxUrl: onlineConfig.mailboxUrl,
+      data: currentImportedDataSource,
+      onEnded: (endedView) => {
+        const result =
+          endedView.state === "disputed"
+            ? "completed"
+            : endedView.state === "forfeited"
+              ? endedView.forfeitedPlayer === seat
+                ? "lost"
+                : "won"
+              : endedView.winnerSeat === seat
+                ? "won"
+                : "lost";
+        recordMatchEnd("online", currentOnline?.status.opponentName ?? null, seat, result);
+        root.dataset.serfboundOnlineMatchOutcome = `${endedView.state}:${result}`;
+        setNotice(uiText("notice.gameOver"));
+        syncOnlineMatchState();
+        void onlineSurface.refresh().then(syncOnlineState);
+      },
+    });
+    currentBuiltStructures = [];
+    const match = currentOnline.match;
+    startLandscapeRendering({ landscape: () => match.world });
+    commandRouter = new SerfboundCommandRouter(match.state, match.world);
+    commandRouter.localPlayer = seat;
+    commandRouter.onWorldAction = (action) => currentOnline?.queue(action);
+    currentWorld = match.world;
+    currentSerfEngine = match.serfEngine;
+    currentLocalPlayer = seat;
+    root.dataset.serfboundGameState = "running";
+    getGameStateElement(root).textContent = "Running";
+    syncOnlineMatchState();
+    syncWorldState(root, currentWorld);
+    renderCurrentScene();
+  };
+  root
+    .querySelector<HTMLButtonElement>("[data-testid='online-signin-button']")
+    ?.addEventListener("click", () => {
+      void onlineSurface.signIn(currentProfile.name).then(async (ok) => {
+        if (ok) {
+          await onlineSurface.refresh();
+        }
+
+        syncOnlineState();
+      });
+      syncOnlineState();
+    });
+  root
+    .querySelector<HTMLButtonElement>("[data-testid='online-refresh-button']")
+    ?.addEventListener("click", () => {
+      void onlineSurface.refresh().then(syncOnlineState);
+    });
+  onlineChallengeButton?.addEventListener("click", () => {
+    void onlineSurface
+      .postChallenge({
+        seedString: initSeedString,
+        mapSize: 3,
+        playerCount: 2,
+        initialSupplies: initSupplies,
+        windowTicks: hotseatWindowTicks,
+        pickupSeconds: 3600,
+      })
+      .then(syncOnlineState);
+  });
+  onlineLobbyElement?.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+      "[data-testid='online-accept-button']",
+    );
+    const challengeId = button?.dataset["challengeId"];
+    if (button === null || button === undefined || challengeId === undefined) {
+      return;
+    }
+
+    void onlineSurface.accept(challengeId).then((view) => {
+      syncOnlineState();
+      if (view !== null) {
+        const seat = view.yourSeat ?? 1;
+        startOnlineMatch(view, seat);
+      }
+    });
+  });
+  onlineAttestWinButton?.addEventListener("click", () => {
+    void currentOnline?.attest(currentOnline.localPlayer).then(syncOnlineMatchState);
+  });
+  onlineAttestLossButton?.addEventListener("click", () => {
+    void currentOnline?.attest(1 - currentOnline.localPlayer).then(syncOnlineMatchState);
+  });
+  // The slow online timer: poll the active match's mailbox view, and —
+  // for a signed-in player — keep the lobby and your-turn badge fresh.
+  // A challenger whose challenge got accepted starts the match from
+  // here. Signed-out players generate zero network traffic.
+  let onlinePollCounter = 0;
+  setInterval(() => {
+    if (currentOnline !== undefined) {
+      void currentOnline.poll().then(syncOnlineMatchState);
+    }
+
+    if (onlineSurface.status !== "signed-in" && onlineSurface.status !== "unavailable") {
+      return;
+    }
+
+    onlinePollCounter += 1;
+    if (onlinePollCounter % 3 !== 0) {
+      return;
+    }
+
+    void onlineSurface.refresh().then((ok) => {
+      syncOnlineState();
+      if (!ok || currentOnline !== undefined || currentWorld !== undefined) {
+        return;
+      }
+
+      // Challenge accepted while we waited: a fresh active match where
+      // this player is the challenger (seat 0) with no moves yet.
+      const fresh = onlineSurface.activeMatches.find(
+        (match) => match.yourSeat === 0 && match.moves.length === 0,
+      );
+      if (fresh !== undefined) {
+        startOnlineMatch(fresh, 0);
+      }
+    });
+  }, 2000);
+  // A previously linked account signs back in silently — the keypair
+  // is the account (SB-25-02); restoring it is the player's standing
+  // opt-in to online traffic.
+  void profileStore.load().then((stored) => {
+    if (stored?.account !== undefined) {
+      onlineSurface.restore(stored.account, stored.name);
+      void onlineSurface.refresh().then(syncOnlineState);
+    }
+
+    syncOnlineState();
+  });
   startButton.addEventListener("click", () => {
     // With the init screen up (decoded mode), the shell button is the
     // accessible path to the same custom game; the catalog-only fallback

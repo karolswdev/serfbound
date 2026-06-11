@@ -13,7 +13,7 @@ export const defaultProfileName = "PLAYER";
 export const matchHistoryCap = 50;
 
 export type SerfboundMatchHistoryEntry = {
-  readonly mode: "realtime-loopback" | "async-loopback" | "hotseat";
+  readonly mode: "realtime-loopback" | "async-loopback" | "hotseat" | "online";
   readonly opponentName: string;
   readonly localPlayer: number;
   readonly result: "won" | "lost" | "completed" | "abandoned";
