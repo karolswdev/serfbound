@@ -1,7 +1,8 @@
 # Phase 35 — Locomotion and the Working Pose
 
-**Last updated:** 2026-06-11 (SB-35-01 done: the ghost stepper is
-deleted, outdoor walks pace on the reference counter tables).
+**Last updated:** 2026-06-11 (SB-35-02 done: the reference door —
+RoadBuildingSlope slides in and out — for workers, knights,
+builders, generic serfs, the castle, and the harvest cycle).
 **Status:** in progress.
 
 ## Goal
@@ -33,7 +34,7 @@ movement code path left to drift.
 - [x] The harvest walk and every other off-road walk run through the
   same counter-table pacing as road walking — the fixed-tick stepper
   is deleted. (SB-35-01)
-- [ ] Building entry/exit: door, slides, slope-scaled counters; a
+- [x] Building entry/exit: door, slides, slope-scaled counters; a
   serf is never teleported into or out of a building. (SB-35-02)
 - [ ] Logging fells trees in the reference's five visible stages
   with felled-tree map objects; stonecutting and planting drive
@@ -46,7 +47,7 @@ movement code path left to drift.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-35-01 | One walking system | done | story-01-one-walking-system.md | evidence-story-01.md |
-| SB-35-02 | Doors and slides | backlog | — | — |
+| SB-35-02 | Doors and slides | done | story-02-doors-and-slides.md | evidence-story-02.md |
 | SB-35-03 | The working pose | backlog | — | — |
 | SB-35-04 | The device gate | backlog | — | — |
 

@@ -424,3 +424,113 @@ test("free walking rides the reference counter tables - no second movement syste
     `the typical free-walk tile costs reference ticks (median ${median}, steps ${stepCosts})`,
   );
 });
+
+test("workers pass through the door: enter to settle, leave to harvest (SB-35-02)", async () => {
+  const engineModule = await import("@serfbound/engine");
+  const {
+    SerfboundCommandRouter,
+    SerfboundSerfEngine,
+    serfState,
+    startSerfboundLocalGame,
+  } = engineModule;
+  const started = startSerfboundLocalGame({
+    data: {
+      kind: "imported-dos-pa-catalog",
+      archiveName: "SPAU.PA",
+      byteLength: 1_282_805,
+      entryCount: 4000,
+      definedArchiveEntries: 3805,
+      fixupCount: 252,
+    },
+  });
+  const world = started.game.world();
+  const router = new SerfboundCommandRouter(started.game.state, world);
+  const tileFor = (position) => ({
+    column: position & world.geometry.columnMask,
+    row: (position >>> world.geometry.rowShift) & world.geometry.rowMask,
+    position,
+  });
+  let castlePosition = -1;
+  for (let position = 0; position < world.tileCount; position += 1) {
+    if (world.canBuildCastle(position, 0)) {
+      castlePosition = position;
+      break;
+    }
+  }
+  router.dispatch({ type: "game.build-castle", source: "pointer", tile: tileFor(castlePosition) });
+  const castleFlag = world.move(castlePosition, "DownRight");
+  let building = null;
+  for (let offset = 0; offset < 250 && building === null; offset += 1) {
+    const candidate = world.positionAddSpirally(castlePosition, offset);
+    if (!world.canBuildBuilding(candidate, 2, 0)) {
+      continue;
+    }
+
+    const result = router.dispatch({
+      type: "game.build-building",
+      source: "pointer",
+      tile: tileFor(candidate),
+      buildingKind: "lumberjack",
+    });
+    if (result.status !== "accepted") {
+      continue;
+    }
+
+    building = [...world.buildings.values()].reduce((a, b) => (a.index > b.index ? a : b));
+    const road = router.dispatch({
+      type: "game.build-road",
+      source: "pointer",
+      tile: tileFor(castleFlag),
+      toTile: tileFor(world.flags.get(building.flagIndex).position),
+    });
+    if (road.status !== "accepted") {
+      building = null;
+    }
+  }
+  assert.notEqual(building, null);
+
+  const engine = new SerfboundSerfEngine(world);
+  engine.dispatchConstructionLogistics(building, started.game.state.tick);
+  let tick = started.game.state.tick;
+  let worker = null;
+  const doorStates = new Set();
+  let enteredBeforeWorking = false;
+  let leftThroughDoor = false;
+  let sawWorking = false;
+  for (let step = 0; step < 60000; step += 1) {
+    tick += 8;
+    engine.update(tick);
+    if (worker === null) {
+      for (const serf of engine.serfs.values()) {
+        if (serf.workBuildingIndex === building.index) {
+          worker = serf;
+        }
+      }
+    }
+
+    if (worker !== null) {
+      doorStates.add(worker.state);
+      if (worker.state === serfState.enteringBuilding && !sawWorking) {
+        enteredBeforeWorking = true;
+      }
+
+      if (worker.state === serfState.working) {
+        sawWorking = true;
+      }
+
+      if (worker.state === serfState.leavingBuilding && sawWorking) {
+        // The walk-out slide stands on the building's flag tile.
+        assert.equal(
+          worker.position,
+          world.move(building.position, "DownRight"),
+          "the leaving slide crosses the door onto the flag",
+        );
+        leftThroughDoor = true;
+        break;
+      }
+    }
+  }
+
+  assert.equal(enteredBeforeWorking, true, "the worker settled in THROUGH the door");
+  assert.equal(leftThroughDoor, true, "the worker walked OUT through the door to harvest");
+});

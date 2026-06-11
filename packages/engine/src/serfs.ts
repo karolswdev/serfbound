@@ -80,6 +80,14 @@ const mineDeposits: Readonly<Record<number, readonly [number, number]>> = {
 
 const minerFoods: readonly number[] = [resourceType.fish, resourceType.bread, resourceType.meat];
 
+// Serf.RoadBuildingSlope per building type (SB-35-02): scales the
+// door slide when entering (slope) and leaving (31 - slope) a
+// finished building; unfinished sites use 1 entering / 30 leaving.
+const roadBuildingSlope: readonly number[] = [
+  5, 18, 18, 15, 18, 22, 22, 22, 22, 18, 16, 18, 1, 10, 1, 15,
+  15, 16, 15, 15, 10, 15, 20, 15, 18,
+];
+
 // Outdoor harvest dwell (SB-34 round 7). The walk itself is paced by
 // the shared reference counter tables (SB-35-01 — no second movement
 // system); the reference per-stage work durations (logging's
@@ -302,17 +310,12 @@ export class SerfboundSerfEngine {
     const castlePosition = serf.position;
     const flagPosition = this.world.move(castlePosition, "DownRight");
 
-    serf.state = serfState.leavingBuilding;
     serf.tick = gameTick;
-    // Serf.LeaveBuilding: slide down-right from the building to its flag.
-    const newPosition = flagPosition;
-    const heightDifference =
-      this.world.heights[newPosition]! - this.world.heights[castlePosition]!;
-    serf.animation = walkingAnimation(heightDifference, "DownRight", false);
-    serf.counter += (30 * counterFromAnimation(serf.animation)) >> 5;
-    serf.position = newPosition;
+    // Serf.LeaveBuilding: slide down-right from the castle door to its
+    // flag at the castle's leaving slope (31 - RoadBuildingSlope).
+    this.#leaveBuilding(serf, castlePosition, 31 - roadBuildingSlope[24]!, serfState.walking);
+    serf.position = flagPosition;
     serf.walkingDestination = destinationFlagIndex;
-    serf.nextState = serfState.walking;
     return true;
   }
 
@@ -388,6 +391,40 @@ export class SerfboundSerfEngine {
     }
   }
 
+  // The door, leaving (SB-35-02): slide DownRight from the building
+  // onto its flag tile, counter scaled by the leaving slope. The
+  // caller sets position to the flag; the slide is the visible exit.
+  #leaveBuilding(
+    serf: WorldSerf,
+    buildingPosition: number,
+    slope: number,
+    nextState: SerfStateValue,
+  ): void {
+    const flagPosition = this.world.move(buildingPosition, "DownRight");
+    const heightDifference =
+      this.world.heights[flagPosition]! - this.world.heights[buildingPosition]!;
+    serf.state = serfState.leavingBuilding;
+    serf.animation = walkingAnimation(heightDifference, "DownRight", false);
+    serf.counter += (slope * counterFromAnimation(serf.animation)) >> 5;
+    serf.nextState = nextState;
+  }
+
+  // The door, entering (SB-35-02): slide UpLeft from the flag into the
+  // building; the slope length is the point where the serf passes the
+  // door and vanishes inside (finished buildings by type, sites at 1).
+  #enterBuilding(serf: WorldSerf, building: WorldBuilding, nextState: SerfStateValue): void {
+    const heightDifference =
+      this.world.heights[building.position]! - this.world.heights[serf.position]!;
+    this.serfIndexes[serf.position] = 0;
+    serf.position = building.position;
+    serf.state = serfState.enteringBuilding;
+    serf.nextState = nextState;
+    serf.animation = walkingAnimation(heightDifference, "UpLeft", false);
+    serf.counter += counterFromAnimation(serf.animation);
+    const slope = building.isDone ? (roadBuildingSlope[building.type] ?? 15) : 1;
+    serf.slopeLength = (slope * serf.counter) >> 5;
+  }
+
   #handleLeavingBuilding(serf: WorldSerf, gameTick: number): void {
     const delta = (gameTick - serf.tick) & 0xffff;
     serf.tick = gameTick;
@@ -396,6 +433,7 @@ export class SerfboundSerfEngine {
     if (serf.counter < 0) {
       serf.counter = 0;
       serf.state = serf.nextState === serfState.null ? serfState.walking : serf.nextState;
+      serf.nextState = serfState.null;
       serf.walkingDirection = directionOrder.indexOf(reverseOf["DownRight"]);
       serf.walkingWaitCounter = 0;
       this.serfIndexes[serf.position] = serf.index;
@@ -408,11 +446,26 @@ export class SerfboundSerfEngine {
     serf.counter -= delta;
 
     if (serf.counter < 0 || serf.counter <= serf.slopeLength) {
-      serf.counter = serf.slopeLength;
-      // Generic serfs disappear into the building (inventory) for now;
-      // professions take over in SB-13-03/04.
+      serf.counter = 0;
+      serf.slopeLength = 0;
+      // Inside: off the collision map.
       this.serfIndexes[serf.position] = 0;
-      serf.state = serfState.idleInStock;
+      const next = serf.nextState === serfState.null ? serfState.idleInStock : serf.nextState;
+      serf.nextState = serfState.null;
+      serf.state = next;
+
+      // A garrisoning knight takes his post as he crosses the door.
+      if (serf.garrisonTargetIndex !== 0) {
+        const post = this.world.buildings.get(serf.garrisonTargetIndex);
+        serf.garrisonTargetIndex = 0;
+        if (post !== undefined) {
+          post.requestedKnights = Math.max(0, post.requestedKnights - 1);
+          post.knights += 1;
+          if (post.knights === 1) {
+            this.world.updateLandOwnership(post.position);
+          }
+        }
+      }
     }
   }
 
@@ -450,47 +503,34 @@ export class SerfboundSerfEngine {
             return;
           }
 
-          // Profession workers settle into their completed building.
+          // Profession workers settle into their completed building —
+          // through the door (SB-35-02).
           if (serf.workBuildingIndex !== 0 && flag.buildingIndex === serf.workBuildingIndex) {
             const workplace = this.world.buildings.get(serf.workBuildingIndex);
             if (workplace !== undefined && workplace.isDone) {
-              this.serfIndexes[serf.position] = 0;
-              serf.position = workplace.position;
-              serf.state = serfState.working;
               serf.workPhase = 0;
               serf.workCounter = 0;
-              serf.counter = 0;
+              this.#enterBuilding(serf, workplace, serfState.working);
               return;
             }
           }
 
-          // Knights take their garrison post; the first knight activates
-          // the building and its territory (reference knight occupation).
+          // Knights take their garrison post — through the door; the
+          // occupation bookkeeping happens as they cross it (SB-35-02).
           if (serf.garrisonTargetIndex !== 0 && flag.buildingIndex === serf.garrisonTargetIndex) {
             const post = this.world.buildings.get(serf.garrisonTargetIndex);
             if (post !== undefined && post.isDone) {
-              this.serfIndexes[serf.position] = 0;
-              serf.position = post.position;
-              serf.state = serfState.idleInStock;
-              serf.garrisonTargetIndex = 0;
-              post.requestedKnights = Math.max(0, post.requestedKnights - 1);
-              post.knights += 1;
-              if (post.knights === 1) {
-                this.world.updateLandOwnership(post.position);
-              }
-
+              this.#enterBuilding(serf, post, serfState.idleInStock);
               return;
             }
           }
 
-          // Builders move onto their construction site and start working.
+          // Builders slide onto their construction site (unfinished
+          // sites enter at slope 1 — SB-35-02) and start working.
           if (serf.buildTargetIndex !== 0 && flag.buildingIndex === serf.buildTargetIndex) {
             const site = this.world.buildings.get(serf.buildTargetIndex);
             if (site !== undefined && !site.isDone) {
-              this.serfIndexes[serf.position] = 0;
-              serf.position = site.position;
-              serf.state = serfState.building;
-              serf.counter = 0;
+              this.#enterBuilding(serf, site, serfState.building);
               return;
             }
           }
@@ -500,14 +540,7 @@ export class SerfboundSerfEngine {
           const buildingIndex = flag.buildingIndex;
           if (buildingIndex !== null) {
             const building = this.world.buildings.get(buildingIndex)!;
-            const heightDifference =
-              this.world.heights[building.position]! - this.world.heights[serf.position]!;
-            this.serfIndexes[serf.position] = 0;
-            serf.position = building.position;
-            serf.state = serfState.enteringBuilding;
-            serf.animation = walkingAnimation(heightDifference, "UpLeft", false);
-            serf.counter += counterFromAnimation(serf.animation);
-            serf.slopeLength = (1 * serf.counter) >> 5;
+            this.#enterBuilding(serf, building, serfState.idleInStock);
             return;
           }
 
@@ -1140,6 +1173,14 @@ export class SerfboundSerfEngine {
           serf.workTargetPosition = candidate;
           serf.walkingDestination = 0;
           serf.counter = 0;
+          // Out through the door onto the flag (SB-35-02).
+          serf.position = this.world.move(building.position, "DownRight");
+          this.#leaveBuilding(
+            serf,
+            building.position,
+            31 - (roadBuildingSlope[building.type] ?? 15),
+            serfState.working,
+          );
           return;
         }
       }
@@ -1178,21 +1219,19 @@ export class SerfboundSerfEngine {
       return;
     }
 
-    // Phase 3: walk home; the product appears with the returning serf.
-    if (serf.position === building.position) {
+    // Phase 3: walk home to the flag; the product arrives with the
+    // serf, and he goes back inside through the door (SB-35-02).
+    const homeFlag = this.world.move(building.position, "DownRight");
+    if (serf.position === homeFlag) {
       serf.workPhase = 0;
       serf.workCounter = 0;
       serf.workTargetPosition = -1;
-      // Inside again: off the collision map, like settling in.
-      if (this.serfIndexes[serf.position] === serf.index) {
-        this.serfIndexes[serf.position] = 0;
-      }
-
       this.#emitProduct(building, product);
+      this.#enterBuilding(serf, building, serfState.working);
       return;
     }
 
-    this.#freeWalkToward(serf, building.position, delta);
+    this.#freeWalkToward(serf, homeFlag, delta);
   }
 
   // Free walking on the SHARED walker (SB-35-01): greedy descent on
