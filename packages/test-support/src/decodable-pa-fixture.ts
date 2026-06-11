@@ -165,6 +165,24 @@ export function createDecodableGeneratedPaArchive(): Uint8Array {
     index: 1850,
     bytes: concatBytes([spriteHeader(16, 16, -8, -15), fullCoverageRuns(16 * 16, 32)]),
   });
+  // Profession torsos (SB-34 round 7): a few of the bank bases the
+  // appearance tables resolve for dressed serfs (builder 0x500 → body
+  // ~240+, lumberjack 0xb00, carrying planks 0x700, knights 0x7800).
+  for (const body of [240, 248, 264, 272, 280, 288, 304, 312, 320, 328, 344, 352, 401, 450]) {
+    entries.push({
+      index: 2500 + body,
+      bytes: concatBytes([spriteHeader(16, 16, -8, -15), fullCoverageRuns(16 * 16, 70 + (body % 60))]),
+    });
+  }
+
+  // Resource stack sprites for flags (game_object 135.. -> entries
+  // 456..481, SB-34 round 7).
+  for (let resource = 0; resource < 26; resource += 1) {
+    entries.push({
+      index: 321 + 135 + resource,
+      bytes: concatBytes([spriteHeader(8, 8, -4, -4), fullCoverageRuns(8 * 8, 100 + resource * 4)]),
+    });
+  }
 
   // Building sprites plus the construction cross/corner stone
   // (map_object 0x90..0xc0 -> entries 1394..1442) with shadows, plus

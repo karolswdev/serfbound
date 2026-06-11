@@ -169,3 +169,142 @@ test("a transporter hauls a resource across its road into the destination buildi
   assert.equal(transporter.carriedResource, -1, "the transporter dropped its load");
   assert.equal(transporter.state, serfState.idleOnPath, "the transporter returns to duty");
 });
+
+test("serfs dress for their profession and carry visibly (SB-34 round 7)", async () => {
+  const { serfBodyOffset, serfState, buildingType } = await import("@serfbound/engine");
+  const baseSerf = {
+    state: serfState.walking,
+    carriedResource: -1,
+    buildTargetIndex: 0,
+    workBuildingIndex: 0,
+    isKnight: false,
+    knightRank: 0,
+    garrisonTargetIndex: 0,
+  };
+  const world = {
+    buildings: new Map([
+      [5, { type: buildingType.lumberjack }],
+      [6, { type: buildingType.stonecutter }],
+    ]),
+  };
+
+  // Generic walkers stay undressed; builders, professions, knights and
+  // loaded transporters take the reference sprite-bank offsets.
+  assert.equal(serfBodyOffset({ ...baseSerf }, world), 0);
+  assert.equal(serfBodyOffset({ ...baseSerf, buildTargetIndex: 9 }, world), 0x500);
+  assert.equal(serfBodyOffset({ ...baseSerf, workBuildingIndex: 5 }, world), 0xb00);
+  assert.equal(serfBodyOffset({ ...baseSerf, workBuildingIndex: 6 }, world), 0xd00);
+  assert.equal(
+    serfBodyOffset({ ...baseSerf, isKnight: true, knightRank: 2 }, world),
+    0x7800 + 0x200,
+  );
+  // A transporter carrying a plank shows it (Resource.Type + 1 indexes
+  // the reference carry table; plank = 7 -> 0x700).
+  assert.equal(
+    serfBodyOffset(
+      { ...baseSerf, state: serfState.transporting, carriedResource: 7 },
+      world,
+    ),
+    0x700,
+  );
+  // Stone in hand (9 -> 0x800... the reference table: stone is 0x800).
+  assert.equal(
+    serfBodyOffset(
+      { ...baseSerf, state: serfState.transporting, carriedResource: 9 },
+      world,
+    ),
+    0x800,
+  );
+});
+
+test("harvesters walk out, work the target in the open, and walk the product home (SB-34 round 7)", async () => {
+  const engineModule = await import("@serfbound/engine");
+  const {
+    SerfboundCommandRouter,
+    SerfboundSerfEngine,
+    startSerfboundLocalGame,
+  } = engineModule;
+  const started = startSerfboundLocalGame({
+    data: {
+      kind: "imported-dos-pa-catalog",
+      archiveName: "SPAU.PA",
+      byteLength: 1_282_805,
+      entryCount: 4000,
+      definedArchiveEntries: 3805,
+      fixupCount: 252,
+    },
+  });
+  const world = started.game.world();
+  const router = new SerfboundCommandRouter(started.game.state, world);
+  const tileFor = (position) => ({
+    column: position & world.geometry.columnMask,
+    row: (position >>> world.geometry.rowShift) & world.geometry.rowMask,
+    position,
+  });
+  let castlePosition = -1;
+  for (let position = 0; position < world.tileCount; position += 1) {
+    if (world.canBuildCastle(position, 0)) {
+      castlePosition = position;
+      break;
+    }
+  }
+  router.dispatch({ type: "game.build-castle", source: "pointer", tile: tileFor(castlePosition) });
+  const castleFlag = world.move(castlePosition, "DownRight");
+  let building = null;
+  for (let offset = 0; offset < 250 && building === null; offset += 1) {
+    const candidate = world.positionAddSpirally(castlePosition, offset);
+    if (!world.canBuildBuilding(candidate, 2, 0)) {
+      continue;
+    }
+
+    const result = router.dispatch({
+      type: "game.build-building",
+      source: "pointer",
+      tile: tileFor(candidate),
+      buildingKind: "lumberjack",
+    });
+    if (result.status !== "accepted") {
+      continue;
+    }
+
+    building = [...world.buildings.values()].reduce((a, b) => (a.index > b.index ? a : b));
+    const road = router.dispatch({
+      type: "game.build-road",
+      source: "pointer",
+      tile: tileFor(castleFlag),
+      toTile: tileFor(world.flags.get(building.flagIndex).position),
+    });
+    if (road.status !== "accepted") {
+      building = null;
+    }
+  }
+  assert.notEqual(building, null);
+
+  const engine = new SerfboundSerfEngine(world);
+  engine.dispatchConstructionLogistics(building, started.game.state.tick);
+  let tick = started.game.state.tick;
+  let leftHome = false;
+  let workedOutside = false;
+  for (let step = 0; step < 6000; step += 1) {
+    tick += 8;
+    engine.update(tick);
+    for (const serf of engine.serfs.values()) {
+      if (serf.workBuildingIndex === building.index && serf.state === 11) {
+        if (serf.position !== building.position) {
+          leftHome = true;
+        }
+
+        if (serf.workPhase === 2 && serf.position === serf.workTargetPosition) {
+          workedOutside = true;
+        }
+      }
+    }
+
+    if (workedOutside) {
+      break;
+    }
+  }
+
+  assert.equal(leftHome, true, "the worker physically left the building");
+  assert.equal(workedOutside, true, "the worker stood AT the tree while working it");
+});

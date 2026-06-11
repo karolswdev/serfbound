@@ -86,6 +86,9 @@ export type DecodedRenderAssets = {
   readonly serfAnimationTable: SerfAnimationTable | null;
   readonly rawSerfTorsos: ReadonlyMap<number, ComposedSerfTorso>;
   readonly rawSerfHeads: ReadonlyMap<number, DecodedDosSprite>;
+  // Resource sprites (game_object 135+, SB-34 round 7): the stacks
+  // waiting at flags.
+  readonly rawResourceObjects: ReadonlyMap<number, DecodedDosSprite>;
   // Decoded UI chrome (SB-16-01): font glyphs, icon sheet, panel buttons,
   // popup frame pieces, and the cursor.
   readonly rawFontGlyphs: readonly (DecodedDosSprite | null)[];
@@ -686,8 +689,12 @@ export function buildDecodedRenderAssets(
     serfAnimationTable = null;
   }
 
+  // The full torso range (SB-34 round 7): the reference appearance
+  // tables resolve profession/knight/carrying bodies up to ~597 —
+  // decoding only the first 48 dressed every serf as the same
+  // generic walker.
   const rawSerfTorsos = new Map<number, ComposedSerfTorso>();
-  for (let body = 0; body < 48; body += 1) {
+  for (let body = 0; body < 629; body += 1) {
     try {
       const torso = composeSerfTorso(archive, body);
       if (torso !== null) {
@@ -699,10 +706,20 @@ export function buildDecodedRenderAssets(
   }
 
   const rawSerfHeads = new Map<number, DecodedDosSprite>();
-  for (let head = 0; head < 64; head += 1) {
+  for (let head = 0; head < 640; head += 1) {
     const sprite = decodeSafely(archive, "serf_head", head);
     if (sprite !== null) {
       rawSerfHeads.set(head, sprite);
+    }
+  }
+
+  // Resource sprites for flag stacks (reference game_object 135 +
+  // resource type — SB-34 round 7).
+  const rawResourceObjects = new Map<number, DecodedDosSprite>();
+  for (let resource = 0; resource < 26; resource += 1) {
+    const sprite = decodeSafely(archive, "game_object", 135 + resource);
+    if (sprite !== null) {
+      rawResourceObjects.set(resource, sprite);
     }
   }
 
@@ -830,6 +847,7 @@ export function buildDecodedRenderAssets(
     serfAnimationTable,
     rawSerfTorsos,
     rawSerfHeads,
+    rawResourceObjects,
     rawFontGlyphs,
     rawFontShadows,
     rawIcons,

@@ -1,8 +1,9 @@
 # Phase 34 — Touch Playability
 
-**Last updated:** 2026-06-11 (after SB-34-09: buildings rise under
-the hammer, the architect myth dissolved, the original's stepwise
-road control restored; the sixth device pass is the open gate).
+**Last updated:** 2026-06-11 (after SB-34-10: serfs dress for their
+professions and carry visibly, flags stack their resources,
+harvesters work in the open; the seventh device pass is the open
+gate). SB-34-05 status: looped — rounds 2–6 rejected.
 **Status:** in progress — opened by the maintainer's real-device
 play test, which the previous touch gates failed to predict.
 
@@ -16,6 +17,21 @@ Real phone, real fingers: "LITERALLY unplayable."
 4. Zero animations — flags don't wave.
 5. Could not build a road — "could not even click into it."
 6. The build-building menu shows buildings cropped after ~5 pixels.
+
+## Round 7 (sixth device pass, 2026-06-11)
+
+Construction rises — but:
+
+17. "All serfs literally look the same." (Root: raw animation frames
+    hit the appearance tables with no profession sprite-bank offset,
+    and the torso decode stopped at body 48 of ~600. SB-34-10.)
+18. "Literally no materials visible. Serfs bring invisible objects."
+    (Root: transporters never switched to the carrying torsos, and
+    flag slot resources never rendered at all. SB-34-10.)
+19. "Rock miners don't even come out. Rocks just disappear around
+    them." (Root: #workHarvest mutated the map from inside the hut.
+    Harvesters now walk out, work the target in the open, and walk
+    the product home. SB-34-10.)
 
 ## Round 6 (fifth device pass, 2026-06-11)
 
@@ -130,6 +146,7 @@ their device and saying so.
 | SB-34-07 | The road and the true tap | done | story-07-the-road-and-the-true-tap.md | evidence-story-07.md |
 | SB-34-08 | The road builder | done | story-08-the-road-builder.md | evidence-story-08.md |
 | SB-34-09 | Rising under the hammer | done | story-09-rising-under-the-hammer.md | evidence-story-09.md |
+| SB-34-10 | A settlement of individuals | done | story-10-a-settlement-of-individuals.md | evidence-story-10.md |
 
 ## Active risks
 

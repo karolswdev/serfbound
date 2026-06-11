@@ -44,6 +44,7 @@ import {
   engineBoundary,
   findSerfboundMission,
   findShortestRoad,
+  serfBodyOffset,
   serfboundMissions,
   startSerfboundMission,
   restoreSerfboundLocalGame,
@@ -1151,11 +1152,24 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       currentDecodedAssets,
       currentLandscapeAssets,
       currentWorld,
-      currentSerfEngine === undefined
+      currentSerfEngine === undefined || currentWorld === undefined
         ? undefined
-        : [...currentSerfEngine.serfs.values()].filter(
-            (serf) => serf.state !== 0 && serf.state !== 1,
-          ),
+        : [...currentSerfEngine.serfs.values()]
+            .filter(
+              (serf) =>
+                serf.state !== 0 &&
+                serf.state !== 1 &&
+                // Workers resting inside their building stay hidden
+                // (state working, phase 0 — SB-34 round 7).
+                !(serf.state === 11 && serf.workPhase === 0 && serf.workBuildingIndex !== 0),
+            )
+            .map((serf) => ({
+              position: serf.position,
+              animation: serf.animation,
+              counter: serf.counter,
+              // The profession sprite-bank offset dresses the serf.
+              bodyOffset: serfBodyOffset(serf, currentWorld!),
+            })),
       currentScroll,
       currentTick,
       currentBuiltStructures,

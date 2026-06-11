@@ -265,6 +265,13 @@ export const cornerStoneSprite = 0x91;
 // RenderFlag: flags cycle four wave frames (map objects 128..131).
 export const flagWaveFrames = 4;
 
+// RenderFlag.ResPos: where each of the 8 flag slots stacks its waiting
+// resource around the flag base (SB-34 round 7).
+const flagResourcePositions: readonly number[] = [
+  6, -4, 10, -2, -4, -4, 10, 2,
+  -8, -2, 6, 4, -8, 2, -4, 4,
+];
+
 export function buildLandscapeRenderAssets(
   decodedAssets: DecodedRenderAssets,
   landscape: ClassicMapLandscape,
@@ -392,6 +399,11 @@ export function buildLandscapeRenderAssets(
 
   for (const [head, sprite] of decodedAssets.rawSerfHeads) {
     sprites[`serfh:${head}`] = sprite;
+  }
+
+  // Resource stack sprites for flags (SB-34 round 7).
+  for (const [resource, sprite] of decodedAssets.rawResourceObjects) {
+    sprites[`res:${resource}`] = sprite;
   }
 
   // Decoded UI chrome (SB-16-01): font glyphs, icons, panel buttons,
@@ -527,11 +539,13 @@ export type LandscapeSceneOptions = {
   // Live game world; when present, terrain/objects/roads/flags render from
   // its mutable state instead of the pristine landscape.
   readonly world?: SerfboundGameWorld;
-  // Active serfs to render (position, animation state).
+  // Active serfs to render (position, animation state, and the
+  // profession sprite-bank offset — SB-34 round 7).
   readonly serfs?: readonly {
     readonly position: number;
     readonly animation: number;
     readonly counter: number;
+    readonly bodyOffset?: number;
   }[];
   // The selected tile: the map cursor draws here (SB-34 round 3).
   readonly selected?: { readonly column: number; readonly row: number };
@@ -676,6 +690,23 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
         // the static sprite is the fallback when frames are missing.
         pushSprite("shadows", flagShadowKey, apexX, apexY, apexY, apexX);
         pushSprite("markers", flagKey, apexX, apexY, apexY, apexX);
+        // Resources waiting at the flag stack around its base at the
+        // reference slot offsets (RenderFlag.ResPos — SB-34 round 7).
+        const stackedFlag = options.world?.flagAt(position);
+        if (stackedFlag !== null && stackedFlag !== undefined) {
+          stackedFlag.slots.forEach((slot, index) => {
+            if (slot.resource >= 0) {
+              pushSprite(
+                "markers",
+                `res:${slot.resource}`,
+                apexX + (flagResourcePositions[index * 2] ?? 0),
+                apexY + (flagResourcePositions[index * 2 + 1] ?? 0),
+                apexY + 0.5,
+                apexX,
+              );
+            }
+          });
+        }
       } else if (objectType >= 2 && objectType <= 4 && options.world !== undefined) {
         // Buildings render their reference map_object sprite by type,
         // rising bottom-up under the builder's hammer (SB-34 round 6,
@@ -875,7 +906,10 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
 
       const phase = Math.min(Math.max(serf.counter, 0) >> 3, animation.length - 1);
       const frame = animation[phase]!;
-      const mapping = serfBodyAndHead(frame.sprite);
+      // The profession offset dresses the serf (SB-34 round 7); the
+      // reference applies it to the walking frames (< 0x80).
+      const offset = frame.sprite < 0x80 ? (serf.bodyOffset ?? 0) : 0;
+      const mapping = serfBodyAndHead(frame.sprite + offset);
       if (mapping === null) {
         continue;
       }

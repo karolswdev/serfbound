@@ -80,6 +80,12 @@ const mineDeposits: Readonly<Record<number, readonly [number, number]>> = {
 
 const minerFoods: readonly number[] = [resourceType.fish, resourceType.bread, resourceType.meat];
 
+// Outdoor harvest pacing (SB-34 round 7): a step every 8 work ticks
+// (the serf walking pace) on the way to the target, and a visible
+// 60-tick dwell working it.
+const harvestStepTicks = 8;
+const harvestDwellTicks = 60;
+
 // The reference tool order for the toolmaker's round-robin output.
 const toolOutputs: readonly number[] = [15, 16, 17, 18, 19, 20, 21, 22, 23];
 
@@ -1102,6 +1108,10 @@ export class SerfboundSerfEngine {
     }
   }
 
+  // Outdoor harvest (SB-34 round 7, the visible cycle): rest inside,
+  // walk OUT to the nearest target, work it under the player's eyes,
+  // and walk the product home — the tree/stone changes only while the
+  // worker stands at it, never by remote control.
   #workHarvest(
     serf: WorldSerf,
     building: WorldBuilding,
@@ -1110,22 +1120,116 @@ export class SerfboundSerfEngine {
     remainder: number,
     product: number,
   ): void {
-    if (serf.workCounter < cycleTicks) {
+    // Phase 0: inside, resting until the cycle matures; then pick the
+    // nearest target and step out. The rest takes half the cycle —
+    // the walk out, the dwell, and the walk home spend the other half
+    // (the pre-walk-out pacing budgeted the whole cycle to the rest).
+    if (serf.workPhase === 0) {
+      if (serf.workCounter < Math.trunc(cycleTicks / 2)) {
+        return;
+      }
+
+      serf.workCounter = 0;
+      for (let offset = 1; offset < 151; offset += 1) {
+        const candidate = this.world.positionAddSpirally(building.position, offset);
+        if (isTarget(this.world.objectAt(candidate))) {
+          serf.workPhase = 1;
+          serf.workTargetPosition = candidate;
+          serf.walkingDestination = 0;
+          return;
+        }
+      }
+
+      // Nothing left to harvest; idle until the map changes.
       return;
     }
 
-    for (let offset = 1; offset < 151; offset += 1) {
-      const candidate = this.world.positionAddSpirally(building.position, offset);
-      if (isTarget(this.world.objectAt(candidate))) {
+    // Phase 1: walk to the target.
+    if (serf.workPhase === 1) {
+      if (serf.position === serf.workTargetPosition) {
+        serf.workPhase = 2;
         serf.workCounter = 0;
-        this.world.setObject(candidate, remainder, null);
-        this.#emitProduct(building, product);
         return;
+      }
+
+      this.#stepToward(serf, serf.workTargetPosition);
+      return;
+    }
+
+    // Phase 2: work the target — the dwell is the visible chopping.
+    if (serf.workPhase === 2) {
+      if (serf.workCounter < harvestDwellTicks) {
+        return;
+      }
+
+      if (isTarget(this.world.objectAt(serf.workTargetPosition))) {
+        this.world.setObject(serf.workTargetPosition, remainder, null);
+      }
+
+      serf.workCounter = 0;
+      serf.workPhase = 3;
+      serf.walkingDestination = 0;
+      return;
+    }
+
+    // Phase 3: walk home; the product appears with the returning serf.
+    if (serf.position === building.position) {
+      serf.workPhase = 0;
+      serf.workCounter = 0;
+      serf.workTargetPosition = -1;
+      this.#emitProduct(building, product);
+      return;
+    }
+
+    this.#stepToward(serf, building.position);
+  }
+
+  // One greedy step toward a free-walking target, paced by the work
+  // clock; the previous tile (walkingDestination, unused while
+  // working) blocks backtracking so the walk flows around obstacles.
+  #stepToward(serf: WorldSerf, target: number): void {
+    if (serf.workCounter < harvestStepTicks) {
+      return;
+    }
+
+    serf.workCounter = 0;
+    let bestDirection: Direction | null = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const direction of directionOrder) {
+      const next = this.world.move(serf.position, direction);
+      // The target itself is always enterable — walking home means
+      // stepping INTO the worker's own building.
+      if (
+        next !== target &&
+        (this.world.hasBuilding(next) || next === serf.walkingDestination)
+      ) {
+        continue;
+      }
+
+      const distance = this.#hexDistance(next, target);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestDirection = direction;
       }
     }
 
-    // Nothing left to harvest; idle until the map changes.
-    serf.workCounter = 0;
+    if (bestDirection === null) {
+      return;
+    }
+
+    // Harvest walkers ghost off the collision map (like idle-on-path
+    // serfs): a stonecutter dwelling on a road tile must never wall
+    // off the transporters behind him.
+    const next = this.world.move(serf.position, bestDirection);
+    const heightDifference =
+      this.world.heights[next]! - this.world.heights[serf.position]!;
+    if (this.serfIndexes[serf.position] === serf.index) {
+      this.serfIndexes[serf.position] = 0;
+    }
+
+    serf.walkingDestination = serf.position;
+    serf.animation = walkingAnimation(heightDifference, bestDirection, false);
+    serf.position = next;
   }
 
   #plantTree(building: WorldBuilding): void {
@@ -1714,4 +1818,62 @@ export class SerfboundSerfEngine {
 
     return null;
   }
+}
+
+// RenderSerf.GetActiveSerfBody, condensed (SB-34 round 7): the serf's
+// profession adds its sprite-bank offset to the animation frame before
+// the appearance tables resolve torso and head — this is what dresses
+// a lumberjack as a lumberjack and puts the carried plank in a
+// transporter's arms. Offsets apply to the walking frames (< 0x80).
+const transporterCarryOffsets: readonly number[] = [
+  0, 0x3000, 0x3500, 0x3b00, 0x4100, 0x4600, 0x4b00, 0x1400,
+  0x700, 0x5100, 0x800, 0x1c00, 0x1d00, 0x1e00, 0x1a00, 0x1b00,
+  0x6800, 0x6d00, 0x6500, 0x6700, 0x6b00, 0x6a00, 0x6600, 0x6900,
+  0x6c00, 0x5700, 0x5600, 0, 0, 0, 0, 0,
+];
+
+const professionBodyOffsets: Readonly<Partial<Record<number, number>>> = {
+  [buildingType.lumberjack]: 0xb00,
+  [buildingType.sawmill]: 0xc00,
+  [buildingType.stonecutter]: 0xd00,
+  [buildingType.forester]: 0xe00,
+  [buildingType.stoneMine]: 0x1800,
+  [buildingType.coalMine]: 0x1800,
+  [buildingType.ironMine]: 0x1800,
+  [buildingType.goldMine]: 0x1800,
+  [buildingType.steelSmelter]: 0x1900,
+  [buildingType.goldSmelter]: 0x1900,
+  [buildingType.fisher]: 0x2c00,
+  [buildingType.pigFarm]: 0x3200,
+  [buildingType.butcher]: 0x3700,
+  [buildingType.farm]: 0x3d00,
+  [buildingType.mill]: 0x4300,
+  [buildingType.baker]: 0x4800,
+  [buildingType.boatbuilder]: 0x4e00,
+  [buildingType.toolMaker]: 0x5800,
+  [buildingType.weaponSmith]: 0x5200,
+};
+
+export function serfBodyOffset(serf: WorldSerf, world: SerfboundGameWorld): number {
+  if (serf.isKnight || serf.knightRank > 0 || serf.garrisonTargetIndex !== 0) {
+    return 0x7800 + 0x100 * Math.min(4, serf.knightRank);
+  }
+
+  if (serf.buildTargetIndex !== 0) {
+    return 0x500;
+  }
+
+  if (serf.state === serfState.transporting && serf.carriedResource >= 0) {
+    // The reference indexes the carry table by Resource.Type + 1.
+    return transporterCarryOffsets[serf.carriedResource + 1] ?? 0;
+  }
+
+  if (serf.workBuildingIndex !== 0) {
+    const workplace = world.buildings.get(serf.workBuildingIndex);
+    if (workplace !== undefined) {
+      return professionBodyOffsets[workplace.type] ?? 0;
+    }
+  }
+
+  return 0;
 }
