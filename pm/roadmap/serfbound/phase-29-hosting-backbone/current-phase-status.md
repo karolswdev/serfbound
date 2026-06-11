@@ -1,7 +1,7 @@
 # Phase 29 — Hosting Backbone
 
-**Last updated:** 2026-06-11.
-**Status:** not started.
+**Last updated:** 2026-06-11 (after SB-29-01).
+**Status:** in progress.
 
 ## Goal
 
@@ -57,20 +57,22 @@ Serverless, accountless play remains first-class forever.
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-29-01 | Infrastructure decision and secrets boundary | backlog | story-01-infrastructure-decision.md | — |
+| SB-29-01 | Infrastructure decision and secrets boundary | done | story-01-infrastructure-decision.md | evidence-story-01.md |
 | SB-29-02 | Service containers and manifests | backlog | story-02-service-containers-manifests.md | — |
 | SB-29-03 | Cluster deployment, DNS, TLS | backlog | story-03-cluster-deploy-dns-tls.md | — |
 | SB-29-04 | Online surface and hosting gate | backlog | story-04-online-surface-hosting-gate.md | — |
 
 ## Where we are
 
-Scaffolded 2026-06-11. Inputs in hand: `serfbound.com` registered;
-LKE cluster `lke577204` (us-ord) reachable; kubeconfig stored locally
-under gitignored `serfbound-local-data/infra/dev-kubeconfig.yaml`.
-Services to deploy exist and are CI-proven in-process
-(`services/identity`, `services/mailbox`; runbook `services/README.md`).
-Can start independently of Phases 27/28; SB-29-04 closes the Phase 25
-named gap.
+SB-29-01 shipped: the hosting-infrastructure decision record is in
+`adoption/`, the kubeconfig is provably inside the gitignored
+boundary, the history-wide secret scan is clean, and the cluster is
+verified reachable read-only. Key finding: the cluster is shared —
+cert-manager and Envoy Gateway already installed, other tenants
+present, single `g6-standard-6` node — so Serfbound deploys into its
+own namespace, reuses the platform TLS/ingress, and the resilience
+criterion is pod-restart + backup/restore. Next: SB-29-02 (container
+images + manifests).
 
 ## Active risks
 
@@ -83,13 +85,16 @@ named gap.
 
 ## Decisions made (this phase)
 
-- none yet.
+- 2026-06-11 — `serfbound.com` serves the game via GitHub Pages
+  custom domain; `api.serfbound.com` via the cluster — keeps the
+  always-works path static — SB-29-01, decision record.
+- 2026-06-11 — Reuse the shared cluster's existing cert-manager and
+  Envoy Gateway; Serfbound stays inside its own namespace — found at
+  verification; installing duplicates is a stop-and-ask — SB-29-01.
+- 2026-06-11 — Cost ceiling: no new node pools, no new paid add-ons;
+  Serfbound rides existing headroom — SB-29-01, decision record.
 
 ## Decisions deferred
-
-- How `serfbound.com` serves the static game (Pages custom domain vs
-  cluster-served static) — decided in SB-29-01; default is Pages
-  custom domain to keep the game static and CDN-backed.
 - Signaling-relay deployment — added to the manifests when Phase 27
   ships it; the backbone must not wait for it.
 - CI-driven deploys vs runbook deploys — default: runbook first,

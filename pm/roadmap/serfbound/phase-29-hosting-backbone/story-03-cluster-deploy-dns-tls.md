@@ -56,3 +56,8 @@ announcing a public URL" — becomes real here.
 - Phase gate advanced: exit criterion 3.
 - Open: TTL/retention for backups — default 14 daily snapshots;
   record the choice in the runbook.
+- SB-29-01 finding: the cluster is shared, with cert-manager and
+  Envoy Gateway already installed — reuse them (no ingress-nginx
+  install), deploy only into the `serfbound` namespace. Single-node
+  pool: the drain criterion narrows to pod-restart + backup/restore
+  proof per the hosting-infrastructure decision record.

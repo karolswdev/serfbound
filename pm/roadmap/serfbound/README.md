@@ -90,6 +90,9 @@ not contain .NET runtime code, desktop-shell code, or a desktop deliverable.
 - `pm/roadmap/serfbound/adoption/pointer-input-model.md` - Phase 6 pointer
   input boundary for map hover/selection, mouse/trackpad/touch viability, and
   projection reuse.
+- `pm/roadmap/serfbound/adoption/hosting-infrastructure-decision.md` - Phase 29
+  hosting baseline: domain plan, shared LKE cluster posture, secrets boundary,
+  backups, cost ceiling.
 - `pm/roadmap/serfbound/reference-tools/` - isolated Phase 1 reference capture
   tooling that may inspect source behavior but is not Serfbound product code.
 - `pm/roadmap/serfbound/reference-fixtures/ci/` - committed CI-safe oracle
