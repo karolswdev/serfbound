@@ -373,13 +373,35 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
           </div>
           <div class="runtime-pill" data-testid="runtime-pill">Ready</div>
         </div>
-        <canvas
-          class="terrain-preview"
-          data-testid="terrain-preview"
-          width="960"
-          height="540"
-          aria-label="First Serfbound render-layer scene"
-        ></canvas>
+        <div class="scene__stage">
+          <canvas
+            class="terrain-preview"
+            data-testid="terrain-preview"
+            width="960"
+            height="540"
+            aria-label="First Serfbound render-layer scene"
+          ></canvas>
+          <div class="welcome" data-testid="welcome-screen">
+            <div class="welcome__card">
+              <p class="scene__kicker">Your realm awaits</p>
+              <h2 class="welcome__title">The complete classic Settlers, running in your browser</h2>
+              <p class="welcome__body">Serfbound brings the original 1993 game to life from your own data file: every production chain, knights and conquest, the full campaign, sound and music. Bring your SPAU.PA and the realm is yours.</p>
+              <label
+                class="welcome__drop"
+                data-testid="welcome-drop-zone"
+                for="data-import"
+                role="button"
+                tabindex="0"
+              >
+                <strong>Drop your SPAU.PA here</strong>
+                <span>or click to browse</span>
+              </label>
+              <p class="welcome__error" data-testid="welcome-error" hidden></p>
+              <p class="welcome__promise">Your data never leaves this device. No uploads, no required accounts, nothing to track.</p>
+              <p class="welcome__hint">Don't own the game? The free demo's SPAU.PA works too.</p>
+            </div>
+          </div>
+        </div>
       </section>
       <aside class="status-panel" aria-label="Serfbound status">
         <p
@@ -1645,12 +1667,23 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     throw new Error("Serfbound shell import input did not mount.");
   }
 
-  input.addEventListener("change", () => {
-    const file = input.files?.item(0);
+  // One import path for the picker and the welcome drop zone
+  // (SB-32-03): same validation, same recovery, designed states.
+  const welcomeDropZone = root.querySelector<HTMLElement>("[data-testid='welcome-drop-zone']");
+  const welcomeError = root.querySelector<HTMLElement>("[data-testid='welcome-error']");
+  const applyImportFile = (file: File | null | undefined) => {
     const validation = validateArchiveFileSelection(file);
     applyArchiveValidation(root, validation, renderGeneratedScene);
+    if (welcomeError !== null) {
+      welcomeError.hidden = validation.state !== "unsupported";
+      welcomeError.textContent =
+        validation.state === "unsupported"
+          ? `${validation.fileName} cannot be used. Choose SPAU.PA to start.`
+          : "";
+    }
 
     if (validation.state === "supported" && file !== null && file !== undefined) {
+      welcomeDropZone?.classList.add("is-busy");
       void importSelectedArchive(
         root,
         file,
@@ -1658,8 +1691,33 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         importedArchiveStore,
         renderCatalogScene,
         renderGeneratedScene,
-      );
+      ).finally(() => {
+        welcomeDropZone?.classList.remove("is-busy");
+      });
     }
+  };
+  input.addEventListener("change", () => {
+    applyImportFile(input.files?.item(0));
+  });
+  welcomeDropZone?.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    welcomeDropZone.classList.add("is-dragover");
+  });
+  welcomeDropZone?.addEventListener("dragleave", () => {
+    welcomeDropZone.classList.remove("is-dragover");
+  });
+  welcomeDropZone?.addEventListener("drop", (event) => {
+    event.preventDefault();
+    welcomeDropZone.classList.remove("is-dragover");
+    applyImportFile(event.dataTransfer?.files.item(0));
+  });
+  welcomeDropZone?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    input.click();
   });
 
   const importControl = root.querySelector<HTMLElement>("[data-testid='data-import-control']");

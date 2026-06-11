@@ -28,7 +28,7 @@ test("the chrome walks pre-import -> title -> running", async ({ page }) => {
   await page.getByTestId("start-game-button").click();
   await expect(page.getByTestId("game-state")).toHaveText("Running", { timeout: 15_000 });
   await expect(app).toHaveAttribute("data-serfbound-chrome", "running");
-  const kicker = page.locator(".scene__kicker");
+  const kicker = page.locator(".scene__toolbar .scene__kicker");
   await expect(kicker).toBeHidden();
   const heroSize = await page
     .locator("h1")

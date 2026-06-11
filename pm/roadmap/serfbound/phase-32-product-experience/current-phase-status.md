@@ -1,6 +1,6 @@
 # Phase 32 — Product Experience
 
-**Last updated:** 2026-06-11 (after SB-32-02).
+**Last updated:** 2026-06-11 (after SB-32-03).
 **Status:** in progress.
 
 ## Goal
@@ -63,7 +63,7 @@ mechanically encouraged.
 - [x] The shell chrome conforms: landing/title, panels, controls,
   state-driven views — desktop and mobile captures from real data.
   (SB-32-02)
-- [ ] First-run is a designed journey: a stranger lands, understands,
+- [x] First-run is a designed journey: a stranger lands, understands,
   imports, and plays — captured end to end. (SB-32-03)
 - [ ] The competitive surfaces (sign-in, lobby, your-turn, attest,
   profile) read as a platform — all states designed, captured.
@@ -78,7 +78,7 @@ mechanically encouraged.
 |---|---|---|---|---|
 | SB-32-01 | The design standard and its enforcement | done | story-01-design-standard.md | evidence-story-01.md |
 | SB-32-02 | Shell chrome rebuilt to the standard | done | story-02-shell-chrome-redesign.md | evidence-story-02.md |
-| SB-32-03 | First-run and import as a designed journey | backlog | story-03-first-run-experience.md | — |
+| SB-32-03 | First-run and import as a designed journey | done | story-03-first-run-experience.md | evidence-story-03.md |
 | SB-32-04 | Competitive surfaces styled as a platform | backlog | story-04-competitive-surfaces.md | — |
 | SB-32-05 | Experience gate | backlog | story-05-experience-gate.md | — |
 
@@ -98,8 +98,16 @@ three chrome states (running yields the screen to the game), raw-color
 ratchet at **0**, full ci:release green with zero test edits, and
 real-data captures (desktop + phone) for all three states under
 artifacts/. pixellab is reachable via raw MCP-over-HTTP (recorded in
-evidence) — no session restart needed. Next: SB-32-03 (the first-run
-journey).
+evidence) — no session restart needed. SB-32-03 shipped: the welcome
+greets beneath the living preview (pitch, drop zone, the privacy
+promise, the demo hint), drag-drop and the picker share one import
+path with designed dragover/busy/error states, the wrong-file moment
+speaks in banner-red where the player looks, and a returning settler
+lands straight on the title — three new first-run tests, all tokens
+consumed (43/43, reserved list empty), ci:release exit 0 captured
+directly. The first overlay design stole the preview's pointer
+contract and static-shell.spec caught it — the app yielded (in-flow
+welcome), the test stood. Next: SB-32-04 (competitive surfaces).
 
 ## Active risks
 

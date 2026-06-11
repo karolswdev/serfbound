@@ -17,11 +17,9 @@ const componentCss = readFileSync("packages/app/src/styles.css", "utf8");
 // conversion. SB-32-02 drove it to zero; it stays there.
 const RAW_COLOR_RATCHET = 0;
 
-// Tokens defined ahead of the surfaces that consume them.
-const RESERVED = new Map([
-  ["--sb-shadow-card", "SB-32-04 lobby cards/toasts"],
-  ["--sb-banner-red", "SB-32-03 error states"],
-]);
+// Tokens defined ahead of the surfaces that consume them. Empty as
+// of SB-32-03 — every defined token is consumed.
+const RESERVED = new Map([]);
 
 const failures = [];
 

@@ -107,6 +107,13 @@ h1 {
   font-weight: var(--sb-weight-bold);
 }
 
+.scene__stage {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
 .terrain-preview {
   display: block;
   width: 100%;
@@ -120,6 +127,120 @@ h1 {
   box-shadow: var(--sb-shadow-canvas);
   cursor: crosshair;
   touch-action: none;
+}
+
+/* ── The welcome (SB-32-03): a first visit is a greeting, not a
+      checklist. Lives over the empty canvas; gone once data is in. ── */
+
+.welcome {
+  /* In-flow beneath the preview: the greeting never steals the map's
+     pointer events — the canvas stays fully explorable pre-import. */
+  display: none;
+  padding-top: var(--sb-space-4);
+}
+
+[data-serfbound-chrome="pre-import"] .welcome {
+  display: block;
+}
+
+[data-serfbound-chrome="pre-import"] .scene {
+  overflow-y: auto;
+}
+
+.welcome__card {
+  display: grid;
+  gap: var(--sb-space-4);
+  max-width: 640px;
+  margin: 0 auto;
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-lg);
+  padding: var(--sb-space-5);
+  background: var(--sb-surface-raised);
+  box-shadow: var(--sb-shadow-card);
+}
+
+.welcome__title {
+  margin: 0;
+  color: var(--sb-parchment-bright);
+  font-size: var(--sb-text-lg);
+  font-weight: var(--sb-weight-black);
+  line-height: 1.2;
+}
+
+.welcome__body {
+  margin: 0;
+  color: var(--sb-parchment);
+  font-size: var(--sb-text-sm);
+}
+
+.welcome__drop {
+  display: grid;
+  gap: var(--sb-space-1);
+  justify-items: center;
+  border: 2px dashed var(--sb-line);
+  border-radius: var(--sb-radius-md);
+  padding: var(--sb-space-5);
+  color: var(--sb-parchment-bright);
+  background: var(--sb-parchment-veil);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    border-color var(--sb-dur-fast) var(--sb-ease),
+    background var(--sb-dur-fast) var(--sb-ease);
+}
+
+.welcome__drop span {
+  color: var(--sb-moss);
+  font-size: var(--sb-text-sm);
+}
+
+.welcome__drop:hover,
+.welcome__drop.is-dragover {
+  border-color: var(--sb-gold);
+  background: var(--sb-parchment-faint);
+}
+
+.welcome__drop.is-busy {
+  border-color: var(--sb-gold);
+  cursor: progress;
+}
+
+.welcome__drop:focus-visible {
+  outline: 3px solid var(--sb-steel);
+  outline-offset: 3px;
+}
+
+.welcome__error {
+  margin: 0;
+  border-left: 3px solid var(--sb-banner-red);
+  padding-left: var(--sb-space-3);
+  color: var(--sb-banner-red);
+  font-size: var(--sb-text-sm);
+  font-weight: var(--sb-weight-bold);
+}
+
+.welcome__promise {
+  margin: 0;
+  border-left: 3px solid var(--sb-meadow);
+  padding-left: var(--sb-space-3);
+  color: var(--sb-parchment);
+  font-size: var(--sb-text-sm);
+}
+
+.welcome__hint {
+  margin: 0;
+  color: var(--sb-moss);
+  font-size: var(--sb-text-xs);
+}
+
+/* A bad file marks the journey, recoverably, wherever the player is
+   looking — the drop zone and the data group both speak. */
+[data-serfbound-data-state="unsupported"] .welcome__drop {
+  border-color: var(--sb-banner-red);
+}
+
+[data-serfbound-data-state="unsupported"] .panel-group--data {
+  border-color: var(--sb-banner-red);
 }
 
 /* ── The chrome column ────────────────────────────────────────── */
@@ -345,6 +466,14 @@ input.secondary-action {
 
   .terrain-preview {
     min-height: 320px;
+  }
+
+  .welcome {
+    padding: var(--sb-space-3);
+  }
+
+  .welcome__card {
+    padding: var(--sb-space-4);
   }
 
   .status-panel {
