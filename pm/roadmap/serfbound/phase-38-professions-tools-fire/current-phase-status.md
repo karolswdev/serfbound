@@ -1,11 +1,13 @@
 # Phase 38 — Professions, Tools, and Fire
 
-**Last updated:** 2026-06-12 (SB-38-04 done: demolition burns — the
-fire stands on the reference counter while everyone bound to the
-building escapes home, and the ruin falls when it expires; the
-game.demolish-building command carries it through saves and
-lockstep. Earlier today: SB-38-01 outdoor trips, SB-38-02 the
-geologist).
+**Last updated:** 2026-06-12 (SB-38-03 done: tools gate
+professions — the Building.Requests table charges the conversion,
+a toolless building stays unstaffed and retries, the builder and
+geologist pay their hammers, and the twelve-building chain suite
+staffs itself entirely through consumed tools. The toolmaker is
+load-bearing. Earlier today: SB-38-01 outdoor trips, SB-38-02 the
+geologist, SB-38-04 fire. **Only SB-38-05 (the sound of work) and
+SB-38-06 (the alpha gate) remain.**)
 **Status:** in progress.
 
 ## Goal
@@ -35,8 +37,9 @@ and actions sound like themselves.
   cycles (SB-38-01); the geologist exists and plants the signs the
   player reads (SB-38-02 — the flag-popup button rides the alpha
   gate's app work).
-- [ ] Tools gate professions: the inventory tracks typed serfs and
-  converts them with tools; the toolmaker matters. (SB-38-03)
+- [x] Tools gate professions and the toolmaker matters; the typed
+  serf counts stay condensed to conversion-only (professionals never
+  return to stock — recorded). (SB-38-03)
 - [x] Demolition burns: fire, countdown, escaping serfs. (SB-38-04 — conquest demolitions stay instant, recorded for Phase 39.)
 - [ ] Action sounds ride the animation frames. (SB-38-05)
 - [ ] **The alpha gate:** the maintainer plays the full loop on
@@ -49,7 +52,7 @@ and actions sound like themselves.
 |---|---|---|---|---|
 | SB-38-01 | Fisher, farmer, forester in the open | done | story-01-fisher-farmer-forester-in-the-open.md | evidence-story-01.md |
 | SB-38-02 | The geologist | done | story-02-the-geologist.md | evidence-story-02.md |
-| SB-38-03 | Tools make professionals | backlog | — | — |
+| SB-38-03 | Tools make professionals | done | story-03-tools-make-professionals.md | evidence-story-03.md |
 | SB-38-04 | Fire | done | story-04-fire.md | evidence-story-04.md |
 | SB-38-05 | The sound of work | backlog | — | — |
 | SB-38-06 | The alpha gate | backlog | — | — |

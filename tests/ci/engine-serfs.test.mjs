@@ -1302,6 +1302,7 @@ test("inventory modes: stop serves but rejects, in accepts, out expels by priori
   const inventory = world.inventoryForPlayer(0);
   inventory.resources.fill(0);
   inventory.resources[6] = 2; // lumber, which the sawmill always wants
+  inventory.resources[21] = 1; // the sawmiller's saw (SB-38-03)
   inventory.resourceMode = "stop";
 
   // An orphan wheat (no destination) at the sawmill flag: nothing
@@ -1384,6 +1385,8 @@ test("the toolmaker draws from the player's tool priorities (SB-36-07)", () => {
 
   const inventory = world.inventoryForPlayer(0);
   inventory.resources.fill(0);
+  inventory.resources[16] = 1; // the toolmaker's own hammer (SB-38-03)
+  inventory.resources[21] = 1; // ...and his saw
   toolmaker.deliveredResources[7] = 3; // planks
   toolmaker.deliveredResources[11] = 3; // steel
 
@@ -1415,6 +1418,7 @@ test("the emergency program: short stocks funnel construction into the essential
   inventory.resources.fill(0);
   inventory.resources[7] = 5;
   inventory.resources[9] = 10;
+  inventory.resources[16] = 6; // builders cost hammers (SB-38-03)
 
   // A hut site queued BEFORE the program trips, with its materials
   // already staged behind the castle door.
@@ -1971,4 +1975,93 @@ test("walking animations clamp to the reference's ±4 slope rows (SB-35-04 punch
   // direction's animation rows.
   assert.equal(walkingAnimation(7, "Right", false), walkingAnimation(4, "Right", false));
   assert.equal(walkingAnimation(-9, "Down", false), walkingAnimation(-4, "Down", false));
+});
+
+test("tools make professionals: no axe, no lumberjack (SB-38-03)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  const lumberjack = world.buildBuilding(
+    world.geometry.positionAdd(castleFlag.position, 3, -1),
+    2,
+    0,
+  );
+  lumberjack.isDone = true;
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  // An empty toolshed: serfs aplenty, but not one axe.
+  const inventory = world.inventoryForPlayer(0);
+  inventory.resources.fill(0);
+
+  const engine = new SerfboundSerfEngine(world);
+  const staffed = () => {
+    for (const serf of engine.serfs.values()) {
+      if (serf.workBuildingIndex === lumberjack.index) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  let tick = 0;
+  for (; tick < 50000; tick += 16) {
+    engine.update(tick);
+  }
+
+  assert.equal(staffed(), false, "no axe in stock leaves the lumberjack unstaffed");
+
+  // One axe arrives; the sweep converts a generic serf and the axe
+  // leaves stock with him.
+  inventory.resources[20] = 1;
+  let staffedNow = false;
+  for (; tick < 120000 && !staffedNow; tick += 16) {
+    engine.update(tick);
+    staffedNow = staffed();
+  }
+
+  assert.equal(staffedNow, true, "one axe staffs the lumberjack");
+  assert.equal(inventory.resources[20], 0, "the axe was consumed by the conversion");
+
+  // Stand the essential trio so the emergency program (tripped by the
+  // zeroed stocks) lifts and lets a hut dispatch at all.
+  const sawmill = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 3, 3), 17, 0);
+  sawmill.isDone = true;
+  const stonecutter = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, -3, -1), 4, 0);
+  stonecutter.isDone = true;
+  let lifted = false;
+  for (; tick < 200000 && !lifted; tick += 16) {
+    engine.update(tick);
+    lifted = world.players[0].emergencyProgramActive === false;
+  }
+  assert.equal(lifted, true, "the emergency program lifted");
+
+  // Construction needs the builder's hammer.
+  const hut = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, -1, 3), 11, 0);
+  assert.notEqual(hut, null, "hut site builds");
+  assert.equal(
+    world.buildRoad({ start: castleFlag.position, directions: ["Down", "Down", "Down", "Down"] }, 0),
+    true,
+  );
+  inventory.resources[7] = 4;
+  inventory.resources[9] = 4;
+  assert.equal(
+    engine.dispatchConstructionLogistics(hut, tick),
+    false,
+    "no hammer refuses the construction dispatch",
+  );
+  inventory.resources[16] = 1;
+  assert.equal(
+    engine.dispatchConstructionLogistics(hut, tick),
+    true,
+    "a hammer sends the builder",
+  );
+  assert.equal(inventory.resources[16], 0, "the builder took the hammer");
 });

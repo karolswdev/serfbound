@@ -131,6 +131,27 @@ const buildingStockSpecs: Readonly<Record<number, readonly StockSlotSpec[]>> = {
   ], // gold smelter
 };
 
+// Building.Requests (SB-38-03): the tools a generic serf consumes to
+// become the profession a building needs. Professions absent from
+// the table convert free (forester, pig farmer, miller, baker, the
+// smelters); the construction builder and the geologist charge a
+// hammer at their own call sites.
+const professionTools: Readonly<Record<number, readonly number[]>> = {
+  1: [resourceType.rod], // fisher
+  2: [resourceType.axe], // lumberjack
+  3: [resourceType.hammer], // boatbuilder
+  4: [resourceType.pick], // stonecutter
+  5: [resourceType.pick], // stone mine
+  6: [resourceType.pick], // coal mine
+  7: [resourceType.pick], // iron mine
+  8: [resourceType.pick], // gold mine
+  12: [resourceType.scythe], // farm
+  13: [resourceType.cleaver], // butcher
+  17: [resourceType.saw], // sawmill
+  19: [resourceType.hammer, resourceType.saw], // toolmaker
+  20: [resourceType.hammer, resourceType.pincer], // weaponsmith
+};
+
 // Mine building type -> [deposit mineral value, ore resource value].
 const mineDeposits: Readonly<Record<number, readonly [number, number]>> = {
   5: [4, 9], // stone mine -> stone deposit -> stone
@@ -2144,6 +2165,27 @@ export class SerfboundSerfEngine {
     return count;
   }
 
+  // SpecializeSerf's tool charge (SB-38-03): all the profession's
+  // tools leave stock together, or none do and the request fails.
+  #takeProfessionTools(playerIndex: number, tools: readonly number[]): boolean {
+    const inventory = this.world.inventoryForPlayer(playerIndex);
+    if (inventory === null) {
+      return false;
+    }
+
+    for (const tool of tools) {
+      if ((inventory.resources[tool] ?? 0) <= 0) {
+        return false;
+      }
+    }
+
+    for (const tool of tools) {
+      inventoryTakeResource(inventory, tool);
+    }
+
+    return true;
+  }
+
   #sweepWorkerRequests(gameTick: number): void {
     for (const building of this.world.buildings.values()) {
       if (
@@ -2156,6 +2198,12 @@ export class SerfboundSerfEngine {
       }
 
       if (!workedBuildingTypes.has(building.type)) {
+        continue;
+      }
+
+      // No tools, no professional (SB-38-03): the building stays
+      // unstaffed and the sweep retries when the toolmaker delivers.
+      if (!this.#takeProfessionTools(building.player, professionTools[building.type] ?? [])) {
         continue;
       }
 
@@ -2795,6 +2843,11 @@ export class SerfboundSerfEngine {
       return false;
     }
 
+    // The geologist carries a hammer (Game.SendGeologist, SB-38-03).
+    if (!this.#takeProfessionTools(flag.player, [resourceType.hammer])) {
+      return false;
+    }
+
     const serf = this.spawnGenericSerf(flag.player, gameTick);
     if (serf === null) {
       return false;
@@ -3198,6 +3251,13 @@ export class SerfboundSerfEngine {
       castleFlag.index !== buildingFlag.index &&
       this.#directionToward(castleFlag.index, buildingFlag.index) === null
     ) {
+      return false;
+    }
+
+    // The builder costs a hammer (Building.cs 1801, SB-38-03); a
+    // toolless dispatch is refused before any side effects so the
+    // emergency recovery and callers can retry it.
+    if (!this.#takeProfessionTools(building.player, [resourceType.hammer])) {
       return false;
     }
 
