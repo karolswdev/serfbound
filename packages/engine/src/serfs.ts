@@ -422,7 +422,7 @@ export class SerfboundSerfEngine {
 
   // Game.UpdateSerfs equivalent.
   update(gameTick: number): void {
-    this.#updateAmbientDecay();
+    this.#updateMapAmbience(gameTick);
     this.#handlePathSplits(gameTick);
     this.#sweepFlagScheduling();
     this.#sweepEmergencyProgram(gameTick);
@@ -1561,36 +1561,90 @@ export class SerfboundSerfEngine {
   // staffing counts are recomputed from the serfs that actually serve
   // each half; an unstaffed half gets a fresh transporter from the
   // castle.
-  // Felled-wood decay (a minimal SB-37-01 down-payment, recorded):
-  // the reference Map.Update rots FelledPine/FelledTree to stubs and
-  // clears stubs at 25% odds. Without it, trunks litter the map
-  // forever and choke every corridor new roads and fields need — the
-  // AI suite bricked on it. Full ambience (growth, fields, fish)
-  // lands with Phase 37.
-  #ambientCursor = 0;
-  #ambientPass = 0;
-  #updateAmbientDecay(): void {
-    const tiles = this.world.tileCount;
-    for (let step = 0; step < 32; step += 1) {
-      const position = this.#ambientCursor;
-      this.#ambientCursor = (this.#ambientCursor + 1) % tiles;
-      if (this.#ambientCursor === 0) {
-        this.#ambientPass = (this.#ambientPass + 1) & 0xffff;
+  // The map clock (SB-37-01, Map.cs Update): per 20 counter-ticks of
+  // deficit, `regions` tiles are visited, stepping 23 columns right
+  // and a row down on wrap; the sign counter decrements per visit
+  // and resets to 16. Rides the SHARED game random exactly as the
+  // reference does (Game.cs passes state.Random) — ambience is part
+  // of the deterministic state, not a side channel. The RNG-free
+  // position-hash decay bridge this replaces is deleted.
+  #mapUpdateLastTick = 0;
+  #mapUpdateCounter = 0;
+  #mapUpdatePosition = 0;
+  #removeSignsCounter = 16;
+  #updateMapAmbience(gameTick: number): void {
+    const delta = (gameTick - this.#mapUpdateLastTick) & 0xffff;
+    this.#mapUpdateLastTick = gameTick;
+    this.#mapUpdateCounter -= delta;
+
+    // The reference never generates a map under 32 columns; tiny test
+    // worlds run at least one visit per 20 ticks so they age at all.
+    const geometry = this.world.geometry;
+    const regions = Math.max(
+      1,
+      (geometry.columns >> 5) * (geometry.rows >> 5),
+    );
+
+    let iterations = 0;
+    while (this.#mapUpdateCounter < 0) {
+      iterations += regions;
+      this.#mapUpdateCounter += 20;
+    }
+
+    let position = this.#mapUpdatePosition;
+    for (let visit = 0; visit < iterations; visit += 1) {
+      this.#removeSignsCounter -= 1;
+      if (this.#removeSignsCounter < 0) {
+        this.#removeSignsCounter = 16;
       }
 
-      const objectValue = this.world.objectAt(position);
-      if (objectValue >= 93 && objectValue <= 102) {
-        this.world.setObject(position, mapObject.stub, null);
-      } else if (
-        objectValue === mapObject.stub &&
-        ((position + this.#ambientPass) & 3) === 0
-      ) {
-        // 25% per sweep, position-hashed: deterministic without
-        // consuming the shared random (a decay draw per update would
-        // shift every downstream seeded decision — the AI suite
-        // caught exactly that).
+      const column = position & geometry.columnMask;
+      position = geometry.positionAdd(position, 23, 0);
+      if (column + 23 >= geometry.columns) {
+        position = this.world.move(position, "Down");
+      }
+
+      this.#updateMapTile(position);
+    }
+
+    this.#mapUpdatePosition = position;
+  }
+
+  // Map.UpdatePublic: the world ages at the visited tile. Seeds and
+  // field stages ride SB-37-02; fish (UpdateHidden) ride SB-37-03.
+  #updateMapTile(position: number): void {
+    const objectValue = this.world.objectAt(position);
+    if (objectValue === mapObject.stub) {
+      if ((this.random.next() & 3) === 0) {
         this.world.setObject(position, mapObject.none, null);
       }
+
+      return;
+    }
+
+    // FelledPine0..4 / FelledTree0..4 rot to stubs.
+    if (objectValue >= mapObject.felledPine0 && objectValue <= mapObject.felledTree0 + 4) {
+      this.world.setObject(position, mapObject.stub, null);
+      return;
+    }
+
+    if (objectValue === mapObject.newPine || objectValue === mapObject.newTree) {
+      const randomValue = this.random.next();
+      if ((randomValue & 0x300) === 0) {
+        const matureBase =
+          objectValue === mapObject.newPine ? mapObject.pine0 : mapObject.tree0;
+        this.world.setObject(position, matureBase + (randomValue & 7), null);
+      }
+
+      return;
+    }
+
+    if (
+      objectValue >= mapObject.signLargeGold &&
+      objectValue <= mapObject.signEmpty &&
+      this.#removeSignsCounter === 0
+    ) {
+      this.world.setObject(position, mapObject.none, null);
     }
   }
 
@@ -2475,9 +2529,13 @@ export class SerfboundSerfEngine {
         this.world.hasOwner(candidate) &&
         this.world.canBuildSmall(candidate)
       ) {
-        // Condensed growth: the forester's sapling matures immediately
-        // (the reference NewTree growth timer is recorded follow-up work).
-        this.world.setObject(candidate, mapObject.tree0, null);
+        // The forester plants a sapling (Serf.cs: NewPine + rand & 1);
+        // the map clock matures it (SB-37-01).
+        this.world.setObject(
+          candidate,
+          mapObject.newPine + (this.random.next() & 1),
+          null,
+        );
         return;
       }
     }

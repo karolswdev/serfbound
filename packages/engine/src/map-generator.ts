@@ -43,6 +43,17 @@ export const mapObject = {
   waterStone0: 88,
   cactus0: 90,
   deadTree: 92,
+  felledPine0: 93,
+  felledTree0: 98,
+  newPine: 103,
+  newTree: 104,
+  seeds0: 105,
+  seeds5: 110,
+  fieldExpired: 111,
+  signLargeGold: 112,
+  signEmpty: 120,
+  field0: 121,
+  field5: 126,
 } as const;
 
 export const mapMinerals = {
@@ -81,6 +92,8 @@ export const mapSpaceFromObject: readonly number[] = (() => {
   spaces[103] = mapSpace.filled; // new pine
   spaces[104] = mapSpace.filled; // new tree
   for (let value = 105; value < 111; value += 1) spaces[value] = mapSpace.semipassable; // seeds
+  // field expired (111) and signs (112-120) stay open per the reference.
+  for (let value = 121; value < 127; value += 1) spaces[value] = mapSpace.semipassable; // fields
   return spaces;
 })();
 

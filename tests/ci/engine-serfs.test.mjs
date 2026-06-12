@@ -1487,3 +1487,74 @@ test("the emergency program: short stocks funnel construction into the essential
     "the hut's logistics re-dispatched on recovery",
   );
 });
+
+test("the map clock: saplings mature, trunks rot to stubs, stubs clear (SB-37-01)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  // Seed the world with one of each aging object, away from the castle.
+  const felledAt = world.geometry.positionAdd(castleFlag.position, 8, 8);
+  const stubAt = world.geometry.positionAdd(castleFlag.position, 10, 8);
+  const saplingAt = world.geometry.positionAdd(castleFlag.position, 12, 8);
+  world.setObject(felledAt, 98, null); // felled tree, stage 0
+  world.setObject(stubAt, 83, null); // stub
+  world.setObject(saplingAt, 104, null); // new tree
+
+  // A forester, so the planting itself is exercised too.
+  const forester = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 3, -1), 9, 0);
+  assert.notEqual(forester, null, "forester builds");
+  forester.isDone = true;
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  const engine = new SerfboundSerfEngine(world);
+  let felledRotted = false;
+  let stubCleared = false;
+  let saplingMatured = false;
+  let foresterPlantedSapling = false;
+  for (
+    let tick = 0;
+    tick < 900000 && !(felledRotted && stubCleared && saplingMatured && foresterPlantedSapling);
+    tick += 16
+  ) {
+    engine.update(tick);
+    const felledNow = world.objectAt(felledAt);
+    if (felledNow === 83) {
+      felledRotted = true;
+    }
+
+    if (world.objectAt(stubAt) === 0) {
+      stubCleared = true;
+    }
+
+    const saplingNow = world.objectAt(saplingAt);
+    if (saplingNow >= 8 && saplingNow <= 15) {
+      saplingMatured = true;
+    }
+
+    if (!foresterPlantedSapling) {
+      for (let probe = 0; probe < world.tileCount; probe += 1) {
+        const value = world.objects[probe];
+        if ((value === 103 || value === 104) && probe !== saplingAt) {
+          foresterPlantedSapling = true;
+          break;
+        }
+      }
+    }
+  }
+
+  assert.equal(felledRotted, true, "the felled trunk rotted to a stub");
+  assert.equal(stubCleared, true, "the stub cleared from the map");
+  assert.equal(saplingMatured, true, "the sapling matured into a tree");
+  assert.equal(
+    foresterPlantedSapling,
+    true,
+    "the forester plants saplings, not instant trees",
+  );
+});

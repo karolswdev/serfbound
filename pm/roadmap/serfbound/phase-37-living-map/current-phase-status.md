@@ -1,8 +1,12 @@
 # Phase 37 — The Living Map
 
-**Last updated:** 2026-06-11 (scaffolded from the reference parity
-audit; see pm/roadmap/serfbound/reference-parity-audit.md).
-**Status:** scaffolded.
+**Last updated:** 2026-06-12 (SB-37-01 done: the reference map
+clock runs — cadence, the 23-column walk, the sign counter, on the
+shared game random. Saplings mature, trunks rot to stubs, stubs
+clear; the forester plants NewPine/NewTree and waits like everyone
+else. The RNG-free decay bridge and the instant-maturity shortcut
+are deleted).
+**Status:** in progress.
 
 ## Goal
 
@@ -26,9 +30,9 @@ forester plants something that takes time to become a tree.
 
 ## Exit criteria (evidence required)
 
-- [ ] The map update loop runs the reference cadence and the
-  tree/felled/stub lifecycle; the forester plants NewTree, and the
-  instant-maturity shortcut is deleted. (SB-37-01)
+- [x] The map update loop runs the reference cadence and the
+  tree/felled/stub lifecycle; the forester plants NewPine/NewTree,
+  and the instant-maturity shortcut is deleted. (SB-37-01)
 - [ ] Fields advance and expire on the map clock; the farmer sows
   and harvests what the MAP grew. (SB-37-02)
 - [ ] Fish spawn and migrate; a fished-out bay recovers. (SB-37-03)
@@ -39,6 +43,6 @@ forester plants something that takes time to become a tree.
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-37-01 | Trees grow and stumps rot | backlog | — | — |
+| SB-37-01 | Trees grow and stumps rot | done | story-01-trees-grow-and-stumps-rot.md | evidence-story-01.md |
 | SB-37-02 | Fields on the map clock | backlog | — | — |
 | SB-37-03 | Fish | backlog | — | — |
