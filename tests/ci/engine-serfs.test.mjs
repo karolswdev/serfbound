@@ -1196,3 +1196,209 @@ test("stocks request by the reference priorities, not first-found (SB-36-05)", (
     "the priority decay shares coal with the steel smelter at 2",
   );
 });
+
+test("the priority book is player data: inverted flag priorities invert pickup (SB-36-07)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  // The SB-36-02 scenario, with this player's book inverted: gold ore
+  // now outranks plank.
+  world.players[0].economy.flagPriorities[13] = 26;
+  world.players[0].economy.flagPriorities[7] = 1;
+
+  const sitePosition = world.geometry.positionAdd(castleFlag.position, 3, -1);
+  const building = world.buildBuilding(sitePosition, 2, 0);
+  const buildingFlag = world.flags.get(building.flagIndex);
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+  assert.equal(world.dropResource(castleFlag.index, 13, buildingFlag.index), true);
+  assert.equal(world.dropResource(castleFlag.index, 7, buildingFlag.index), true);
+
+  const engine = new SerfboundSerfEngine(world);
+  const transporter = engine.spawnGenericSerf(0, 0);
+  assert.equal(engine.assignTransporter(transporter, castleFlag.index, "Right", 0), true);
+
+  let firstCarried = -1;
+  for (let tick = 0; tick < 60000 && firstCarried < 0; tick += 16) {
+    engine.update(tick);
+    if (transporter.carriedResource >= 0) {
+      firstCarried = transporter.carriedResource;
+    }
+  }
+
+  assert.equal(firstCarried, 13, "the player's inverted book sends gold ore first");
+});
+
+test("the distribution splits are player data: a zeroed policy starves its smelter (SB-36-07)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  // The SB-36-05 scenario with coalGoldsmelter zeroed: every coal
+  // must go to the steel smelter now.
+  world.players[0].economy.distributions.coalGoldsmelter = 0;
+
+  const steel = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 3, -1), 18, 0);
+  const gold = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 6, -1), 23, 0);
+  steel.isDone = true;
+  gold.isDone = true;
+  const steelFlag = world.flags.get(steel.flagIndex);
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+  assert.equal(
+    world.buildRoad({ start: steelFlag.position, directions: ["Right", "Right", "Right"] }, 0),
+    true,
+  );
+
+  // Three coal: the steel smelter's decay (127, 63, 31) stays above
+  // the reference export minimum of 16 for all three.
+  const inventory = world.inventoryForPlayer(0);
+  inventory.resources.fill(0);
+  inventory.resources[12] = 3;
+
+  const engine = new SerfboundSerfEngine(world);
+  const first = engine.spawnGenericSerf(0, 0);
+  engine.assignTransporter(first, castleFlag.index, "Right", 0);
+  const second = engine.spawnGenericSerf(0, 0);
+  engine.assignTransporter(second, steelFlag.index, "Right", 0);
+
+  let settled = false;
+  for (let tick = 0; tick < 200000 && !settled; tick += 16) {
+    engine.update(tick);
+    settled = (steel.deliveredResources[12] ?? 0) === 3;
+  }
+
+  assert.equal(settled, true, "all three coal reached the steel smelter");
+  assert.equal(gold.deliveredResources[12] ?? 0, 0, "the zeroed policy starves the gold smelter");
+});
+
+test("inventory modes: stop serves but rejects, in accepts, out expels by priority (SB-36-07)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  const sawmill = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 3, -1), 17, 0);
+  sawmill.isDone = true;
+  const sawmillFlag = world.flags.get(sawmill.flagIndex);
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  const inventory = world.inventoryForPlayer(0);
+  inventory.resources.fill(0);
+  inventory.resources[6] = 2; // lumber, which the sawmill always wants
+  inventory.resourceMode = "stop";
+
+  // An orphan wheat (no destination) at the sawmill flag: nothing
+  // consumes wheat here, so only an ACCEPTING inventory can home it.
+  assert.equal(world.dropResource(sawmillFlag.index, 3, 0), true);
+
+  const engine = new SerfboundSerfEngine(world);
+  // Arrived lumber is sawed the moment it lands, so count the planks
+  // it becomes rather than sampling the stock.
+  let planksMade = 0;
+  engine.onProduct = (_type, product) => {
+    if (product === 7) {
+      planksMade += 1;
+    }
+  };
+  const transporter = engine.spawnGenericSerf(0, 0);
+  engine.assignTransporter(transporter, castleFlag.index, "Right", 0);
+
+  let tick = 0;
+  let lumberServed = false;
+  for (; tick < 200000 && !lumberServed; tick += 16) {
+    engine.update(tick);
+    lumberServed = planksMade === 2;
+  }
+
+  assert.equal(lumberServed, true, "a stopped inventory still serves demand (In || Stop)");
+  assert.equal(inventory.resources[3], 0, "the stopped inventory accepted nothing");
+  assert.equal(
+    sawmillFlag.slots.some((slot) => slot.resource === 3),
+    true,
+    "the orphan wheat waits at the flag while the castle is stopped",
+  );
+
+  // Flip to IN: the orphan re-homes into the castle stock.
+  inventory.resourceMode = "in";
+  let wheatHome = false;
+  for (; tick < 500000 && !wheatHome; tick += 16) {
+    engine.update(tick);
+    wheatHome = (inventory.resources[3] ?? 0) === 1;
+  }
+
+  assert.equal(wheatHome, true, "an accepting inventory homes the orphan");
+
+  // OUT mode: the higher inventory priority leaves first — lumber (7)
+  // over wheat (1) — and the network re-homes it to the sawmill.
+  inventory.resources[6] = 1;
+  inventory.resourceMode = "out";
+  let lumberExpelled = false;
+  for (; tick < 900000 && !lumberExpelled; tick += 16) {
+    engine.update(tick);
+    lumberExpelled = planksMade === 3;
+  }
+
+  assert.equal(lumberExpelled, true, "expelled lumber re-homed to the sawmill");
+  assert.equal(inventory.resources[3], 0, "the wheat was expelled after it");
+  assert.equal(
+    castleFlag.slots.some((slot) => slot.resource === 3),
+    true,
+    "homeless wheat waits at the flag, not in a building",
+  );
+});
+
+test("the toolmaker draws from the player's tool priorities (SB-36-07)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  // Only the hammer is prioritized: every draw must be a hammer.
+  world.players[0].economy.toolPriorities = [0, 65500, 0, 0, 0, 0, 0, 0, 0];
+
+  const toolmaker = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 3, -1), 19, 0);
+  toolmaker.isDone = true;
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  const inventory = world.inventoryForPlayer(0);
+  inventory.resources.fill(0);
+  toolmaker.deliveredResources[7] = 3; // planks
+  toolmaker.deliveredResources[11] = 3; // steel
+
+  const engine = new SerfboundSerfEngine(world);
+  const transporter = engine.spawnGenericSerf(0, 0);
+  engine.assignTransporter(transporter, castleFlag.index, "Right", 0);
+
+  let hammers = 0;
+  for (let tick = 0; tick < 400000 && hammers < 3; tick += 16) {
+    engine.update(tick);
+    hammers = inventory.resources[16] ?? 0;
+  }
+
+  assert.equal(hammers, 3, "three tools made, all hammers");
+  for (const tool of [15, 17, 18, 19, 20, 21, 22, 23]) {
+    assert.equal(inventory.resources[tool] ?? 0, 0, `no ${tool} was drawn`);
+  }
+});

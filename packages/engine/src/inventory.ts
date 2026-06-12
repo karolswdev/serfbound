@@ -98,6 +98,10 @@ export type WorldInventory = {
   // Outbound resources waiting for a free slot on the inventory flag
   // (the reference schedules these through MoveResourceOut).
   readonly pendingOut: { resource: number; destinationFlagIndex: number }[];
+  // Inventory resource mode (SB-36-07): In serves demand and accepts,
+  // Stop serves demand and accepts nothing, Out expels stock by the
+  // player's inventory priorities. Serf modes ride Phase 38.
+  resourceMode: "in" | "stop" | "out";
 };
 
 export function createInventory(
@@ -118,6 +122,7 @@ export function createInventory(
     genericSerfs: 5 + initialSupplies,
     knights: 0,
     pendingOut: [],
+    resourceMode: "in",
   };
 }
 

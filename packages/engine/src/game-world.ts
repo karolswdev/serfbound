@@ -179,6 +179,71 @@ export const buildingConstructionCosts: readonly (readonly [number, number])[] =
 export const constructionLevelingTicks = 40;
 export const constructionTicksPerMaterial = 30;
 
+// The priority book (SB-36-07): the reference PlayerSettings economy
+// data, defaulted from Player.Reset*Priority. Phase 41's sliders
+// expose it to the player; until then everyone runs the defaults.
+export type PlayerEconomySettings = {
+  // Player.ResetFlagPriority, indexed by resource type: the transport
+  // pecking order when scheduled resources contest one direction —
+  // higher rides first (plank 26 tops it, gold ore 1 trails).
+  flagPriorities: number[];
+  // Player.ResetInventoryPriority, indexed by resource type: what an
+  // OUT-mode inventory expels first (higher leaves first).
+  inventoryPriorities: number[];
+  // Player.ResetToolPriority, indexed by tool (shovel..pincer): the
+  // toolmaker's weighted draw.
+  toolPriorities: number[];
+  // The distribution splits Building.Update priorities read.
+  distributions: {
+    foodStonemine: number;
+    foodCoalmine: number;
+    foodIronmine: number;
+    foodGoldmine: number;
+    planksConstruction: number;
+    planksBoatbuilder: number;
+    planksToolmaker: number;
+    steelToolmaker: number;
+    steelWeaponsmith: number;
+    coalSteelsmelter: number;
+    coalGoldsmelter: number;
+    coalWeaponsmith: number;
+    wheatPigfarm: number;
+    wheatMill: number;
+  };
+};
+
+export type DistributionKey = keyof PlayerEconomySettings["distributions"];
+
+export function defaultEconomySettings(): PlayerEconomySettings {
+  return {
+    flagPriorities: [
+      20, 5, 19, 3, 4, 18, 22, 26, 6, 25, 21, 24, 23, 1, 2,
+      14, 15, 9, 10, 8, 12, 11, 13, 7, 17, 16,
+    ],
+    inventoryPriorities: [
+      5, 3, 6, 1, 2, 4, 7, 8, 9, 10, 12, 13, 11, 25, 26,
+      14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 23,
+    ],
+    toolPriorities: [9825, 65500, 13100, 6550, 13100, 26200, 32750, 45850, 6550],
+    distributions: {
+      foodStonemine: 13100,
+      foodCoalmine: 45850,
+      foodIronmine: 45850,
+      foodGoldmine: 65500,
+      planksConstruction: 65500,
+      planksBoatbuilder: 3275,
+      planksToolmaker: 19650,
+      steelToolmaker: 45850,
+      steelWeaponsmith: 65500,
+      coalSteelsmelter: 32750,
+      coalGoldsmelter: 65500,
+      coalWeaponsmith: 52400,
+      wheatPigfarm: 65500,
+      wheatMill: 32750,
+    },
+  };
+}
+
 export type WorldPlayer = {
   readonly index: number;
   hasCastle: boolean;
@@ -193,6 +258,8 @@ export type WorldPlayer = {
   // Player settings.KnightOccupation per threat level (reference defaults);
   // high nibble = max occupied level into the occupants tables.
   knightOccupation: number[];
+  // The priority book (SB-36-07).
+  economy: PlayerEconomySettings;
   // Game.PlayerDefeated: the castle fell.
   defeated: boolean;
 };
@@ -311,6 +378,7 @@ export class SerfboundGameWorld {
       goldDeposited: 0,
       castleKnightsWanted: 3,
       knightOccupation: [0x10, 0x21, 0x32, 0x43],
+      economy: defaultEconomySettings(),
       defeated: false,
     }));
     this.#spiralPositions = classicSpiralPattern.map(([x, y]) =>

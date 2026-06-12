@@ -1,11 +1,12 @@
 # Phase 36 — The Transport Economy in Full
 
-**Last updated:** 2026-06-12 (SB-36-05 done: the stock book with the
-reference distribution defaults drives every dispatch path, and the
-congestion mechanics it forced out — the 2-slot OutQueue, the
-carrier cargo swap, the loaded walk-back — ship with it. Earlier
-today, SB-36-02: flag slots schedule per direction over the
-reference network search).
+**Last updated:** 2026-06-12 (SB-36-07 done: the priority book is
+player data — flag/inventory/tool priorities and the distribution
+splits on every WorldPlayer with the reference defaults, consumed by
+pickup, the swap, the stock book, the toolmaker's weighted draw, and
+the export sweep; inventory resource modes in/stop/out ship with it.
+Earlier today: SB-36-02 flag scheduling, SB-36-05 stock priorities,
+and SB-35-03's pacing interim retired).
 **Status:** in progress.
 
 ## Goal
@@ -65,11 +66,12 @@ at the castle door" and the unstaffed split road at the root.
   unknown-destination routing.)
 - [ ] On-device: the maintainer splits a live road and watches both
   halves work. (SB-36-06, the device gate)
-- [ ] The priority book exists as engine data with reference
+- [x] The priority book exists as engine data with reference
   defaults — flag/inventory transport priority lists consulted by
   the scheduler, distribution splits feeding stock priorities, tool
   priorities feeding the toolmaker, inventory in/stop/out modes
-  honored by dispatch. (SB-36-07, from the audit addendum row 18)
+  honored by dispatch. (SB-36-07 — serf modes ride Phase 38;
+  planksConstruction waits for SB-36-08 to consume it.)
 - [ ] A castle short of planks or stones enters the emergency
   program and recovers from it. (SB-36-08, addendum row 21)
 
@@ -83,5 +85,5 @@ at the castle door" and the unstaffed split road at the root.
 | SB-36-04 | Park, wake, and reinforce | done | story-04-park-wake-reinforce.md | evidence-story-04.md |
 | SB-36-05 | Stock and priorities | done | story-05-stock-and-priorities.md | evidence-story-05.md |
 | SB-36-06 | The device gate | backlog | — | — |
-| SB-36-07 | The priority book | backlog | — | — |
+| SB-36-07 | The priority book | done | story-07-the-priority-book.md | evidence-story-07.md |
 | SB-36-08 | The emergency program | backlog | — | — |

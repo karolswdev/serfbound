@@ -1,6 +1,7 @@
 import { FreeserfRandom, type Direction } from "./index.js";
 import {
   buildingConstructionCosts,
+  type DistributionKey,
   isMilitaryBuildingType,
   militaryGoldCap,
   militaryKnightsNeeded,
@@ -14,6 +15,7 @@ import {
   inventoryTakeResource,
   inventoryTakeSerf,
   resourceType,
+  resourceTypeCount,
 } from "./inventory.js";
 import {
   buildingType,
@@ -80,13 +82,12 @@ const productConsumers: Readonly<Record<number, readonly number[]>> = {
 // worker's InitBuilding calls (maximum 8 per input), priorities from
 // Building.Update — a player distribution policy decayed by the
 // delivered + in-flight total (policy >> (8 + total)), or the
-// always-hungry inputs at 0xff >> total. The policies are the
-// Player.Reset*Priority defaults until SB-36-07's priority book
-// makes them player data.
+// always-hungry inputs at 0xff >> total. The policies name entries
+// in the owner's priority book (SB-36-07).
 type StockSlotSpec = {
   readonly resources: readonly number[];
   readonly maximum: number;
-  readonly policy: number | "always";
+  readonly policy: DistributionKey | "always";
 };
 
 const groupFood: readonly number[] = [
@@ -96,30 +97,30 @@ const groupFood: readonly number[] = [
 ];
 
 const buildingStockSpecs: Readonly<Record<number, readonly StockSlotSpec[]>> = {
-  3: [{ resources: [resourceType.plank], maximum: 8, policy: 3275 }], // boatbuilder
-  5: [{ resources: groupFood, maximum: 8, policy: 13100 }], // stone mine
-  6: [{ resources: groupFood, maximum: 8, policy: 45850 }], // coal mine
-  7: [{ resources: groupFood, maximum: 8, policy: 45850 }], // iron mine
-  8: [{ resources: groupFood, maximum: 8, policy: 65500 }], // gold mine
+  3: [{ resources: [resourceType.plank], maximum: 8, policy: "planksBoatbuilder" }], // boatbuilder
+  5: [{ resources: groupFood, maximum: 8, policy: "foodStonemine" }], // stone mine
+  6: [{ resources: groupFood, maximum: 8, policy: "foodCoalmine" }], // coal mine
+  7: [{ resources: groupFood, maximum: 8, policy: "foodIronmine" }], // iron mine
+  8: [{ resources: groupFood, maximum: 8, policy: "foodGoldmine" }], // gold mine
   13: [{ resources: [resourceType.pig], maximum: 8, policy: "always" }], // butcher
-  14: [{ resources: [resourceType.wheat], maximum: 8, policy: 65500 }], // pig farm
-  15: [{ resources: [resourceType.wheat], maximum: 8, policy: 32750 }], // mill
+  14: [{ resources: [resourceType.wheat], maximum: 8, policy: "wheatPigfarm" }], // pig farm
+  15: [{ resources: [resourceType.wheat], maximum: 8, policy: "wheatMill" }], // mill
   16: [{ resources: [resourceType.flour], maximum: 8, policy: "always" }], // baker
   17: [{ resources: [resourceType.lumber], maximum: 8, policy: "always" }], // sawmill
   18: [
-    { resources: [resourceType.coal], maximum: 8, policy: 32750 },
+    { resources: [resourceType.coal], maximum: 8, policy: "coalSteelsmelter" },
     { resources: [resourceType.ironOre], maximum: 8, policy: "always" },
   ], // steel smelter
   19: [
-    { resources: [resourceType.plank], maximum: 8, policy: 19650 },
-    { resources: [resourceType.steel], maximum: 8, policy: 45850 },
+    { resources: [resourceType.plank], maximum: 8, policy: "planksToolmaker" },
+    { resources: [resourceType.steel], maximum: 8, policy: "steelToolmaker" },
   ], // toolmaker
   20: [
-    { resources: [resourceType.coal], maximum: 8, policy: 52400 },
-    { resources: [resourceType.steel], maximum: 8, policy: 65500 },
+    { resources: [resourceType.coal], maximum: 8, policy: "coalWeaponsmith" },
+    { resources: [resourceType.steel], maximum: 8, policy: "steelWeaponsmith" },
   ], // weaponsmith
   23: [
-    { resources: [resourceType.coal], maximum: 8, policy: 65500 },
+    { resources: [resourceType.coal], maximum: 8, policy: "coalGoldsmelter" },
     { resources: [resourceType.goldOre], maximum: 8, policy: "always" },
   ], // gold smelter
 };
@@ -144,17 +145,6 @@ const roadBuildingSlope: readonly number[] = [
 
 // Flag.MaxTransporters by road length category (SB-36-04).
 const maxTransportersByCategory: readonly number[] = [1, 2, 3, 4, 6, 8, 11, 15];
-
-// Player.ResetFlagPriority defaults, indexed by resource type value
-// (SB-36-02): the transport pecking order when several scheduled
-// resources contest one direction — higher rides first (plank 26
-// tops the list, gold ore 1 trails it). SB-36-07 moves this into
-// the player's priority book; until then everyone runs the
-// reference defaults.
-const defaultFlagPriorities: readonly number[] = [
-  20, 5, 19, 3, 4, 18, 22, 26, 6, 25, 21, 24, 23, 1, 2,
-  14, 15, 9, 10, 8, 12, 11, 13, 7, 17, 16,
-];
 
 // Flag.routableResources: resources a flag may re-home to a consuming
 // building when their destination is lost. Everything else (boat,
@@ -181,9 +171,6 @@ const stoneCuttingAnimation = 123;
 // Reference Map.Object: FelledPine0 = 93, FelledTree0 = 98.
 const felledPineBase = 93;
 const felledTreeBase = 98;
-
-// The reference tool order for the toolmaker's round-robin output.
-const toolOutputs: readonly number[] = [15, 16, 17, 18, 19, 20, 21, 22, 23];
 
 // Serf.cs combat tables, copied flat exactly as the reference declares them
 // (the later rows are 15 entries, so sequence starts chosen by
@@ -723,7 +710,8 @@ export class SerfboundSerfEngine {
       : (path.otherEndDirection ?? serf.roadDirection);
 
     // Among the slots the sweep scheduled out this direction, the
-    // highest flag priority rides first (Flag.PrioritizePickup).
+    // highest flag priority in the owner's book rides first
+    // (Flag.PrioritizePickup, SB-36-07).
     let pick: FlagResourceSlot | null = null;
     for (const slot of fromFlag.slots) {
       if (slot.resource < 0 || slot.scheduledDirection !== outDirection) {
@@ -742,7 +730,8 @@ export class SerfboundSerfEngine {
 
       if (
         pick === null ||
-        (defaultFlagPriorities[slot.resource] ?? 0) > (defaultFlagPriorities[pick.resource] ?? 0)
+        this.#flagPriority(fromFlag.player, slot.resource) >
+          this.#flagPriority(fromFlag.player, pick.resource)
       ) {
         pick = slot;
       }
@@ -927,7 +916,8 @@ export class SerfboundSerfEngine {
 
       if (
         pick === null ||
-        (defaultFlagPriorities[slot.resource] ?? 0) > (defaultFlagPriorities[pick.resource] ?? 0)
+        this.#flagPriority(flag.player, slot.resource) >
+          this.#flagPriority(flag.player, pick.resource)
       ) {
         pick = slot;
       }
@@ -1201,6 +1191,32 @@ export class SerfboundSerfEngine {
         continue;
       }
 
+      // OUT mode (SB-36-07): expel the highest inventory-priority
+      // resource with no destination — the flag network re-homes it
+      // (Game.UpdateInventories' out-mode branch).
+      if (inventory.resourceMode === "out") {
+        const priorities =
+          this.world.players[inventory.player]?.economy.inventoryPriorities ?? [];
+        let expel = -1;
+        let expelPriority = 0;
+        for (let resource = 0; resource < resourceTypeCount; resource += 1) {
+          if (
+            (inventory.resources[resource] ?? 0) > 0 &&
+            (priorities[resource] ?? 0) >= expelPriority
+          ) {
+            expel = resource;
+            expelPriority = priorities[resource] ?? 0;
+          }
+        }
+
+        if (expel >= 0) {
+          inventory.resources[expel] = inventory.resources[expel]! - 1;
+          inventory.pendingOut.push({ resource: expel, destinationFlagIndex: 0 });
+        }
+
+        continue;
+      }
+
       for (const [productKey, count] of Object.entries(inventory.resources)) {
         const product = Number(productKey);
         if ((count ?? 0) <= 0) {
@@ -1213,9 +1229,9 @@ export class SerfboundSerfEngine {
           continue;
         }
 
-        // Game.UpdateInventories: serve the building whose stock
-        // wants this most, above the reference's minimum priority of
-        // 16 (SB-36-05).
+        // Game.UpdateInventories: In and Stop inventories serve the
+        // building whose stock wants this most, above the reference's
+        // minimum priority of 16 (SB-36-05).
         const consumer = this.#bestConsumerFor(product, inventory.flagIndex, 16);
         if (consumer === null) {
           continue;
@@ -1231,6 +1247,48 @@ export class SerfboundSerfEngine {
         break;
       }
     }
+  }
+
+  // The flag owner's transport pecking order (Player.GetFlagPriority).
+  #flagPriority(playerIndex: number, resource: number): number {
+    return this.world.players[playerIndex]?.economy.flagPriorities[resource] ?? 0;
+  }
+
+  // Whether the inventory at a flag accepts new resources — only In
+  // mode does (FindNearestInventoryForResource's acceptance rule).
+  #inventoryAcceptsAtFlag(flagIndex: number): boolean {
+    for (const inventory of this.world.inventories.values()) {
+      if (inventory.flagIndex === flagIndex) {
+        return inventory.resourceMode === "in";
+      }
+    }
+
+    return false;
+  }
+
+  // The toolmaker's weighted draw (Serf.cs MakingTool): a random
+  // offset across the summed tool priorities picks the tool; an
+  // all-zero book falls back to a uniform draw. Rides the shared RNG
+  // exactly as the reference does.
+  #drawTool(playerIndex: number): number {
+    const priorities = this.world.players[playerIndex]?.economy.toolPriorities ?? [];
+    let totalPriority = 0;
+    for (let tool = 0; tool < 9; tool += 1) {
+      totalPriority += priorities[tool] ?? 0;
+    }
+
+    totalPriority >>= 4;
+    if (totalPriority > 0) {
+      let priorityOffset = (totalPriority * this.random.next()) >> 16;
+      for (let tool = 0; tool < 9; tool += 1) {
+        priorityOffset -= (priorities[tool] ?? 0) >> 4;
+        if (priorityOffset < 0) {
+          return resourceType.shovel + tool;
+        }
+      }
+    }
+
+    return resourceType.shovel + ((9 * this.random.next()) >> 16);
   }
 
   // Building.Update stock priorities (SB-36-05): zero above the slot
@@ -1266,7 +1324,13 @@ export class SerfboundSerfEngine {
         return 0;
       }
 
-      return spec.policy === "always" ? 0xff >> total : spec.policy >> (8 + total);
+      if (spec.policy === "always") {
+        return 0xff >> total;
+      }
+
+      const policy =
+        this.world.players[building.player]?.economy.distributions[spec.policy] ?? 0;
+      return policy >> (8 + total);
     }
 
     return 0;
@@ -1641,7 +1705,8 @@ export class SerfboundSerfEngine {
       if (
         inventoryFlagIndex === 0 &&
         currentFlag.hasInventory &&
-        currentFlag.index !== flag.index
+        currentFlag.index !== flag.index &&
+        this.#inventoryAcceptsAtFlag(currentFlag.index)
       ) {
         inventoryFlagIndex = currentFlag.index;
         if (consumerTypes === undefined) {
@@ -1951,9 +2016,7 @@ export class SerfboundSerfEngine {
             serf.workCounter = 0;
             building.deliveredResources[resourceType.plank] = planks - 1;
             building.deliveredResources[resourceType.steel] = steel - 1;
-            const tool = toolOutputs[serf.workPhase % toolOutputs.length]!;
-            serf.workPhase += 1;
-            this.#emitProduct(building, tool);
+            this.#emitProduct(building, this.#drawTool(building.player));
           }
         }
         break;
@@ -2280,7 +2343,7 @@ export class SerfboundSerfEngine {
 
     if (destination === 0) {
       const inventory = this.world.inventoryForPlayer(building.player);
-      if (inventory !== null) {
+      if (inventory !== null && inventory.resourceMode === "in") {
         destination = inventory.flagIndex;
       }
     }
