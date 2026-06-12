@@ -53,6 +53,9 @@ export const serfState = {
   // inventory's flag with the resource in his arms, waiting to set
   // it down.
   dropResourceOut: 17,
+  // The geologist's looking/sampling loop (SB-38-02, the reference
+  // LookingForGeoSpot/SamplingGeoSpot pair).
+  prospecting: 18,
 } as const;
 
 export type SerfStateValue = (typeof serfState)[keyof typeof serfState];
@@ -268,6 +271,8 @@ export type WorldSerf = {
   // Knight assignment: the military building this knight garrisons.
   isKnight: boolean;
   garrisonTargetIndex: number;
+  // The flag a dispatched geologist prospects from (SB-38-02).
+  geoTargetFlagIndex: number;
   // Combat state: rank (Knight0..Knight4), the building under attack, the
   // fight opponent, the position in the attack-move sequence, and the
   // outcome decided up front by SetFightOutcome.
@@ -342,6 +347,7 @@ export class SerfboundSerfEngine {
       workTargetPosition: -1,
       isKnight: false,
       garrisonTargetIndex: 0,
+      geoTargetFlagIndex: 0,
       knightRank: 0,
       attackTargetIndex: 0,
       fightOpponentIndex: 0,
@@ -454,6 +460,9 @@ export class SerfboundSerfEngine {
           break;
         case serfState.dropResourceOut:
           this.#handleDropResourceOut(serf, gameTick);
+          break;
+        case serfState.prospecting:
+          this.#handleProspecting(serf, gameTick);
           break;
         case serfState.enteringBuilding:
           this.#handleEnteringBuilding(serf, gameTick);
@@ -598,6 +607,18 @@ export class SerfboundSerfEngine {
               this.#enterBuilding(serf, workplace, serfState.working);
               return;
             }
+          }
+
+          // The geologist takes his flag and starts prospecting at it
+          // (SB-38-02).
+          if (serf.geoTargetFlagIndex !== 0 && flag.index === serf.geoTargetFlagIndex) {
+            serf.geoTargetFlagIndex = 0;
+            serf.state = serfState.prospecting;
+            serf.workPhase = 0;
+            serf.workCounter = 0;
+            serf.workTargetPosition = -1;
+            serf.counter = 0;
+            return;
           }
 
           // Knights take their garrison post — through the door; the
@@ -2623,6 +2644,155 @@ export class SerfboundSerfEngine {
     this.#freeWalkToward(serf, homeFlag, delta);
   }
 
+  // Player.SendGeologist (the flag popup's button, app wiring with
+  // the alpha gate): a castle serf walks the roads out to the flag
+  // and prospects the mountains around it (SB-38-02).
+  sendGeologist(flagIndex: number, gameTick: number): boolean {
+    const flag = this.world.flags.get(flagIndex);
+    if (flag === undefined) {
+      return false;
+    }
+
+    const serf = this.spawnGenericSerf(flag.player, gameTick);
+    if (serf === null) {
+      return false;
+    }
+
+    serf.geoTargetFlagIndex = flagIndex;
+    return this.callOutSerf(serf, flagIndex, gameTick);
+  }
+
+  // Mountain terrain in any of the spot's four triangles
+  // (LookingForGeoSpot's Tundra0..Snow0 test).
+  #touchesMountain(position: number): boolean {
+    const upLeft = this.world.move(position, "UpLeft");
+    for (const terrain of [
+      this.world.typesDown[position]!,
+      this.world.typesUp[position]!,
+      this.world.typesDown[upLeft]!,
+      this.world.typesUp[upLeft]!,
+    ]) {
+      if (terrain >= mapTerrain.tundra0 && terrain <= mapTerrain.snow0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // The geologist's loop (SB-38-02): look for a mountain spot the
+  // reference way, free-walk to it, hammer a sample, plant the sign
+  // at his own feet, and look again from there; a sampled-out range
+  // (two sign strikes or no spot in eight tries) walks him home to
+  // the castle.
+  #handleProspecting(serf: WorldSerf, gameTick: number): void {
+    const delta = (gameTick - serf.tick) & 0xffff;
+    serf.tick = gameTick;
+    serf.workCounter += delta;
+
+    // Looking (LookingForGeoSpot): eight tries at a random spiral
+    // distance; existing signs strike twice and end the outing.
+    if (serf.workPhase === 0) {
+      let signStrikes = 2;
+      let found = -1;
+      for (let attempt = 0; attempt < 8 && found < 0; attempt += 1) {
+        const distance = ((this.random.next() >> 2) & 0x3f) + 1;
+        const spot = this.world.positionAddSpirally(serf.position, distance);
+        const objectValue = this.world.objectAt(spot);
+        if (objectValue === mapObject.none) {
+          if (this.#touchesMountain(spot)) {
+            found = spot;
+          }
+        } else if (
+          objectValue >= mapObject.signLargeGold &&
+          objectValue <= mapObject.signEmpty
+        ) {
+          signStrikes -= 1;
+          if (signStrikes === 0) {
+            break;
+          }
+        }
+      }
+
+      if (found >= 0) {
+        serf.workPhase = 1;
+        serf.workTargetPosition = found;
+        serf.counter = 0;
+        return;
+      }
+
+      // Sampled out: walk home and rejoin the castle pool.
+      serf.workPhase = 3;
+      serf.workTargetPosition = -1;
+      serf.counter = 0;
+      return;
+    }
+
+    // Walking to the spot.
+    if (serf.workPhase === 1) {
+      if (serf.position === serf.workTargetPosition) {
+        serf.workPhase = 2;
+        serf.workCounter = 0;
+        serf.animation = 142; // the sample hammer
+        return;
+      }
+
+      this.#freeWalkToward(serf, serf.workTargetPosition, delta);
+      return;
+    }
+
+    // Sampling (SamplingGeoSpot): the sign lands at his feet.
+    if (serf.workPhase === 2) {
+      if (serf.workCounter < 800) {
+        return;
+      }
+
+      serf.workCounter = 0;
+      if (this.world.objectAt(serf.position) === mapObject.none) {
+        const mineral = this.world.minerals[serf.position]!;
+        const amount = this.world.resourceAmounts[serf.position]!;
+        if (mineral === 0 || amount === 0) {
+          this.world.setObject(serf.position, mapObject.signEmpty, null);
+        } else {
+          this.world.setObject(
+            serf.position,
+            mapObject.signLargeGold + 2 * (mineral - 1) + (amount < 12 ? 1 : 0),
+            null,
+          );
+        }
+      }
+
+      serf.workPhase = 0;
+      return;
+    }
+
+    // Home to the castle.
+    const castlePosition = this.world.players[serf.player]?.castlePosition;
+    if (castlePosition === undefined || castlePosition === null) {
+      serf.state = serfState.null;
+      return;
+    }
+
+    const homeFlagPosition = this.world.move(castlePosition, "DownRight");
+    if (serf.position === homeFlagPosition) {
+      const homeFlag = this.world.flagAt(homeFlagPosition);
+      const castle =
+        homeFlag?.buildingIndex == null
+          ? undefined
+          : this.world.buildings.get(homeFlag.buildingIndex);
+      if (castle === undefined) {
+        serf.state = serfState.null;
+        return;
+      }
+
+      serf.workPhase = 0;
+      this.#enterBuilding(serf, castle, serfState.idleInStock);
+      return;
+    }
+
+    this.#freeWalkToward(serf, homeFlagPosition, delta);
+  }
+
   // The reference fishing-spot facing (Serf.cs 6562–6573): water in
   // the down triangle with grass up-left faces 132; water to the
   // left with grass above faces 131; anything else is no spot.
@@ -3168,6 +3338,7 @@ export class SerfboundSerfEngine {
       workTargetPosition: -1,
       isKnight: true,
       garrisonTargetIndex: 0,
+      geoTargetFlagIndex: 0,
       knightRank: 0,
       attackTargetIndex: 0,
       fightOpponentIndex: serf.index,

@@ -1798,3 +1798,80 @@ test("fisher, farmer, and forester work in the open, at their own feet (SB-38-01
     "the first fish left the water with the fisher standing at the shore",
   );
 });
+
+test("the geologist prospects the mountains and plants the signs (SB-38-02)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  // A mountain range east of a road-end flag: tundra triangles, one
+  // coal deposit rich enough for the LARGE sign (amount >= 12).
+  const rangeAnchor = world.geometry.positionAdd(castleFlag.position, 6, 0);
+  const depositAt = world.geometry.positionAdd(rangeAnchor, 2, 1);
+  for (let dx = 0; dx <= 5; dx += 1) {
+    for (let dy = -2; dy <= 3; dy += 1) {
+      const at = world.geometry.positionAdd(rangeAnchor, dx, dy);
+      world.typesUp[at] = 11;
+      world.typesDown[at] = 11;
+    }
+  }
+  world.minerals[depositAt] = 3; // coal
+  world.resourceAmounts[depositAt] = 12;
+
+  const prospectFlagPosition = world.geometry.positionAdd(castleFlag.position, 4, 0);
+  const prospectFlag = world.buildFlag(prospectFlagPosition, 0);
+  assert.notEqual(prospectFlag, null, "the prospecting flag builds");
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  const engine = new SerfboundSerfEngine(world);
+  assert.equal(engine.sendGeologist(prospectFlag.index, 0), true, "the geologist sets out");
+  let geologist = null;
+  for (const serf of engine.serfs.values()) {
+    if (serf.geoTargetFlagIndex === prospectFlag.index) {
+      geologist = serf;
+    }
+  }
+  assert.notEqual(geologist, null, "the geologist serf exists");
+
+  let coalSignAtFeet = null;
+  let emptySigns = 0;
+  let cameHome = false;
+  const seenSigns = new Set();
+  for (
+    let tick = 0;
+    tick < 2000000 && !(coalSignAtFeet !== null && emptySigns > 0 && cameHome);
+    tick += 16
+  ) {
+    engine.update(tick);
+    for (let probe = 0; probe < world.tileCount; probe += 1) {
+      const value = world.objects[probe];
+      if (value >= 112 && value <= 120 && !seenSigns.has(probe)) {
+        seenSigns.add(probe);
+        if (probe === depositAt) {
+          // 112 + 2*(coal 3 - 1) + 0 (amount 12 is not small) = 116.
+          coalSignAtFeet = value === 116 && geologist.position === probe;
+        } else if (value === 120) {
+          emptySigns += 1;
+        }
+      }
+    }
+
+    if (coalSignAtFeet !== null && geologist.state === serfState.idleInStock) {
+      cameHome = true;
+    }
+  }
+
+  assert.equal(
+    coalSignAtFeet,
+    true,
+    "the large coal sign landed on the deposit, at the geologist's feet",
+  );
+  assert.equal(emptySigns > 0, true, "barren slopes got the empty sign");
+  assert.equal(cameHome, true, "the geologist walked home to the castle");
+});

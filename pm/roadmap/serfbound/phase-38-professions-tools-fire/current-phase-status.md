@@ -1,10 +1,10 @@
 # Phase 38 — Professions, Tools, and Fire
 
-**Last updated:** 2026-06-12 (SB-38-01 done: the fisher bobs his
-rod at the shore, the farmer scythes his fields, the forester
-plants at his own feet — the generic outdoor trip rides the
-existing walk-out machinery, and the act-at-a-distance work cases
-are deleted. The world only changes where the worker stands).
+**Last updated:** 2026-06-12 (SB-38-02 done: the geologist exists —
+sent to a flag, he prospects the mountains on the reference
+looking/sampling loop and plants the signs at his own feet; the
+SB-37-01 sign decay finally has something to fade. Earlier:
+SB-38-01, the fisher/farmer/forester outdoor trips).
 **Status:** in progress.
 
 ## Goal
@@ -30,9 +30,10 @@ and actions sound like themselves.
 
 ## Exit criteria (evidence required)
 
-- [~] Fisher, farmer, and forester work outdoors on the reference
-  cycles (SB-38-01 — done); the geologist exists and plants signs
-  the mines read (SB-38-02 — backlog).
+- [x] Fisher, farmer, and forester work outdoors on the reference
+  cycles (SB-38-01); the geologist exists and plants the signs the
+  player reads (SB-38-02 — the flag-popup button rides the alpha
+  gate's app work).
 - [ ] Tools gate professions: the inventory tracks typed serfs and
   converts them with tools; the toolmaker matters. (SB-38-03)
 - [ ] Demolition burns: fire, countdown, escaping serfs. (SB-38-04)
@@ -46,7 +47,7 @@ and actions sound like themselves.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-38-01 | Fisher, farmer, forester in the open | done | story-01-fisher-farmer-forester-in-the-open.md | evidence-story-01.md |
-| SB-38-02 | The geologist | backlog | — | — |
+| SB-38-02 | The geologist | done | story-02-the-geologist.md | evidence-story-02.md |
 | SB-38-03 | Tools make professionals | backlog | — | — |
 | SB-38-04 | Fire | backlog | — | — |
 | SB-38-05 | The sound of work | backlog | — | — |
