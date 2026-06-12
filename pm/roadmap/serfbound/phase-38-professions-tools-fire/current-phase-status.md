@@ -1,14 +1,13 @@
 # Phase 38 — Professions, Tools, and Fire
 
-**Last updated:** 2026-06-12 (SB-38-03 done: tools gate
-professions — the Building.Requests table charges the conversion,
-a toolless building stays unstaffed and retries, the builder and
-geologist pay their hammers, and the twelve-building chain suite
-staffs itself entirely through consumed tools. The toolmaker is
-load-bearing. Earlier today: SB-38-01 outdoor trips, SB-38-02 the
-geologist, SB-38-04 fire. **Only SB-38-05 (the sound of work) and
-SB-38-06 (the alpha gate) remain.**)
-**Status:** in progress.
+**Last updated:** 2026-06-12 (SB-38-05 done: the work sounds like
+itself — the RenderSerf frame rules ported per profession, played
+on frame entry for every visible working serf. With SB-38-01..05
+all done, **every engineering story in the phase — and every row of
+the parity audit's alpha bar — is in the build. Only SB-38-06, the
+alpha gate, remains: the maintainer, a phone, and the word
+"alpha".**)
+**Status:** at the alpha gate.
 
 ## Goal
 
@@ -41,7 +40,7 @@ and actions sound like themselves.
   serf counts stay condensed to conversion-only (professionals never
   return to stock — recorded). (SB-38-03)
 - [x] Demolition burns: fire, countdown, escaping serfs. (SB-38-04 — conquest demolitions stay instant, recorded for Phase 39.)
-- [ ] Action sounds ride the animation frames. (SB-38-05)
+- [x] Action sounds ride the animation frames. (SB-38-05 — the latch condensed to frame-edge triggering; miner and sailor sounds recorded for their owners.)
 - [ ] **The alpha gate:** the maintainer plays the full loop on
   device and Serfbound calls itself an alpha — the bar defined in
   the parity audit. (SB-38-06)
@@ -54,5 +53,5 @@ and actions sound like themselves.
 | SB-38-02 | The geologist | done | story-02-the-geologist.md | evidence-story-02.md |
 | SB-38-03 | Tools make professionals | done | story-03-tools-make-professionals.md | evidence-story-03.md |
 | SB-38-04 | Fire | done | story-04-fire.md | evidence-story-04.md |
-| SB-38-05 | The sound of work | backlog | — | — |
+| SB-38-05 | The sound of work | done | story-05-the-sound-of-work.md | evidence-story-05.md |
 | SB-38-06 | The alpha gate | backlog | — | — |

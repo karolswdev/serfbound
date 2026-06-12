@@ -9,6 +9,8 @@ import {
   type TypedAssetCatalog,
 } from "@serfbound/assets";
 import { PointerGestureTracker } from "./gestures.js";
+import { workActionSound } from "./work-sounds.js";
+import { mapTileToScreen } from "./landscape-scene.js";
 import { SerfboundLoopbackMultiplayer } from "./multiplayer.js";
 import { HotseatController } from "./hotseat.js";
 import { SerfboundAsyncLoopbackMatch } from "./async-match.js";
@@ -129,6 +131,7 @@ export * from "./panel-bar.js";
 export * from "./popup.js";
 export * from "./init-screen.js";
 export * from "./audio.js";
+export * from "./work-sounds.js";
 export * from "./gestures.js";
 export * from "./multiplayer.js";
 export * from "./recap.js";
@@ -1137,8 +1140,79 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         root.dataset.serfboundRoadMode !== undefined,
     });
   };
+  // The sound of work (SB-38-05): every visible working serf's frame
+  // transitions feed the RenderSerf rules; entering a trigger frame
+  // plays its clip through the audio service.
+  const workSoundFrames = new Map<number, number>();
+  const playWorkSounds = () => {
+    const table = currentDecodedAssets?.serfAnimationTable;
+    if (table == null || currentSerfEngine === undefined || currentWorld === undefined) {
+      return;
+    }
+
+    if (workSoundFrames.size > 4096) {
+      workSoundFrames.clear();
+    }
+
+    for (const serf of currentSerfEngine.serfs.values()) {
+      if (serf.state === 0 || serf.state === 1) {
+        continue;
+      }
+
+      const row = table[serf.animation];
+      if (row === undefined || row.length === 0) {
+        continue;
+      }
+
+      const phase = Math.min(Math.max(serf.counter, 0) >> 3, row.length - 1);
+      const frameSprite = row[phase]!.sprite;
+      const previous = workSoundFrames.get(serf.index) ?? -1;
+      if (frameSprite === previous) {
+        continue;
+      }
+
+      workSoundFrames.set(serf.index, frameSprite);
+
+      // Off-screen work stays quiet, like the reference's
+      // viewport-scoped render serfs.
+      const screen = mapTileToScreen(
+        currentWorld,
+        {
+          column: serf.position % currentWorld.columns,
+          row: Math.trunc(serf.position / currentWorld.columns),
+        },
+        currentScroll,
+      );
+      if (
+        screen === null ||
+        screen.x < -64 ||
+        screen.x > 1600 ||
+        screen.y < -64 ||
+        screen.y > 1200
+      ) {
+        continue;
+      }
+
+      const building =
+        serf.workBuildingIndex === 0
+          ? undefined
+          : currentWorld.buildings.get(serf.workBuildingIndex);
+      const clip = workActionSound({
+        workBuildingType: building?.type ?? 0,
+        state: serf.state,
+        workStage: serf.walkingWaitCounter,
+        frameSprite,
+        previousFrameSprite: previous,
+      });
+      if (clip !== null) {
+        audioService.playSfx(clip);
+      }
+    }
+  };
+
   const renderCurrentScene = () => {
     syncOnboarding();
+    playWorkSounds();
     const panelButtons = computePanelButtons();
     if (panelButtons === undefined) {
       delete root.dataset.serfboundPanelButtons;
