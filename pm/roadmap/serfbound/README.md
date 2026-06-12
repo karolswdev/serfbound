@@ -159,7 +159,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 35 | Locomotion fidelity: one reference-paced walker, doors, working poses | at the device gate | [phase-35-locomotion-fidelity](./phase-35-locomotion-fidelity/) |
 | 36 | The transport economy in full: out the castle door, flag scheduling, split roads staff themselves | at the device gate | [phase-36-transport-economy](./phase-36-transport-economy/) |
 | 37 | The living map: trees grow, fields age, fish migrate | stories complete | [phase-37-living-map](./phase-37-living-map/) |
-| 38 | Professions, tools, and fire — ends at the alpha gate | scaffolded | [phase-38-professions-tools-fire](./phase-38-professions-tools-fire/) |
+| 38 | Professions, tools, and fire — ends at the alpha gate | at the alpha gate | [phase-38-professions-tools-fire](./phase-38-professions-tools-fire/) |
 | 39 | Knight fidelity: the full fight, garrison disciplines, commanded attacks | scaffolded | [phase-39-knight-fidelity](./phase-39-knight-fidelity/) |
 | 40 | Boats and waterways: the boatbuilder works, sailors carry cargo | scaffolded | [phase-40-boats-and-waterways](./phase-40-boats-and-waterways/) |
 | 41 | Levers and ledgers: settings sliders, notifications, stat windows, minimap modes | scaffolded | [phase-41-levers-and-ledgers](./phase-41-levers-and-ledgers/) |
