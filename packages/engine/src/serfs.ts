@@ -171,14 +171,12 @@ const routableResources = new Set<number>([
 // stage, the reference per-stage counters), each stage laying the
 // next felled-tree map object; stonecutting is one 1535-tick cut
 // (animation 123) that shrinks the pile a single slice per visit.
-// INTERIM pacing (recorded): the reference stage counters are
-// [1023, 31, 767, 767, 255] and 1535 — four times these. The
-// condensed transport economy (single transporters, no inventory
-// re-export scheduling) starves at full reference durations; the
-// true constants return with Phase 36's scheduling throughput.
-const loggingStageTicks: readonly number[] = [255, 31, 191, 191, 63];
+// The reference constants, restored with Phase 36's transport
+// throughput (SB-36-02/04/05) — the quarter-duration interim that
+// covered the condensed economy is retired.
+const loggingStageTicks: readonly number[] = [1023, 31, 767, 767, 255];
 const loggingAnimationBase = 116;
-const stoneCuttingTicks = 383;
+const stoneCuttingTicks = 1535;
 const stoneCuttingAnimation = 123;
 // Reference Map.Object: FelledPine0 = 93, FelledTree0 = 98.
 const felledPineBase = 93;

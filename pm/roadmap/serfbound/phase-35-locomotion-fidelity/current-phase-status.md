@@ -1,9 +1,10 @@
 # Phase 35 — Locomotion and the Working Pose
 
-**Last updated:** 2026-06-11 (SB-35-03 done: trees fall in five
-visible stages, stones shrink by slices, and the castle stopped
-entombing products — the re-export bridge pulled forward from
-Phase 36).
+**Last updated:** 2026-06-12 (SB-35-03's recorded interim is
+retired: the reference work-stage constants — logging
+[1023, 31, 767, 767, 255], stonecutting 1535 — are restored now
+that Phase 36's transport throughput exists, and every chain suite
+holds at full durations. Previously: SB-35-03 done 2026-06-11).
 **Status:** in progress — SB-35-04, the device gate, remains.
 
 ## Goal
@@ -39,9 +40,10 @@ movement code path left to drift.
   serf is never teleported into or out of a building. (SB-35-02)
 - [x] Logging fells trees in the reference's five visible stages
   with felled-tree map objects; stonecutting cuts by slices.
-  (SB-35-03 — interim quarter-duration stage counters recorded; the
-  reference constants return with Phase 36 throughput. Planting
-  poses ride Phase 38 with the forester's outdoor cycle.)
+  (SB-35-03 — the interim quarter-duration counters were retired
+  2026-06-12 with Phase 36's throughput in place; the reference
+  constants run now. Planting poses ride Phase 38 with the
+  forester's outdoor cycle.)
 - [ ] On-device: the maintainer watches a lumberjack's full round
   trip and calls the pace right. (SB-35-04, the device gate)
 
