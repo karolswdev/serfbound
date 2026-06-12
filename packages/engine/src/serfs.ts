@@ -1610,8 +1610,8 @@ export class SerfboundSerfEngine {
     this.#mapUpdatePosition = position;
   }
 
-  // Map.UpdatePublic: the world ages at the visited tile. Seeds and
-  // field stages ride SB-37-02; fish (UpdateHidden) ride SB-37-03.
+  // Map.UpdatePublic: the world ages at the visited tile. Fish
+  // (UpdateHidden) ride SB-37-03.
   #updateMapTile(position: number): void {
     const objectValue = this.world.objectAt(position);
     if (objectValue === mapObject.stub) {
@@ -1619,6 +1619,34 @@ export class SerfboundSerfEngine {
         this.world.setObject(position, mapObject.none, null);
       }
 
+      return;
+    }
+
+    // Seeds0..4 and Field0..4 advance a stage; ripe seeds become the
+    // first field; the last field expires; expired fields vanish
+    // (SB-37-02).
+    if (objectValue >= mapObject.seeds0 && objectValue < mapObject.seeds5) {
+      this.world.setObject(position, objectValue + 1, null);
+      return;
+    }
+
+    if (objectValue === mapObject.seeds5) {
+      this.world.setObject(position, mapObject.field0, null);
+      return;
+    }
+
+    if (objectValue >= mapObject.field0 && objectValue < mapObject.field5) {
+      this.world.setObject(position, objectValue + 1, null);
+      return;
+    }
+
+    if (objectValue === mapObject.field5) {
+      this.world.setObject(position, mapObject.fieldExpired, null);
+      return;
+    }
+
+    if (objectValue === mapObject.fieldExpired) {
+      this.world.setObject(position, mapObject.none, null);
       return;
     }
 
@@ -2116,11 +2144,29 @@ export class SerfboundSerfEngine {
         this.#workConvert(serf, building, 350, resourceType.lumber, resourceType.plank);
         break;
       case buildingType.farm:
-        // Farmer: sow a field, then harvest it into wheat (field objects use
-        // the reference Seeds/Field values; growth stages are condensed).
+        // Farmer (SB-37-02): harvest the nearest field the MAP grew —
+        // each cut advances the stage (Field5 expires) and yields one
+        // wheat — or sow Seeds0 if nothing stands ready. The map
+        // clock owns all growing (reference HandleSerfFarmingState).
         if (serf.workCounter >= 450) {
           serf.workCounter = 0;
-          if (serf.workPhase === 0) {
+          let harvested = false;
+          for (let offset = 1; offset < 151; offset += 1) {
+            const candidate = this.world.positionAddSpirally(building.position, offset);
+            const fieldValue = this.world.objectAt(candidate);
+            if (fieldValue >= mapObject.field0 && fieldValue <= mapObject.field5) {
+              this.world.setObject(
+                candidate,
+                fieldValue === mapObject.field5 ? mapObject.fieldExpired : fieldValue + 1,
+                null,
+              );
+              this.#emitProduct(building, resourceType.wheat);
+              harvested = true;
+              break;
+            }
+          }
+
+          if (!harvested) {
             for (let offset = 1; offset < 151; offset += 1) {
               const candidate = this.world.positionAddSpirally(building.position, offset);
               if (
@@ -2129,21 +2175,10 @@ export class SerfboundSerfEngine {
                 this.world.hasOwner(candidate) &&
                 this.world.canBuildSmall(candidate)
               ) {
-                this.world.setObject(candidate, 105, null); // Seeds0
-                serf.workPhase = 1;
-                serf.workTargetPosition = candidate;
+                this.world.setObject(candidate, mapObject.seeds0, null);
                 break;
               }
             }
-          } else {
-            const field = serf.workTargetPosition;
-            if (field >= 0 && this.world.objectAt(field) >= 105 && this.world.objectAt(field) <= 126) {
-              this.world.setObject(field, mapObject.none, null);
-              this.#emitProduct(building, resourceType.wheat);
-            }
-
-            serf.workPhase = 0;
-            serf.workTargetPosition = -1;
           }
         }
         break;

@@ -1558,3 +1558,74 @@ test("the map clock: saplings mature, trunks rot to stubs, stubs clear (SB-37-01
     "the forester plants saplings, not instant trees",
   );
 });
+
+test("fields grow on the map clock, not in the farmer's head (SB-37-02)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  const farm = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 3, -1), 12, 0);
+  assert.notEqual(farm, null, "farm builds");
+  farm.isDone = true;
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  // A lone sown tile far outside the farmer's reach: it must walk
+  // the whole reference life — seeds, field, expired, gone.
+  const lifecycleAt = world.geometry.positionAdd(castleFlag.position, 16, 16);
+  world.setObject(lifecycleAt, 105, null); // Seeds0
+  let sawField = false;
+  let sawExpired = false;
+  let lifecycleDone = false;
+
+  const engine = new SerfboundSerfEngine(world);
+  let firstWheatTick = -1;
+  engine.onProduct = (type, product) => {
+    if (type === 12 && product === 3 && firstWheatTick < 0) {
+      firstWheatTick = lastTick;
+    }
+  };
+
+  let sowedSeeds = false;
+  let lastTick = 0;
+  for (
+    let tick = 0;
+    tick < 2400000 && !(firstWheatTick >= 0 && lifecycleDone);
+    tick += 16
+  ) {
+    lastTick = tick;
+    engine.update(tick);
+    if (!sowedSeeds) {
+      for (let offset = 1; offset < 151; offset += 1) {
+        const probe = world.objectAt(world.positionAddSpirally(farm.position, offset));
+        if (probe >= 105 && probe <= 110) {
+          sowedSeeds = true;
+          break;
+        }
+      }
+    }
+
+    const lifecycleValue = world.objectAt(lifecycleAt);
+    if (lifecycleValue >= 121 && lifecycleValue <= 126) {
+      sawField = true;
+    } else if (lifecycleValue === 111) {
+      sawExpired = true;
+    } else if (sawExpired && lifecycleValue === 0) {
+      lifecycleDone = true;
+    }
+  }
+
+  assert.equal(sowedSeeds, true, "the farmer sowed seeds");
+  assert.equal(
+    firstWheatTick >= 60000,
+    true,
+    `no wheat before the map could grow a field (first at ${firstWheatTick})`,
+  );
+  assert.equal(sawField, true, "the lone seeds became a field on the map clock");
+  assert.equal(lifecycleDone, true, "the unharvested field expired and vanished");
+});
