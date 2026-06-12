@@ -56,6 +56,8 @@ export const serfState = {
   // The geologist's looking/sampling loop (SB-38-02, the reference
   // LookingForGeoSpot/SamplingGeoSpot pair).
   prospecting: 18,
+  // EscapeBuilding (SB-38-04): out of the fire, home to the castle.
+  escaping: 19,
 } as const;
 
 export type SerfStateValue = (typeof serfState)[keyof typeof serfState];
@@ -433,6 +435,7 @@ export class SerfboundSerfEngine {
     this.#handlePathSplits(gameTick);
     this.#sweepFlagScheduling();
     this.#sweepEmergencyProgram(gameTick);
+    this.#sweepBurning(gameTick);
     this.#sweepTransportStaffing(gameTick);
     this.#sweepWorkerRequests(gameTick);
     this.#sweepInventoryExports(gameTick);
@@ -463,6 +466,9 @@ export class SerfboundSerfEngine {
           break;
         case serfState.prospecting:
           this.#handleProspecting(serf, gameTick);
+          break;
+        case serfState.escaping:
+          this.#handleEscaping(serf, gameTick);
           break;
         case serfState.enteringBuilding:
           this.#handleEnteringBuilding(serf, gameTick);
@@ -1149,7 +1155,7 @@ export class SerfboundSerfEngine {
     // Building.UpdateMilitary: completed military buildings request knights
     // up to their occupation level; knights walk the roads to their post.
     for (const building of this.world.buildings.values()) {
-      if (!building.isDone || !isMilitaryBuildingType(building.type)) {
+      if (!building.isDone || building.burning || !isMilitaryBuildingType(building.type)) {
         continue;
       }
 
@@ -1486,7 +1492,7 @@ export class SerfboundSerfEngine {
   // (serfbound auto-staffs completed buildings; typed-serf dispatch
   // is Phase 38).
   #stockPriority(building: WorldBuilding, product: number): number {
-    if (!building.isDone) {
+    if (!building.isDone || building.burning) {
       return 0;
     }
 
@@ -1540,7 +1546,7 @@ export class SerfboundSerfEngine {
     let best: WorldBuilding | null = null;
     let bestPriority = minimumPriority;
     for (const consumer of this.world.buildings.values()) {
-      if (!consumer.isDone || !consumerTypes.includes(consumer.type)) {
+      if (!consumer.isDone || consumer.burning || !consumerTypes.includes(consumer.type)) {
         continue;
       }
 
@@ -2135,7 +2141,12 @@ export class SerfboundSerfEngine {
 
   #sweepWorkerRequests(gameTick: number): void {
     for (const building of this.world.buildings.values()) {
-      if (!building.isDone || building.type === 24 || this.#staffedBuildings.has(building.index)) {
+      if (
+        !building.isDone ||
+        building.burning ||
+        building.type === 24 ||
+        this.#staffedBuildings.has(building.index)
+      ) {
         continue;
       }
 
@@ -2166,6 +2177,14 @@ export class SerfboundSerfEngine {
     const building = this.world.buildings.get(serf.workBuildingIndex);
     if (building === undefined) {
       serf.state = serfState.null;
+      return;
+    }
+
+    if (building.burning) {
+      // The fire sweep evacuates; this is the same exit for a worker
+      // mid-update.
+      serf.state = serfState.escaping;
+      serf.workBuildingIndex = 0;
       return;
     }
 
@@ -2642,6 +2661,111 @@ export class SerfboundSerfEngine {
     }
 
     this.#freeWalkToward(serf, homeFlag, delta);
+  }
+
+  // The fire (SB-38-04, Building.BurnUp's serf half + the burning
+  // countdown of Game.UpdateBuildings): on first sight of a fire the
+  // building is evacuated — the worker, the garrison, anyone bound
+  // for it — and when the counter expires the ruin is torn down.
+  #burningLastTick = 0;
+  readonly #evacuatedBuildings = new Set<number>();
+  #sweepBurning(gameTick: number): void {
+    const delta = (gameTick - this.#burningLastTick) & 0xffff;
+    this.#burningLastTick = gameTick;
+    for (const building of [...this.world.buildings.values()]) {
+      if (!building.burning) {
+        continue;
+      }
+
+      if (!this.#evacuatedBuildings.has(building.index)) {
+        this.#evacuatedBuildings.add(building.index);
+        this.#evacuateBuilding(building);
+      }
+
+      building.burningCounter -= delta;
+      if (building.burningCounter < 0) {
+        this.#evacuatedBuildings.delete(building.index);
+        this.#staffedBuildings.delete(building.index);
+        this.world.demolishBuildingAt(building.position);
+      }
+    }
+  }
+
+  // Everyone tied to the burning building bolts: the worker (inside
+  // or mid-trip), the garrison, knights and builders on their way.
+  #evacuateBuilding(building: WorldBuilding): void {
+    for (const serf of this.serfs.values()) {
+      const boundToFire =
+        serf.workBuildingIndex === building.index ||
+        serf.garrisonTargetIndex === building.index ||
+        serf.buildTargetIndex === building.index ||
+        (serf.position === building.position && serf.state === serfState.idleInStock);
+      if (!boundToFire || serf.state === serfState.dead) {
+        continue;
+      }
+
+      serf.state = serfState.escaping;
+      serf.workBuildingIndex = 0;
+      serf.workPhase = 0;
+      serf.workCounter = 0;
+      serf.workTargetPosition = -1;
+      serf.garrisonTargetIndex = 0;
+      serf.buildTargetIndex = 0;
+      serf.carriedResource = -1;
+      serf.carriedDestination = 0;
+      serf.counter = 0;
+      serf.animation = 82;
+    }
+
+    building.knights = 0;
+    building.requestedKnights = 0;
+  }
+
+  // EscapeBuilding, condensed (recorded): instead of the reference's
+  // Lost wandering, the escapee free-walks straight home and rejoins
+  // the castle pool; with no castle left he stands where he is.
+  #handleEscaping(serf: WorldSerf, gameTick: number): void {
+    const delta = (gameTick - serf.tick) & 0xffff;
+    serf.tick = gameTick;
+
+    const castlePosition = this.world.players[serf.player]?.castlePosition;
+    if (castlePosition === undefined || castlePosition === null) {
+      serf.state = serfState.null;
+      return;
+    }
+
+    const homeFlagPosition = this.world.move(castlePosition, "DownRight");
+    if (serf.position === homeFlagPosition) {
+      const homeFlag = this.world.flagAt(homeFlagPosition);
+      const castle =
+        homeFlag?.buildingIndex == null
+          ? undefined
+          : this.world.buildings.get(homeFlag.buildingIndex);
+      if (castle === undefined || castle.burning) {
+        serf.state = serfState.null;
+        return;
+      }
+
+      if (serf.isKnight) {
+        // Knights reabsorb into the recruited pool.
+        const inventory = this.world.inventoryForPlayer(serf.player);
+        if (inventory !== null) {
+          inventory.knights += 1;
+        }
+
+        if (this.serfIndexes[serf.position] === serf.index) {
+          this.serfIndexes[serf.position] = 0;
+        }
+
+        this.serfs.delete(serf.index);
+        return;
+      }
+
+      this.#enterBuilding(serf, castle, serfState.idleInStock);
+      return;
+    }
+
+    this.#freeWalkToward(serf, homeFlagPosition, delta);
   }
 
   // Player.SendGeologist (the flag popup's button, app wiring with

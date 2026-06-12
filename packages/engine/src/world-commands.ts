@@ -20,7 +20,8 @@ export type SerfboundWorldAction =
       readonly player: number;
       readonly atTick: number;
     }
-  | { readonly kind: "demolish-flag"; readonly position: number; readonly player: number };
+  | { readonly kind: "demolish-flag"; readonly position: number; readonly player: number }
+  | { readonly kind: "demolish-building"; readonly position: number; readonly player: number };
 
 export type SerfboundWorldActionOutcome =
   | { readonly ok: true; readonly effect: string }
@@ -83,6 +84,16 @@ export function applyWorldAction(
       }
 
       return { ok: true, effect: "flag-demolished" };
+    case "demolish-building":
+      if (!world.igniteBuildingAt(action.position, action.player)) {
+        return {
+          ok: false,
+          reason: "invalid-build-position",
+          message: "No demolishable building of yours stands here.",
+        };
+      }
+
+      return { ok: true, effect: "building-demolished" };
   }
 }
 
@@ -126,6 +137,7 @@ export function isSerfboundWorldAction(input: unknown): input is SerfboundWorldA
     case "build-castle":
     case "build-flag":
     case "demolish-flag":
+    case "demolish-building":
       return Number.isInteger((action as { position?: unknown }).position);
     case "build-road": {
       const road = action as { start?: unknown; directions?: unknown };

@@ -162,6 +162,10 @@ export type WorldBuilding = {
   knights: number;
   requestedKnights: number;
   threatLevel: number;
+  // Building.BurnUp (SB-38-04): a demolished building burns down on
+  // the reference counter before it leaves the map.
+  burning: boolean;
+  burningCounter: number;
 };
 
 // Building.ConstructionInfos material costs: [planks, stones] per type.
@@ -1102,6 +1106,8 @@ export class SerfboundGameWorld {
       knights: 0,
       requestedKnights: 0,
       threatLevel: 0,
+      burning: false,
+      burningCounter: 0,
     };
     this.#nextBuildingIndex += 1;
     this.buildings.set(building.index, building);
@@ -1175,6 +1181,8 @@ export class SerfboundGameWorld {
       knights: 0,
       requestedKnights: 0,
       threatLevel: 0,
+      burning: false,
+      burningCounter: 0,
     };
     this.#nextBuildingIndex += 1;
     this.buildings.set(castle.index, castle);
@@ -1385,6 +1393,40 @@ export class SerfboundGameWorld {
     path.hasPath = false;
     path.otherFlagIndex = 0;
     path.freeTransporters = 0;
+  }
+
+  // Building.BurnUp, the world half (SB-38-04): the building stays on
+  // the map burning; the serf engine evacuates it, runs the counter,
+  // and tears it down structurally when the fire is done.
+  igniteBuildingAt(position: number, player: number): boolean {
+    const building = this.buildingAt(position);
+    if (building === null || building.player !== player || building.burning) {
+      return false;
+    }
+
+    building.burning = true;
+    building.burningCounter = building.type === buildingType.castle ? 8191 : 2047;
+
+    // A burning military post stops projecting territory.
+    if (building.isDone && militaryBuildingTypes.includes(building.type)) {
+      this.updateLandOwnership(position);
+    }
+
+    // A burning castle is the player's defeat, and its stores are lost.
+    if (building.isDone && building.type === buildingType.castle) {
+      const owner = this.players[building.player];
+      if (owner !== undefined) {
+        owner.defeated = true;
+      }
+
+      for (const [index, inventory] of this.inventories) {
+        if (inventory.buildingIndex === building.index) {
+          this.inventories.delete(index);
+        }
+      }
+    }
+
+    return true;
   }
 
   // Remove a building, keeping its flag (Game.DemolishBuilding, condensed).

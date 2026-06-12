@@ -1875,3 +1875,93 @@ test("the geologist prospects the mountains and plants the signs (SB-38-02)", ()
   assert.equal(emptySigns > 0, true, "barren slopes got the empty sign");
   assert.equal(cameHome, true, "the geologist walked home to the castle");
 });
+
+test("a demolished building burns, its worker escapes home, the ruin falls (SB-38-04)", async () => {
+  const { applyWorldAction } = await import("@serfbound/engine");
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  const lumberjack = world.buildBuilding(
+    world.geometry.positionAdd(castleFlag.position, 3, -1),
+    2,
+    0,
+  );
+  assert.notEqual(lumberjack, null, "lumberjack builds");
+  lumberjack.isDone = true;
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  const engine = new SerfboundSerfEngine(world);
+
+  // Wait for the worker to settle in (one continuous clock — a tick
+  // jump would feed the burn counter a giant delta).
+  let worker = null;
+  let tick = 0;
+  for (; tick < 60000 && worker === null; tick += 16) {
+    engine.update(tick);
+    for (const serf of engine.serfs.values()) {
+      if (serf.workBuildingIndex === lumberjack.index && serf.state === serfState.working) {
+        worker = serf;
+      }
+    }
+  }
+  assert.notEqual(worker, null, "the lumberjack is staffed");
+
+  // Tear it down: the world action a player command or lockstep
+  // replay applies.
+  const outcome = applyWorldAction(world, {
+    kind: "demolish-building",
+    position: lumberjack.position,
+    player: 0,
+  });
+  assert.equal(outcome.ok, true, "the demolition is accepted");
+  assert.equal(lumberjack.burning, true, "the building burns");
+  assert.equal(
+    world.buildings.has(lumberjack.index),
+    true,
+    "the burning building still stands",
+  );
+
+  // The worker escapes and walks home into the castle pool; the ruin
+  // falls only after the reference countdown.
+  let escaped = false;
+  let home = false;
+  let ruinDown = false;
+  let ruinFellAtTick = -1;
+  const igniteTick = tick;
+  for (; tick < igniteTick + 60000; tick += 16) {
+    engine.update(tick);
+    if (worker.state === serfState.escaping) {
+      escaped = true;
+    }
+
+    if (escaped && worker.state === serfState.idleInStock && worker.position === castlePosition) {
+      home = true;
+    }
+
+    if (!ruinDown && !world.buildings.has(lumberjack.index)) {
+      ruinDown = true;
+      ruinFellAtTick = tick;
+    }
+
+    if (home && ruinDown) {
+      break;
+    }
+  }
+
+  assert.equal(escaped, true, "the worker bolted from the fire");
+  assert.equal(home, true, "the escapee rejoined the castle pool");
+  assert.equal(ruinDown, true, "the ruin came down");
+  // 2047 minus one 16-tick sampling step of measurement slack.
+  assert.equal(
+    ruinFellAtTick - igniteTick >= 2047 - 16,
+    true,
+    `the fire ran the reference counter (fell after ${ruinFellAtTick - igniteTick} ticks)`,
+  );
+});

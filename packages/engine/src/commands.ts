@@ -31,7 +31,8 @@ export type SerfboundWorldCommandType =
   | "game.build-flag"
   | "game.build-road"
   | "game.build-building"
-  | "game.demolish-flag";
+  | "game.demolish-flag"
+  | "game.demolish-building";
 
 export type SerfboundWorldCommand = {
   readonly type: SerfboundWorldCommandType;
@@ -104,6 +105,7 @@ export type SerfboundAcceptedCommandResult = {
     | "road-built"
     | "building-built"
     | "flag-demolished"
+    | "building-demolished"
     // Lockstep mode (SB-22-04): the action is queued for its scheduled
     // turn instead of applying immediately.
     | "queued-for-lockstep";
@@ -164,6 +166,7 @@ const worldCommandTypes = new Set<SerfboundWorldCommandType>([
   "game.build-road",
   "game.build-building",
   "game.demolish-flag",
+  "game.demolish-building",
 ]);
 
 export class SerfboundCommandRouter {
@@ -357,6 +360,13 @@ export class SerfboundCommandRouter {
           player: this.localPlayer,
         };
         break;
+      case "game.demolish-building":
+        action = {
+          kind: "demolish-building",
+          position: command.tile.position,
+          player: this.localPlayer,
+        };
+        break;
     }
 
     // Lockstep mode: queue for the scheduled turn instead of applying;
@@ -410,6 +420,7 @@ export class SerfboundCommandRouter {
       case "game.build-road":
       case "game.build-building":
       case "game.demolish-flag":
+      case "game.demolish-building":
         return this.parseWorldCommand(input);
       default:
         return {
