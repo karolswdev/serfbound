@@ -1,11 +1,11 @@
 # Phase 36 — The Transport Economy in Full
 
-**Last updated:** 2026-06-12 (SB-36-02 done: flag slots schedule per
-direction over the reference network search — seeded least-loaded
-first, priority order at pickup, unreachable destinations cancelled
-and re-homed instead of wedging. Yesterday the parity-audit addendum
-widened the phase: SB-36-07 takes the engine-side settings data and
-SB-36-08 the emergency program).
+**Last updated:** 2026-06-12 (SB-36-05 done: the stock book with the
+reference distribution defaults drives every dispatch path, and the
+congestion mechanics it forced out — the 2-slot OutQueue, the
+carrier cargo swap, the loaded walk-back — ship with it. Earlier
+today, SB-36-02: flag slots schedule per direction over the
+reference network search).
 **Status:** in progress.
 
 ## Goal
@@ -59,8 +59,10 @@ at the castle door" and the unstaffed split road at the root.
 - [x] Roads staff up to the reference MaxTransporters by length;
   requests are serviced (the reference park/wake choreography stays
   condensed — recorded). (SB-36-04)
-- [ ] Building stocks split available/requested with reference
-  priorities. (SB-36-05)
+- [x] Building stocks split available/requested with reference
+  priorities. (SB-36-05 — the stock book, the decay formula, and
+  priority-ranked dispatch in production, inventory export, and
+  unknown-destination routing.)
 - [ ] On-device: the maintainer splits a live road and watches both
   halves work. (SB-36-06, the device gate)
 - [ ] The priority book exists as engine data with reference
@@ -79,7 +81,7 @@ at the castle door" and the unstaffed split road at the root.
 | SB-36-02 | Flag scheduling | done | story-02-flag-scheduling.md | evidence-story-02.md |
 | SB-36-03 | The split road staffs itself | done | story-03-the-split-road-staffs-itself.md | evidence-story-03.md |
 | SB-36-04 | Park, wake, and reinforce | done | story-04-park-wake-reinforce.md | evidence-story-04.md |
-| SB-36-05 | Stock and priorities | backlog | — | — |
+| SB-36-05 | Stock and priorities | done | story-05-stock-and-priorities.md | evidence-story-05.md |
 | SB-36-06 | The device gate | backlog | — | — |
 | SB-36-07 | The priority book | backlog | — | — |
 | SB-36-08 | The emergency program | backlog | — | — |

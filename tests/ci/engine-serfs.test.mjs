@@ -1118,3 +1118,81 @@ test("a destination off the staffed network is cancelled and the resource carrie
   assert.equal(rehomed, true, "the lumber was re-homed to the inventory flag");
   assert.equal(stored, true, "the lumber was carried home into the castle stock");
 });
+
+test("stocks request by the reference priorities, not first-found (SB-36-05)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  // The steel smelter is built FIRST (lower index — first-found's
+  // favorite); the gold smelter sits further down the same road line.
+  const steelPosition = world.geometry.positionAdd(castleFlag.position, 3, -1);
+  const steel = world.buildBuilding(steelPosition, 18, 0);
+  assert.notEqual(steel, null, "steel smelter builds");
+  const goldPosition = world.geometry.positionAdd(castleFlag.position, 6, -1);
+  const gold = world.buildBuilding(goldPosition, 23, 0);
+  assert.notEqual(gold, null, "gold smelter builds");
+  steel.isDone = true;
+  gold.isDone = true;
+
+  const steelFlag = world.flags.get(steel.flagIndex);
+  const goldFlag = world.flags.get(gold.flagIndex);
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+  assert.equal(
+    world.buildRoad(
+      { start: steelFlag.position, directions: ["Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+  assert.equal(goldFlag.position, world.geometry.positionAdd(castleFlag.position, 7, 0));
+
+  // Exactly four coal in the castle and nothing else to export.
+  const inventory = world.inventoryForPlayer(0);
+  inventory.resources.fill(0);
+  inventory.resources[12] = 4;
+
+  const engine = new SerfboundSerfEngine(world);
+  const first = engine.spawnGenericSerf(0, 0);
+  assert.equal(engine.assignTransporter(first, castleFlag.index, "Right", 0), true);
+  const second = engine.spawnGenericSerf(0, 0);
+  assert.equal(engine.assignTransporter(second, steelFlag.index, "Right", 0), true);
+
+  // The first allocation must go to the gold smelter: coal policy
+  // 65500 (gold) over 32750 (steel), both stocks empty.
+  let firstRequestSeen = null;
+  let settled = false;
+  for (let tick = 0; tick < 200000 && !settled; tick += 16) {
+    engine.update(tick);
+    if (firstRequestSeen === null) {
+      if ((gold.requestedResources[12] ?? 0) > 0) {
+        firstRequestSeen = "gold";
+      } else if ((steel.requestedResources[12] ?? 0) > 0) {
+        firstRequestSeen = "steel";
+      }
+    }
+
+    settled =
+      (gold.deliveredResources[12] ?? 0) + (steel.deliveredResources[12] ?? 0) === 4 &&
+      (inventory.resources[12] ?? 0) === 0;
+  }
+
+  assert.equal(firstRequestSeen, "gold", "the higher coal policy is served first");
+  assert.equal(settled, true, "all four coal left the castle and arrived");
+  assert.equal(
+    gold.deliveredResources[12] ?? 0,
+    2,
+    "the priority decay shares coal with the gold smelter at 2",
+  );
+  assert.equal(
+    steel.deliveredResources[12] ?? 0,
+    2,
+    "the priority decay shares coal with the steel smelter at 2",
+  );
+});

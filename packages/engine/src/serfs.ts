@@ -76,6 +76,54 @@ const productConsumers: Readonly<Record<number, readonly number[]>> = {
   14: [11, 21, 22], // gold bars -> occupied huts, towers, fortresses
 };
 
+// The reference building stock book (SB-36-05): slots from the
+// worker's InitBuilding calls (maximum 8 per input), priorities from
+// Building.Update — a player distribution policy decayed by the
+// delivered + in-flight total (policy >> (8 + total)), or the
+// always-hungry inputs at 0xff >> total. The policies are the
+// Player.Reset*Priority defaults until SB-36-07's priority book
+// makes them player data.
+type StockSlotSpec = {
+  readonly resources: readonly number[];
+  readonly maximum: number;
+  readonly policy: number | "always";
+};
+
+const groupFood: readonly number[] = [
+  resourceType.fish,
+  resourceType.bread,
+  resourceType.meat,
+];
+
+const buildingStockSpecs: Readonly<Record<number, readonly StockSlotSpec[]>> = {
+  3: [{ resources: [resourceType.plank], maximum: 8, policy: 3275 }], // boatbuilder
+  5: [{ resources: groupFood, maximum: 8, policy: 13100 }], // stone mine
+  6: [{ resources: groupFood, maximum: 8, policy: 45850 }], // coal mine
+  7: [{ resources: groupFood, maximum: 8, policy: 45850 }], // iron mine
+  8: [{ resources: groupFood, maximum: 8, policy: 65500 }], // gold mine
+  13: [{ resources: [resourceType.pig], maximum: 8, policy: "always" }], // butcher
+  14: [{ resources: [resourceType.wheat], maximum: 8, policy: 65500 }], // pig farm
+  15: [{ resources: [resourceType.wheat], maximum: 8, policy: 32750 }], // mill
+  16: [{ resources: [resourceType.flour], maximum: 8, policy: "always" }], // baker
+  17: [{ resources: [resourceType.lumber], maximum: 8, policy: "always" }], // sawmill
+  18: [
+    { resources: [resourceType.coal], maximum: 8, policy: 32750 },
+    { resources: [resourceType.ironOre], maximum: 8, policy: "always" },
+  ], // steel smelter
+  19: [
+    { resources: [resourceType.plank], maximum: 8, policy: 19650 },
+    { resources: [resourceType.steel], maximum: 8, policy: 45850 },
+  ], // toolmaker
+  20: [
+    { resources: [resourceType.coal], maximum: 8, policy: 52400 },
+    { resources: [resourceType.steel], maximum: 8, policy: 65500 },
+  ], // weaponsmith
+  23: [
+    { resources: [resourceType.coal], maximum: 8, policy: 65500 },
+    { resources: [resourceType.goldOre], maximum: 8, policy: "always" },
+  ], // gold smelter
+};
+
 // Mine building type -> [deposit mineral value, ore resource value].
 const mineDeposits: Readonly<Record<number, readonly [number, number]>> = {
   5: [4, 9], // stone mine -> stone deposit -> stone
@@ -755,7 +803,27 @@ export class SerfboundSerfEngine {
         const flag = this.world.flagAt(serf.position)!;
         if (flag.index === serf.walkingDestination) {
           if (!this.#deliverCarriedResource(serf, flag)) {
-            // No free slot to hand over: wait at the flag and retry.
+            // The reference switch (TransporterMoveToFlag): a loaded
+            // carrier at a full flag exchanges cargo with a slot
+            // scheduled back over its own road — a full flag must
+            // never wall off the road that serves it.
+            if (this.#swapCargoAtFlag(serf, flag)) {
+              continue;
+            }
+
+            // Nothing to swap: walk back across the road with the
+            // cargo in hand and return later (the reference's
+            // unconditional ChangeDirection). A carrier parked on
+            // the flag tile would block the very transporters that
+            // must drain it — the gridlock the maintainer's full
+            // settlements wedge on.
+            const back = this.#roadOtherEnd(serf, flag);
+            if (back !== null) {
+              serf.walkingDestination = back;
+              continue;
+            }
+
+            // No road anchored here (a stray carrier): wait.
             serf.counter += 200;
             return;
           }
@@ -799,6 +867,89 @@ export class SerfboundSerfEngine {
 
       this.#changeDirection(serf, nextDirection);
     }
+  }
+
+  // Which end of the serf's road this flag is, the direction back
+  // onto the road from it, and the flag index at the far end.
+  #roadEndAt(
+    serf: WorldSerf,
+    flag: WorldFlag,
+  ): { backDirection: Direction | null; returnFlagIndex: number } | null {
+    if (serf.roadDirection === null) {
+      return null;
+    }
+
+    const anchorFlag = this.world.flags.get(serf.roadFlagIndex);
+    if (anchorFlag === undefined) {
+      return null;
+    }
+
+    const anchorPath = anchorFlag.paths[serf.roadDirection];
+    if (flag.index === serf.roadFlagIndex) {
+      return { backDirection: serf.roadDirection, returnFlagIndex: anchorPath.otherFlagIndex };
+    }
+
+    if (flag.index === anchorPath.otherFlagIndex) {
+      return { backDirection: anchorPath.otherEndDirection, returnFlagIndex: serf.roadFlagIndex };
+    }
+
+    return null;
+  }
+
+  // The far end of the serf's road as seen from this flag, or null
+  // when the flag is not one of its road's ends.
+  #roadOtherEnd(serf: WorldSerf, flag: WorldFlag): number | null {
+    const end = this.#roadEndAt(serf, flag);
+    return end === null ? null : end.returnFlagIndex;
+  }
+
+  // TransporterMoveToFlag's resource switch: the carrier takes the
+  // highest-priority slot scheduled back over its own road and leaves
+  // its cargo in the freed slot (rescheduled by the next sweep), then
+  // hauls the exchanged resource back across. Returns false when the
+  // serf has no road anchored at this flag or nothing is scheduled
+  // over it.
+  #swapCargoAtFlag(serf: WorldSerf, flag: WorldFlag): boolean {
+    if (serf.roadDirection === null || serf.carriedResource < 0) {
+      return false;
+    }
+
+    const end = this.#roadEndAt(serf, flag);
+    if (end === null || end.backDirection === null) {
+      return false;
+    }
+
+    const { backDirection, returnFlagIndex } = end;
+
+    let pick: FlagResourceSlot | null = null;
+    for (const slot of flag.slots) {
+      if (slot.resource < 0 || slot.scheduledDirection !== backDirection) {
+        continue;
+      }
+
+      if (
+        pick === null ||
+        (defaultFlagPriorities[slot.resource] ?? 0) > (defaultFlagPriorities[pick.resource] ?? 0)
+      ) {
+        pick = slot;
+      }
+    }
+
+    if (pick === null) {
+      return false;
+    }
+
+    const swappedResource = pick.resource;
+    const swappedDestination = pick.destinationFlagIndex;
+    pick.resource = serf.carriedResource;
+    pick.destinationFlagIndex = serf.carriedDestination;
+    pick.scheduledDirection = null;
+    serf.carriedResource = swappedResource;
+    serf.carriedDestination = swappedDestination;
+    serf.walkingDestination = returnFlagIndex;
+    serf.walkingDirection = 0;
+    serf.counter = 0;
+    return true;
   }
 
   // Returns false when the flag has no room for a hand-over; the carrier
@@ -1030,13 +1181,12 @@ export class SerfboundSerfEngine {
 
   // Completed production buildings request their profession worker from the
   // castle (condensed Inventory.CallOutSerf profession dispatch).
-  // Inventory re-export (the reference InventoryScheduleCounter,
-  // minimal bridge pulled forward from Phase 36): banked stock with a
-  // reachable, wanting consumer leaves the castle again instead of
-  // sitting entombed — products emitted before their consumer existed
-  // used to bank forever. One item per cadence per inventory; planks
-  // and stones keep a construction reserve until the reference
-  // priority system lands.
+  // Inventory dispatch (Game.UpdateInventories, SB-36-05): banked
+  // stock leaves for the building whose stock priorities want it
+  // most, above the reference minimum of 16. One item per cadence
+  // per inventory; planks and stones keep a construction reserve
+  // until SB-36-08's emergency program owns that protection
+  // (recorded).
   #lastExportSweepTick = -1;
   #sweepInventoryExports(gameTick: number): void {
     if (this.#lastExportSweepTick >= 0 && ((gameTick - this.#lastExportSweepTick) & 0xffff) < 64) {
@@ -1045,6 +1195,14 @@ export class SerfboundSerfEngine {
 
     this.#lastExportSweepTick = gameTick;
     for (const inventory of this.world.inventories.values()) {
+      // Inventory.IsQueueFull: the reference stages at most two
+      // outbound resources behind the door. Unbounded staging floods
+      // the inventory flag's eight slots with exports and gridlocks
+      // the through-traffic that must hand over there.
+      if (inventory.pendingOut.length >= 2) {
+        continue;
+      }
+
       for (const [productKey, count] of Object.entries(inventory.resources)) {
         const product = Number(productKey);
         if ((count ?? 0) <= 0) {
@@ -1057,48 +1215,117 @@ export class SerfboundSerfEngine {
           continue;
         }
 
-        const consumerTypes = productConsumers[product];
-        if (consumerTypes === undefined) {
+        // Game.UpdateInventories: serve the building whose stock
+        // wants this most, above the reference's minimum priority of
+        // 16 (SB-36-05).
+        const consumer = this.#bestConsumerFor(product, inventory.flagIndex, 16);
+        if (consumer === null) {
           continue;
         }
 
-        let routed = false;
-        for (const consumer of this.world.buildings.values()) {
-          if (!consumer.isDone || !consumerTypes.includes(consumer.type)) {
-            continue;
-          }
-
-          let stockCap = 4;
-          if (isMilitaryBuildingType(consumer.type)) {
-            if (consumer.knights === 0) {
-              continue;
-            }
-
-            stockCap = militaryGoldCap(consumer.type);
-          }
-
-          if (
-            (consumer.deliveredResources[product] ?? 0) +
-              (consumer.requestedResources[product] ?? 0) < stockCap &&
-            this.#directionToward(inventory.flagIndex, consumer.flagIndex) !== null
-          ) {
-            inventory.resources[product] = (count ?? 0) - 1;
-            consumer.requestedResources[product] =
-              (consumer.requestedResources[product] ?? 0) + 1;
-            inventory.pendingOut.push({
-              resource: product,
-              destinationFlagIndex: consumer.flagIndex,
-            });
-            routed = true;
-            break;
-          }
-        }
-
-        if (routed) {
-          break;
-        }
+        inventory.resources[product] = (count ?? 0) - 1;
+        consumer.requestedResources[product] =
+          (consumer.requestedResources[product] ?? 0) + 1;
+        inventory.pendingOut.push({
+          resource: product,
+          destinationFlagIndex: consumer.flagIndex,
+        });
+        break;
       }
     }
+  }
+
+  // Building.Update stock priorities (SB-36-05): zero above the slot
+  // maximum, else the distribution policy decayed by everything
+  // delivered or in flight — `policy >> (8 + total)`, or the
+  // always-hungry `0xff >> total`. GroupFood slots total across all
+  // three foods. Gates on isDone where the reference gates on Holder
+  // (serfbound auto-staffs completed buildings; typed-serf dispatch
+  // is Phase 38).
+  #stockPriority(building: WorldBuilding, product: number): number {
+    if (!building.isDone) {
+      return 0;
+    }
+
+    const specs = buildingStockSpecs[building.type];
+    if (specs === undefined) {
+      return 0;
+    }
+
+    for (const spec of specs) {
+      if (!spec.resources.includes(product)) {
+        continue;
+      }
+
+      let total = 0;
+      for (const resource of spec.resources) {
+        total +=
+          (building.deliveredResources[resource] ?? 0) +
+          (building.requestedResources[resource] ?? 0);
+      }
+
+      if (total >= spec.maximum) {
+        return 0;
+      }
+
+      return spec.policy === "always" ? 0xff >> total : spec.policy >> (8 + total);
+    }
+
+    return 0;
+  }
+
+  // The consumer whose stock wants a product most, reachable from a
+  // source flag; ties keep the lower building index (map insertion
+  // order). Military gold keeps the reference's cap-based dispatch —
+  // its gold slot has no Update priority policy.
+  #bestConsumerFor(
+    product: number,
+    sourceFlagIndex: number,
+    minimumPriority: number,
+  ): WorldBuilding | null {
+    const consumerTypes = productConsumers[product];
+    if (consumerTypes === undefined) {
+      return null;
+    }
+
+    let best: WorldBuilding | null = null;
+    let bestPriority = minimumPriority;
+    for (const consumer of this.world.buildings.values()) {
+      if (!consumer.isDone || !consumerTypes.includes(consumer.type)) {
+        continue;
+      }
+
+      if (isMilitaryBuildingType(consumer.type)) {
+        if (consumer.knights === 0) {
+          continue;
+        }
+
+        const cap = militaryGoldCap(consumer.type);
+        if (
+          (consumer.deliveredResources[product] ?? 0) +
+            (consumer.requestedResources[product] ?? 0) >= cap ||
+          this.#directionToward(sourceFlagIndex, consumer.flagIndex) === null
+        ) {
+          continue;
+        }
+
+        return consumer;
+      }
+
+      const priority = this.#stockPriority(consumer, product);
+      if (priority <= bestPriority) {
+        continue;
+      }
+
+      if (this.#directionToward(sourceFlagIndex, consumer.flagIndex) === null) {
+        continue;
+      }
+
+      best = consumer;
+      bestPriority = priority;
+    }
+
+    return best;
   }
 
   // A flag split a road in two (SB-36-03, the reference
@@ -1357,16 +1584,19 @@ export class SerfboundSerfEngine {
   }
 
   // Flag.ScheduleSlotToUnknownDest: a resource with no destination is
-  // re-homed over the staffed network — raw goods to the nearest
-  // consumer with stock room (the reference ranks consumers by stock
-  // priority, which lands with SB-36-05), everything else to the
-  // nearest inventory.
+  // re-homed over the staffed network — raw goods to the consumer
+  // whose stock wants them most (the reference ranking, early exit
+  // above priority 204; BFS order breaks ties nearest-first),
+  // everything else to the nearest inventory.
   #scheduleSlotToUnknownDestination(flag: WorldFlag, slot: FlagResourceSlot): void {
     const product = slot.resource;
     const consumerTypes = routableResources.has(product)
       ? productConsumers[product]
       : undefined;
 
+    let bestConsumer: WorldBuilding | null = null;
+    let bestConsumerFlagIndex = 0;
+    let bestPriority = 0;
     let inventoryFlagIndex = 0;
     const visited = new Set<number>([flag.index]);
     const queue: number[] = [flag.index];
@@ -1383,22 +1613,29 @@ export class SerfboundSerfEngine {
           consumer.isDone &&
           consumerTypes.includes(consumer.type)
         ) {
-          let stockCap = 4;
-          let accepts = true;
           if (isMilitaryBuildingType(consumer.type)) {
-            accepts = consumer.knights > 0;
-            stockCap = militaryGoldCap(consumer.type);
-          }
-
-          if (
-            accepts &&
-            (consumer.deliveredResources[product] ?? 0) +
-              (consumer.requestedResources[product] ?? 0) < stockCap
-          ) {
-            consumer.requestedResources[product] =
-              (consumer.requestedResources[product] ?? 0) + 1;
-            slot.destinationFlagIndex = currentFlag.index;
-            return;
+            // Military gold: cap-based, taken as found (no Update
+            // priority policy in the reference).
+            if (
+              consumer.knights > 0 &&
+              (consumer.deliveredResources[product] ?? 0) +
+                (consumer.requestedResources[product] ?? 0) < militaryGoldCap(consumer.type)
+            ) {
+              consumer.requestedResources[product] =
+                (consumer.requestedResources[product] ?? 0) + 1;
+              slot.destinationFlagIndex = currentFlag.index;
+              return;
+            }
+          } else {
+            const priority = this.#stockPriority(consumer, product);
+            if (priority > bestPriority) {
+              bestConsumer = consumer;
+              bestConsumerFlagIndex = currentFlag.index;
+              bestPriority = priority;
+              if (bestPriority > 204) {
+                break;
+              }
+            }
           }
         }
       }
@@ -1421,6 +1658,13 @@ export class SerfboundSerfEngine {
           queue.push(path.otherFlagIndex);
         }
       }
+    }
+
+    if (bestConsumer !== null) {
+      bestConsumer.requestedResources[product] =
+        (bestConsumer.requestedResources[product] ?? 0) + 1;
+      slot.destinationFlagIndex = bestConsumerFlagIndex;
+      return;
     }
 
     if (inventoryFlagIndex !== 0) {
@@ -2026,36 +2270,14 @@ export class SerfboundSerfEngine {
 
     this.onProduct?.(building.type, product);
 
+    // Products go to the consumer whose stock wants them most
+    // (SB-36-05): the reference unknown-destination routing collapsed
+    // at the source, ranked by the Building.Update priorities.
+    const best = this.#bestConsumerFor(product, building.flagIndex, 0);
     let destination = 0;
-    const consumerTypes = productConsumers[product];
-    if (consumerTypes !== undefined) {
-      for (const consumer of this.world.buildings.values()) {
-        if (!consumer.isDone || !consumerTypes.includes(consumer.type)) {
-          continue;
-        }
-
-        // Military demand: gold goes only to occupied posts, capped at the
-        // reference per-type gold stock (hut 2, tower 4, fortress 8).
-        let stockCap = 4;
-        if (isMilitaryBuildingType(consumer.type)) {
-          if (consumer.knights === 0) {
-            continue;
-          }
-
-          stockCap = militaryGoldCap(consumer.type);
-        }
-
-        if (
-          (consumer.deliveredResources[product] ?? 0) +
-            (consumer.requestedResources[product] ?? 0) < stockCap &&
-          this.#directionToward(building.flagIndex, consumer.flagIndex) !== null
-        ) {
-          destination = consumer.flagIndex;
-          consumer.requestedResources[product] =
-            (consumer.requestedResources[product] ?? 0) + 1;
-          break;
-        }
-      }
+    if (best !== null) {
+      destination = best.flagIndex;
+      best.requestedResources[product] = (best.requestedResources[product] ?? 0) + 1;
     }
 
     if (destination === 0) {
