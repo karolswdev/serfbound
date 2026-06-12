@@ -4,6 +4,7 @@ import {
   isMilitaryBuildingType,
   militaryGoldCap,
   militaryKnightsNeeded,
+  type FlagResourceSlot,
   type SerfboundGameWorld,
   type WorldBuilding,
   type WorldFlag,
@@ -95,6 +96,27 @@ const roadBuildingSlope: readonly number[] = [
 
 // Flag.MaxTransporters by road length category (SB-36-04).
 const maxTransportersByCategory: readonly number[] = [1, 2, 3, 4, 6, 8, 11, 15];
+
+// Player.ResetFlagPriority defaults, indexed by resource type value
+// (SB-36-02): the transport pecking order when several scheduled
+// resources contest one direction — higher rides first (plank 26
+// tops the list, gold ore 1 trails it). SB-36-07 moves this into
+// the player's priority book; until then everyone runs the
+// reference defaults.
+const defaultFlagPriorities: readonly number[] = [
+  20, 5, 19, 3, 4, 18, 22, 26, 6, 25, 21, 24, 23, 1, 2,
+  14, 15, 9, 10, 8, 12, 11, 13, 7, 17, 16,
+];
+
+// Flag.routableResources: resources a flag may re-home to a consuming
+// building when their destination is lost. Everything else (boat,
+// tools, weapons) goes back to an inventory.
+const routableResources = new Set<number>([
+  resourceType.fish, resourceType.pig, resourceType.meat, resourceType.wheat,
+  resourceType.flour, resourceType.bread, resourceType.lumber, resourceType.plank,
+  resourceType.stone, resourceType.ironOre, resourceType.steel, resourceType.coal,
+  resourceType.goldOre, resourceType.goldBar,
+]);
 
 // The working pose (SB-35-03): reference staged work at the target.
 // Logging fells the tree in five visible stages (animation 116 +
@@ -369,6 +391,7 @@ export class SerfboundSerfEngine {
   update(gameTick: number): void {
     this.#updateAmbientDecay();
     this.#handlePathSplits(gameTick);
+    this.#sweepFlagScheduling();
     this.#sweepTransportStaffing(gameTick);
     this.#sweepWorkerRequests(gameTick);
     this.#sweepInventoryExports(gameTick);
@@ -622,9 +645,9 @@ export class SerfboundSerfEngine {
     }
   }
 
-  // Transporters idle at one end of their road and haul any slot whose route
-  // continues over it (condensed Flag scheduling; priorities and multi-serf
-  // roads follow with the economy).
+  // Transporters idle at one end of their road and haul the slots the
+  // flag sweep scheduled out over it — highest flag priority first
+  // (Flag.PrioritizePickup, SB-36-02).
   #handleIdleOnPath(serf: WorldSerf, gameTick: number): void {
     serf.tick = gameTick;
     if (serf.roadDirection === null) {
@@ -653,13 +676,11 @@ export class SerfboundSerfEngine {
       ? serf.roadDirection
       : (path.otherEndDirection ?? serf.roadDirection);
 
+    // Among the slots the sweep scheduled out this direction, the
+    // highest flag priority rides first (Flag.PrioritizePickup).
+    let pick: FlagResourceSlot | null = null;
     for (const slot of fromFlag.slots) {
-      if (slot.resource < 0 || slot.destinationFlagIndex === 0) {
-        continue;
-      }
-
-      const routeDirection = this.#directionToward(fromFlag.index, slot.destinationFlagIndex);
-      if (routeDirection !== outDirection) {
+      if (slot.resource < 0 || slot.scheduledDirection !== outDirection) {
         continue;
       }
 
@@ -673,11 +694,21 @@ export class SerfboundSerfEngine {
         continue;
       }
 
+      if (
+        pick === null ||
+        (defaultFlagPriorities[slot.resource] ?? 0) > (defaultFlagPriorities[pick.resource] ?? 0)
+      ) {
+        pick = slot;
+      }
+    }
+
+    if (pick !== null) {
       // Pick up and carry across the road.
-      serf.carriedResource = slot.resource;
-      serf.carriedDestination = slot.destinationFlagIndex;
-      slot.resource = -1;
-      slot.destinationFlagIndex = 0;
+      serf.carriedResource = pick.resource;
+      serf.carriedDestination = pick.destinationFlagIndex;
+      pick.resource = -1;
+      pick.destinationFlagIndex = 0;
+      pick.scheduledDirection = null;
       serf.state = serfState.transporting;
       serf.walkingDestination = toFlag.index;
       serf.walkingDirection = 0;
@@ -686,17 +717,13 @@ export class SerfboundSerfEngine {
       return;
     }
 
-    // Nothing on this side: if the opposite end has work routed over this
-    // road, walk back empty to fetch it.
+    // Nothing on this side: if the opposite end has work scheduled over
+    // this road, walk back empty to fetch it.
     const returnDirection = standsAtHere
       ? (path.otherEndDirection ?? serf.roadDirection)
       : serf.roadDirection;
     for (const slot of toFlag.slots) {
-      if (slot.resource < 0 || slot.destinationFlagIndex === 0) {
-        continue;
-      }
-
-      if (this.#directionToward(toFlag.index, slot.destinationFlagIndex) !== returnDirection) {
+      if (slot.resource < 0 || slot.scheduledDirection !== returnDirection) {
         continue;
       }
 
@@ -1197,6 +1224,211 @@ export class SerfboundSerfEngine {
     }
   }
 
+  // Flag.Update slot scheduling (SB-36-02): every slot holding a
+  // resource with no scheduled direction is routed here — known
+  // destinations over the reference's seeded network search, unknown
+  // destinations re-homed to a consumer or the nearest inventory.
+  #sweepFlagScheduling(): void {
+    for (const flag of this.world.flags.values()) {
+      let hasUnscheduled = false;
+      for (const slot of flag.slots) {
+        if (slot.resource >= 0 && slot.scheduledDirection === null) {
+          hasUnscheduled = true;
+          break;
+        }
+      }
+
+      if (!hasUnscheduled) {
+        continue;
+      }
+
+      // Per direction, how many slots are already scheduled out —
+      // the reference's resourcesWaiting tiers, deciding which
+      // neighbor roads seed the search first.
+      const waitingByDirection: Partial<Record<Direction, number>> = {};
+      for (const slot of flag.slots) {
+        if (slot.resource >= 0 && slot.scheduledDirection !== null) {
+          waitingByDirection[slot.scheduledDirection] =
+            (waitingByDirection[slot.scheduledDirection] ?? 0) + 1;
+        }
+      }
+
+      for (const slot of flag.slots) {
+        if (slot.resource < 0 || slot.scheduledDirection !== null) {
+          continue;
+        }
+
+        if (slot.destinationFlagIndex !== 0) {
+          if (this.#scheduleSlotToKnownDestination(flag, slot, waitingByDirection)) {
+            waitingByDirection[slot.scheduledDirection!] =
+              (waitingByDirection[slot.scheduledDirection!] ?? 0) + 1;
+          }
+        } else {
+          this.#scheduleSlotToUnknownDestination(flag, slot);
+        }
+      }
+    }
+  }
+
+  // Flag.ScheduleSlotToKnownDestination: breadth-first over the
+  // transporter-served flag network, seeded from this flag's staffed
+  // neighbors least-loaded first; the winning seed's direction becomes
+  // the slot's scheduled direction. The reference's other-endpoint
+  // slot register (ScheduleOtherEndpoint / PrioritizePickup refresh)
+  // is folded into pickup, which makes the same highest-priority
+  // choice when a transporter actually arrives. Returns true when the
+  // slot was scheduled.
+  #scheduleSlotToKnownDestination(
+    flag: WorldFlag,
+    slot: FlagResourceSlot,
+    waitingByDirection: Partial<Record<Direction, number>>,
+  ): boolean {
+    // Seed order: idle directions first, then 1, 2, 3 waiting, then
+    // the congested rest (the reference's tier walk).
+    const seeds: Direction[] = [];
+    for (let tier = 0; tier <= 4; tier += 1) {
+      for (const direction of directionOrder) {
+        const path = flag.paths[direction];
+        if (!path.hasPath || path.freeTransporters === 0) {
+          continue;
+        }
+
+        const waiting = waitingByDirection[direction] ?? 0;
+        if (tier < 4 ? waiting === tier : waiting >= 4) {
+          seeds.push(direction);
+        }
+      }
+    }
+
+    if (seeds.length === 0) {
+      // No road here has a transporter yet: stay unscheduled and retry
+      // on a later sweep (the reference keeps HasUnscheduledResources).
+      return false;
+    }
+
+    const visited = new Set<number>([flag.index]);
+    const queue: { flagIndex: number; seedDirection: Direction }[] = [];
+    for (const direction of seeds) {
+      const otherIndex = flag.paths[direction].otherFlagIndex;
+      if (!visited.has(otherIndex)) {
+        visited.add(otherIndex);
+        queue.push({ flagIndex: otherIndex, seedDirection: direction });
+      }
+    }
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (current.flagIndex === slot.destinationFlagIndex) {
+        slot.scheduledDirection = current.seedDirection;
+        return true;
+      }
+
+      const currentFlag = this.world.flags.get(current.flagIndex);
+      if (currentFlag === undefined) {
+        continue;
+      }
+
+      for (const direction of directionOrder) {
+        const path = currentFlag.paths[direction];
+        if (!path.hasPath || path.freeTransporters === 0 || visited.has(path.otherFlagIndex)) {
+          continue;
+        }
+
+        visited.add(path.otherFlagIndex);
+        queue.push({ flagIndex: path.otherFlagIndex, seedDirection: current.seedDirection });
+      }
+    }
+
+    // The staffed network was searched and the destination is not on
+    // it: the delivery is impossible. Release the consumer's in-flight
+    // request and clear the destination; the next sweep re-homes the
+    // resource (Game.CancelTransportedResource + destination reset).
+    const destinationFlag = this.world.flags.get(slot.destinationFlagIndex);
+    if (destinationFlag !== undefined && destinationFlag.buildingIndex !== null) {
+      const consumer = this.world.buildings.get(destinationFlag.buildingIndex);
+      if (consumer !== undefined && (consumer.requestedResources[slot.resource] ?? 0) > 0) {
+        consumer.requestedResources[slot.resource] =
+          consumer.requestedResources[slot.resource]! - 1;
+      }
+    }
+
+    slot.destinationFlagIndex = 0;
+    return false;
+  }
+
+  // Flag.ScheduleSlotToUnknownDest: a resource with no destination is
+  // re-homed over the staffed network — raw goods to the nearest
+  // consumer with stock room (the reference ranks consumers by stock
+  // priority, which lands with SB-36-05), everything else to the
+  // nearest inventory.
+  #scheduleSlotToUnknownDestination(flag: WorldFlag, slot: FlagResourceSlot): void {
+    const product = slot.resource;
+    const consumerTypes = routableResources.has(product)
+      ? productConsumers[product]
+      : undefined;
+
+    let inventoryFlagIndex = 0;
+    const visited = new Set<number>([flag.index]);
+    const queue: number[] = [flag.index];
+    while (queue.length > 0) {
+      const currentFlag = this.world.flags.get(queue.shift()!);
+      if (currentFlag === undefined) {
+        continue;
+      }
+
+      if (consumerTypes !== undefined && currentFlag.buildingIndex !== null) {
+        const consumer = this.world.buildings.get(currentFlag.buildingIndex);
+        if (
+          consumer !== undefined &&
+          consumer.isDone &&
+          consumerTypes.includes(consumer.type)
+        ) {
+          let stockCap = 4;
+          let accepts = true;
+          if (isMilitaryBuildingType(consumer.type)) {
+            accepts = consumer.knights > 0;
+            stockCap = militaryGoldCap(consumer.type);
+          }
+
+          if (
+            accepts &&
+            (consumer.deliveredResources[product] ?? 0) +
+              (consumer.requestedResources[product] ?? 0) < stockCap
+          ) {
+            consumer.requestedResources[product] =
+              (consumer.requestedResources[product] ?? 0) + 1;
+            slot.destinationFlagIndex = currentFlag.index;
+            return;
+          }
+        }
+      }
+
+      if (
+        inventoryFlagIndex === 0 &&
+        currentFlag.hasInventory &&
+        currentFlag.index !== flag.index
+      ) {
+        inventoryFlagIndex = currentFlag.index;
+        if (consumerTypes === undefined) {
+          break;
+        }
+      }
+
+      for (const direction of directionOrder) {
+        const path = currentFlag.paths[direction];
+        if (path.hasPath && path.freeTransporters > 0 && !visited.has(path.otherFlagIndex)) {
+          visited.add(path.otherFlagIndex);
+          queue.push(path.otherFlagIndex);
+        }
+      }
+    }
+
+    if (inventoryFlagIndex !== 0) {
+      slot.destinationFlagIndex = inventoryFlagIndex;
+    }
+    // Still homeless: stay unscheduled and retry on a later sweep.
+  }
+
   // Park, wake, and reinforce (SB-36-04): roads staff up under load.
   // The reference grants MaxTransporters by length category
   // {1,2,3,4,6,8,11,15} and parks/wakes idle serfs; condensed here to
@@ -1292,15 +1524,12 @@ export class SerfboundSerfEngine {
     return { total, idle };
   }
 
-  // Scheduled work at a flag routed out through a direction.
+  // Scheduled work at a flag routed out through a direction — read
+  // straight off the flag sweep's per-slot scheduling (SB-36-02).
   #scheduledOver(flag: WorldFlag, direction: Direction): number {
     let count = 0;
     for (const slot of flag.slots) {
-      if (slot.resource < 0 || slot.destinationFlagIndex === 0) {
-        continue;
-      }
-
-      if (this.#directionToward(flag.index, slot.destinationFlagIndex) === direction) {
+      if (slot.resource >= 0 && slot.scheduledDirection === direction) {
         count += 1;
       }
     }

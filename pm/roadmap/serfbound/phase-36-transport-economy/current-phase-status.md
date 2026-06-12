@@ -1,11 +1,11 @@
 # Phase 36 — The Transport Economy in Full
 
-**Last updated:** 2026-06-11 (the parity-audit addendum widened the
-phase: SB-36-07 takes the engine-side settings data — the priority
-lists the SB-36-02 scheduler must consult — and SB-36-08 takes the
-emergency program. Earlier today, SB-36-04 done: roads reinforce
-under load up to the reference MaxTransporters caps, and recorded
-serfRequested bits are serviced).
+**Last updated:** 2026-06-12 (SB-36-02 done: flag slots schedule per
+direction over the reference network search — seeded least-loaded
+first, priority order at pickup, unreachable destinations cancelled
+and re-homed instead of wedging. Yesterday the parity-audit addendum
+widened the phase: SB-36-07 takes the engine-side settings data and
+SB-36-08 the emergency program).
 **Status:** in progress.
 
 ## Goal
@@ -48,8 +48,11 @@ at the castle door" and the unstaffed split road at the root.
 
 - [x] A resource leaving the castle is carried out the door by a
   serf — nothing materializes on a flag. (SB-36-01)
-- [ ] Flag slots schedule per direction over the reference network
-  search; congested flags coordinate multiple serfs. (SB-36-02)
+- [x] Flag slots schedule per direction over the reference network
+  search; congested flags coordinate multiple serfs. (SB-36-02 —
+  the per-direction seeding yields loaded directions, pickup takes
+  the highest flag priority, and SB-36-04's backlog measure now
+  reads the real scheduling.)
 - [x] Splitting a road reassigns the transporter to one half and
   staffs the other; gated by a test that builds a flag mid-road and
   watches both halves carry. (SB-36-03)
@@ -73,7 +76,7 @@ at the castle door" and the unstaffed split road at the root.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-36-01 | Out the castle door | done | story-01-out-the-castle-door.md | evidence-story-01.md |
-| SB-36-02 | Flag scheduling | backlog | — | — |
+| SB-36-02 | Flag scheduling | done | story-02-flag-scheduling.md | evidence-story-02.md |
 | SB-36-03 | The split road staffs itself | done | story-03-the-split-road-staffs-itself.md | evidence-story-03.md |
 | SB-36-04 | Park, wake, and reinforce | done | story-04-park-wake-reinforce.md | evidence-story-04.md |
 | SB-36-05 | Stock and priorities | backlog | — | — |

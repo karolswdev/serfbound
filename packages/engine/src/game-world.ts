@@ -1289,7 +1289,21 @@ export class SerfboundGameWorld {
       currentDirection = following;
     }
 
+    // Flag.InvalidateResourcePath: resources scheduled over the dead
+    // road lose their direction and reschedule on the next flag sweep.
+    for (const slot of flag.slots) {
+      if (slot.scheduledDirection === direction) {
+        slot.scheduledDirection = null;
+      }
+    }
+
     if (otherFlag !== undefined && path.otherEndDirection !== null) {
+      for (const slot of otherFlag.slots) {
+        if (slot.scheduledDirection === path.otherEndDirection) {
+          slot.scheduledDirection = null;
+        }
+      }
+
       const otherPath = otherFlag.paths[path.otherEndDirection];
       otherPath.hasPath = false;
       otherPath.otherFlagIndex = 0;

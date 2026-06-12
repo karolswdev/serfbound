@@ -1005,3 +1005,116 @@ test("a congested road reinforces up to its length cap, and requests are service
 
   assert.equal(serviced, true, "the recorded request was serviced and cleared");
 });
+
+test("flag slots schedule per direction and the higher priority rides first (SB-36-02)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  // The test-123 geometry: a lumberjack three right / one up, its flag
+  // four tiles right of the castle flag, one road between them.
+  const sitePosition = world.geometry.positionAdd(castleFlag.position, 3, -1);
+  const building = world.buildBuilding(sitePosition, 2, 0);
+  assert.notEqual(building, null);
+  const buildingFlag = world.flags.get(building.flagIndex);
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  // Gold ore (priority 1) lands in the earlier slot, plank (priority 26)
+  // behind it — slot order must NOT decide who rides first.
+  assert.equal(world.dropResource(castleFlag.index, 13, buildingFlag.index), true);
+  assert.equal(world.dropResource(castleFlag.index, 7, buildingFlag.index), true);
+
+  const engine = new SerfboundSerfEngine(world);
+  const transporter = engine.spawnGenericSerf(0, 0);
+  assert.equal(engine.assignTransporter(transporter, castleFlag.index, "Right", 0), true);
+
+  // The first sweep schedules both slots out the road by the network
+  // search — observable while the transporter is still walking out.
+  engine.update(16);
+  const goldSlot = castleFlag.slots.find((slot) => slot.resource === 13);
+  const plankSlot = castleFlag.slots.find((slot) => slot.resource === 7);
+  assert.notEqual(goldSlot, undefined, "the gold ore is still waiting");
+  assert.equal(goldSlot.scheduledDirection, "Right", "gold ore scheduled per direction");
+  assert.equal(plankSlot.scheduledDirection, "Right", "plank scheduled per direction");
+
+  // The plank is picked up first despite sitting in the later slot.
+  let firstCarried = -1;
+  let delivered = false;
+  for (let tick = 16; tick < 60000 && !delivered; tick += 16) {
+    engine.update(tick);
+    if (firstCarried < 0 && transporter.carriedResource >= 0) {
+      firstCarried = transporter.carriedResource;
+    }
+
+    delivered =
+      (building.deliveredResources[7] ?? 0) >= 1 && (building.deliveredResources[13] ?? 0) >= 1;
+  }
+
+  assert.equal(firstCarried, 7, "the plank outranks the gold ore at pickup");
+  assert.equal(delivered, true, "both resources still arrive");
+});
+
+test("a destination off the staffed network is cancelled and the resource carried home (SB-36-02)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  // A staffed road castle flag -> far flag, and a sawmill far away with
+  // NO road to anything: its flag is not on the staffed network.
+  const farPosition = world.geometry.positionAdd(castleFlag.position, 4, 0);
+  const farFlag = world.buildFlag(farPosition, 0);
+  assert.notEqual(farFlag, null);
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  const sawmillPosition = world.geometry.positionAdd(castleFlag.position, 0, 6);
+  const sawmill = world.buildBuilding(sawmillPosition, 17, 0);
+  assert.notEqual(sawmill, null, "the disconnected sawmill builds");
+
+  // Lumber waiting at the far flag, destined for the unreachable
+  // sawmill, with the dispatch bookkeeping that sent it.
+  sawmill.requestedResources[6] = 1;
+  assert.equal(world.dropResource(farFlag.index, 6, sawmill.flagIndex), true);
+
+  const engine = new SerfboundSerfEngine(world);
+  const transporter = engine.spawnGenericSerf(0, 0);
+  assert.equal(engine.assignTransporter(transporter, castleFlag.index, "Right", 0), true);
+
+  const inventory = world.inventoryForPlayer(0);
+  const lumberBefore = inventory.resources[6] ?? 0;
+
+  // The sweep searches the staffed network, fails to reach the sawmill,
+  // releases the in-flight request, and re-homes the lumber to the
+  // castle inventory.
+  let cancelled = false;
+  let rehomed = false;
+  let stored = false;
+  for (let tick = 0; tick < 60000 && !stored; tick += 16) {
+    engine.update(tick);
+    const slot = farFlag.slots.find((entry) => entry.resource === 6);
+    if (!cancelled && (sawmill.requestedResources[6] ?? 0) === 0) {
+      cancelled = true;
+    }
+
+    if (slot !== undefined && slot.destinationFlagIndex === castleFlag.index) {
+      rehomed = true;
+    }
+
+    stored = (inventory.resources[6] ?? 0) > lumberBefore;
+  }
+
+  assert.equal(cancelled, true, "the sawmill's in-flight request was released");
+  assert.equal(rehomed, true, "the lumber was re-homed to the inventory flag");
+  assert.equal(stored, true, "the lumber was carried home into the castle stock");
+});
