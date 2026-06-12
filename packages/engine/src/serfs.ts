@@ -227,17 +227,22 @@ export function counterFromAnimation(animation: number): number {
 }
 
 // Serf.GetWalkingAnimation: 4 + heightDifference + 9 * directionIndex.
+// The reference rows only exist for height differences -4..4 (roads
+// guarantee the bound); free walks can face steeper steps, and an
+// unclamped index lands in ANOTHER direction's rows — garbage sprites
+// and offsets, the maintainer's sinking serfs (SB-35-04 punch 2).
 export function walkingAnimation(
   heightDifference: number,
   direction: Direction,
   switchPosition: boolean,
 ): number {
+  const clamped = Math.max(-4, Math.min(4, heightDifference));
   let directionIndex = directionOrder.indexOf(direction);
   if (switchPosition && directionIndex < 3) {
     directionIndex += 6;
   }
 
-  return 4 + heightDifference + 9 * directionIndex;
+  return 4 + clamped + 9 * directionIndex;
 }
 
 export type WorldSerf = {
@@ -2530,6 +2535,7 @@ export class SerfboundSerfEngine {
     while (serf.counter < 0 && serf.position !== target) {
       let bestDirection: Direction | null = null;
       let bestDistance = Number.POSITIVE_INFINITY;
+      let bestSteepness = 2;
       for (const direction of directionOrder) {
         const next = this.world.move(serf.position, direction);
         // The target itself is always enterable — walking home means
@@ -2545,8 +2551,20 @@ export class SerfboundSerfEngine {
           continue;
         }
 
+        // Steer around cliffs (SB-35-04 punch 2): steps beyond the
+        // road rule's ±4 height difference take a back seat — the
+        // reference's walkable world never exceeds it, and the
+        // animation rows cannot show it.
+        const climb = Math.abs(
+          this.world.heights[next]! - this.world.heights[serf.position]!,
+        );
+        const steep = climb > 4 && next !== target ? 1 : 0;
         const distance = this.#hexDistance(next, target);
-        if (distance < bestDistance) {
+        if (
+          steep < bestSteepness ||
+          (steep === bestSteepness && distance < bestDistance)
+        ) {
+          bestSteepness = steep;
           bestDistance = distance;
           bestDirection = direction;
         }

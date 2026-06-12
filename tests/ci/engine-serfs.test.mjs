@@ -1965,3 +1965,10 @@ test("a demolished building burns, its worker escapes home, the ruin falls (SB-3
     `the fire ran the reference counter (fell after ${ruinFellAtTick - igniteTick} ticks)`,
   );
 });
+
+test("walking animations clamp to the reference's ±4 slope rows (SB-35-04 punch 2)", () => {
+  // A free walker stepping a cliff must not index into another
+  // direction's animation rows.
+  assert.equal(walkingAnimation(7, "Right", false), walkingAnimation(4, "Right", false));
+  assert.equal(walkingAnimation(-9, "Down", false), walkingAnimation(-4, "Down", false));
+});

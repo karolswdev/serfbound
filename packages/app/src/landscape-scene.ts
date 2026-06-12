@@ -314,18 +314,15 @@ export function buildLandscapeRenderAssets(
     return null;
   }
 
+  // Every decodable map-object sprite below the flag range loads up
+  // front (SB-35-04 punch 1): the simulation lays objects at runtime —
+  // felled trunks, stubs, saplings, fields, signs — and they must
+  // render the moment they appear. Filtering by the object types
+  // present at compose time made a chopped tree vanish instead of
+  // falling.
   let objectSpriteCount = 0;
-  const presentObjects = new Set<number>();
-  for (let position = 0; position < landscape.tileCount; position += 1) {
-    const objectType = landscape.objects[position]!;
-    if (objectType >= 8) {
-      presentObjects.add(objectType - 8);
-    }
-  }
-
-  for (const spriteIndex of presentObjects) {
-    const decoded = decodedAssets.rawMapObjects.get(spriteIndex);
-    if (decoded === undefined) {
+  for (const [spriteIndex, decoded] of decodedAssets.rawMapObjects) {
+    if (spriteIndex >= 128) {
       continue;
     }
 

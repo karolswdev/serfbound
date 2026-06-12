@@ -134,6 +134,14 @@ export function createDecodableGeneratedPaArchive(): Uint8Array {
     bytes: concatBytes([spriteHeader(32, 10, -16, -4), fullCoverageRuns(32 * 10, null)]),
   });
 
+  // A felled trunk (map_object 85 -> entry 1335): a runtime-laid
+  // object no pristine landscape contains — the atlas must still
+  // carry it (SB-35-04 punch 1).
+  entries.push({
+    index: 1335,
+    bytes: concatBytes([spriteHeader(32, 12, -16, -11), fullCoverageRuns(32 * 12, 201)]),
+  });
+
   // 27 path masks (230..256) and 10 path grounds (300..309) for roads.
   for (let mask = 0; mask < 27; mask += 1) {
     entries.push({

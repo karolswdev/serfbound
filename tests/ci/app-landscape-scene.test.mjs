@@ -384,3 +384,14 @@ test("construction rises bottom-up: cornerstone, then frame, then the building r
     `building half-revealed (cropTop ${buildingSprite.cropTop})`,
   );
 });
+
+test("runtime-laid objects render: the felled trunk's sprite is in the atlas (SB-35-04 punch 1)", () => {
+  // No pristine landscape contains a felled trunk (object 93, sprite
+  // 85) — it appears only when a lumberjack fells a tree at runtime.
+  // The atlas must carry every decodable map-object sprite up front.
+  assert.notEqual(
+    landscapeAssets.atlas.regions["mo:85"],
+    undefined,
+    "the felled-trunk sprite is loaded without a felled object on the map",
+  );
+});

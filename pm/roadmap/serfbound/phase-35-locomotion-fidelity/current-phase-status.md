@@ -1,11 +1,17 @@
 # Phase 35 — Locomotion and the Working Pose
 
-**Last updated:** 2026-06-12 (SB-35-03's recorded interim is
-retired: the reference work-stage constants — logging
-[1023, 31, 767, 767, 255], stonecutting 1535 — are restored now
-that Phase 36's transport throughput exists, and every chain suite
-holds at full durations. Previously: SB-35-03 done 2026-06-11).
-**Status:** in progress — SB-35-04, the device gate, remains.
+**Last updated:** 2026-06-12 (SB-35-04 round 1: the maintainer's
+device pass found two render truths — a chopped tree VANISHED
+because the sprite atlas only carried object types present at
+compose time (felled trunks, stubs, saplings, fields, and signs all
+appear at runtime; every decodable map-object sprite now loads up
+front), and serfs SANK into inclines because free walkers stepping
+cliffs beyond ±4 height indexed into another direction's animation
+rows (the row index now clamps, and the free walker steers around
+cliffs). Both punches engine/app-gated, stash-verified. Earlier:
+the SB-35-03 pacing interim retired).
+**Status:** in progress — SB-35-04, the device gate, re-presents on
+the punch fixes.
 
 ## Goal
 
