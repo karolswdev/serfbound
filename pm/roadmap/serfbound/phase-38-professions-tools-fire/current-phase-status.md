@@ -1,8 +1,11 @@
 # Phase 38 — Professions, Tools, and Fire
 
-**Last updated:** 2026-06-11 (scaffolded from the reference parity
-audit; see pm/roadmap/serfbound/reference-parity-audit.md).
-**Status:** scaffolded.
+**Last updated:** 2026-06-12 (SB-38-01 done: the fisher bobs his
+rod at the shore, the farmer scythes his fields, the forester
+plants at his own feet — the generic outdoor trip rides the
+existing walk-out machinery, and the act-at-a-distance work cases
+are deleted. The world only changes where the worker stands).
+**Status:** in progress.
 
 ## Goal
 
@@ -27,9 +30,9 @@ and actions sound like themselves.
 
 ## Exit criteria (evidence required)
 
-- [ ] Fisher, farmer, and forester work outdoors on the reference
-  cycles; the geologist exists and plants signs the mines read.
-  (SB-38-01/02)
+- [~] Fisher, farmer, and forester work outdoors on the reference
+  cycles (SB-38-01 — done); the geologist exists and plants signs
+  the mines read (SB-38-02 — backlog).
 - [ ] Tools gate professions: the inventory tracks typed serfs and
   converts them with tools; the toolmaker matters. (SB-38-03)
 - [ ] Demolition burns: fire, countdown, escaping serfs. (SB-38-04)
@@ -42,7 +45,7 @@ and actions sound like themselves.
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-38-01 | Fisher, farmer, forester in the open | backlog | — | — |
+| SB-38-01 | Fisher, farmer, forester in the open | done | story-01-fisher-farmer-forester-in-the-open.md | evidence-story-01.md |
 | SB-38-02 | The geologist | backlog | — | — |
 | SB-38-03 | Tools make professionals | backlog | — | — |
 | SB-38-04 | Fire | backlog | — | — |

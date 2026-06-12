@@ -1682,3 +1682,119 @@ test("fish spawn and migrate: a fished-out bay recovers (SB-37-03)", () => {
   assert.equal(bayTotalGrew, true, "the bay's stock grew by spawning");
   assert.equal(fishedOutRecovered, true, "the fished-out tile restocked by migration");
 });
+
+test("fisher, farmer, and forester work in the open, at their own feet (SB-38-01)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  // The corridor: farm, then forester, east of the castle flag.
+  const farm = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 3, -1), 12, 0);
+  assert.notEqual(farm, null, "farm builds");
+  farm.isDone = true;
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+  const forester = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 6, -1), 9, 0);
+  assert.notEqual(forester, null, "forester builds");
+  forester.isDone = true;
+  assert.equal(
+    world.buildRoad(
+      {
+        start: world.geometry.positionAdd(castleFlag.position, 4, 0),
+        directions: ["Right", "Right", "Right"],
+      },
+      0,
+    ),
+    true,
+  );
+
+  // The fisher south of the castle, a stocked bay below him.
+  const fisher = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, -1, 2), 1, 0);
+  assert.notEqual(fisher, null, "fisher builds");
+  fisher.isDone = true;
+  assert.equal(
+    world.buildRoad({ start: castleFlag.position, directions: ["Down", "Down", "Down"] }, 0),
+    true,
+  );
+  let bayStart = 0;
+  const bayTiles = [];
+  for (let dx = -1; dx <= 4; dx += 1) {
+    for (let dy = 5; dy <= 10; dy += 1) {
+      const at = world.geometry.positionAdd(castleFlag.position, dx, dy);
+      world.typesUp[at] = 0;
+      world.typesDown[at] = 0;
+      world.resourceAmounts[at] = 10;
+      bayTiles.push(at);
+      bayStart += 10;
+    }
+  }
+
+  const engine = new SerfboundSerfEngine(world);
+  const workerOf = (building) => {
+    for (const serf of engine.serfs.values()) {
+      if (serf.workBuildingIndex === building.index) {
+        return serf;
+      }
+    }
+
+    return null;
+  };
+
+  let saplingAtFeet = null;
+  let seedsAtFeet = null;
+  let fishFromShore = null;
+  let knownSapling = -1;
+  let knownSeeds = -1;
+  for (
+    let tick = 0;
+    tick < 1500000 && !(saplingAtFeet !== null && seedsAtFeet !== null && fishFromShore !== null);
+    tick += 16
+  ) {
+    engine.update(tick);
+    if (saplingAtFeet === null || seedsAtFeet === null) {
+      for (let probe = 0; probe < world.tileCount; probe += 1) {
+        const value = world.objects[probe];
+        if (saplingAtFeet === null && (value === 103 || value === 104) && probe !== knownSapling) {
+          knownSapling = probe;
+          const serf = workerOf(forester);
+          saplingAtFeet = serf !== null && serf.position === probe;
+        }
+
+        if (seedsAtFeet === null && value === 105 && probe !== knownSeeds) {
+          knownSeeds = probe;
+          const serf = workerOf(farm);
+          seedsAtFeet = serf !== null && serf.position === probe;
+        }
+      }
+    }
+
+    if (fishFromShore === null) {
+      let bayNow = 0;
+      for (const at of bayTiles) {
+        bayNow += world.resourceAmounts[at];
+      }
+
+      if (bayNow < bayStart) {
+        const serf = workerOf(fisher);
+        // The catch flips the trip homeward within the same update,
+        // so the proof is the body: he stands outside, at the shore.
+        fishFromShore = serf !== null && serf.position !== fisher.position;
+      }
+
+      bayStart = Math.min(bayStart, bayNow);
+    }
+  }
+
+  assert.equal(saplingAtFeet, true, "the first sapling landed at the forester's feet");
+  assert.equal(seedsAtFeet, true, "the first seeds landed at the farmer's feet");
+  assert.equal(
+    fishFromShore,
+    true,
+    "the first fish left the water with the fisher standing at the shore",
+  );
+});

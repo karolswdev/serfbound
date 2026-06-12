@@ -23,6 +23,7 @@ import {
   isTreeObject,
   mapObject,
 } from "./map-generator-extra.js";
+import { mapTerrain } from "./map-generator.js";
 
 // Serf state machine core ported from Freeserf.Core/Serf.cs (spawning,
 // walking, entering/leaving buildings). Professions, transport, and combat
@@ -2155,52 +2156,18 @@ export class SerfboundSerfEngine {
         this.#workHarvest(serf, building, 450, isStoneObject, mapObject.none, resourceType.stone, delta);
         break;
       case buildingType.forester:
-        if (serf.workCounter >= 500) {
-          serf.workCounter = 0;
-          this.#plantTree(building);
-        }
+        // The forester's outdoor trip (SB-38-01): walk out, plant at
+        // his own feet (pose 122), walk home.
+        this.#workOutdoorTrip(serf, building, 500, delta, this.#foresterTrip());
         break;
       case buildingType.sawmill:
         this.#workConvert(serf, building, 350, resourceType.lumber, resourceType.plank);
         break;
       case buildingType.farm:
-        // Farmer (SB-37-02): harvest the nearest field the MAP grew —
-        // each cut advances the stage (Field5 expires) and yields one
-        // wheat — or sow Seeds0 if nothing stands ready. The map
-        // clock owns all growing (reference HandleSerfFarmingState).
-        if (serf.workCounter >= 450) {
-          serf.workCounter = 0;
-          let harvested = false;
-          for (let offset = 1; offset < 151; offset += 1) {
-            const candidate = this.world.positionAddSpirally(building.position, offset);
-            const fieldValue = this.world.objectAt(candidate);
-            if (fieldValue >= mapObject.field0 && fieldValue <= mapObject.field5) {
-              this.world.setObject(
-                candidate,
-                fieldValue === mapObject.field5 ? mapObject.fieldExpired : fieldValue + 1,
-                null,
-              );
-              this.#emitProduct(building, resourceType.wheat);
-              harvested = true;
-              break;
-            }
-          }
-
-          if (!harvested) {
-            for (let offset = 1; offset < 151; offset += 1) {
-              const candidate = this.world.positionAddSpirally(building.position, offset);
-              if (
-                this.world.objectAt(candidate) === mapObject.none &&
-                this.world.pathsAt(candidate) === 0 &&
-                this.world.hasOwner(candidate) &&
-                this.world.canBuildSmall(candidate)
-              ) {
-                this.world.setObject(candidate, mapObject.seeds0, null);
-                break;
-              }
-            }
-          }
-        }
+        // The farmer's outdoor trip (SB-38-01): scythe the nearest
+        // field the MAP grew (a stage per cut, SB-37-02) or sow, at
+        // his own feet.
+        this.#workOutdoorTrip(serf, building, 450, delta, this.#farmerTrip());
         break;
       case buildingType.mill:
         this.#workConvert(serf, building, 400, resourceType.wheat, resourceType.flour);
@@ -2209,22 +2176,9 @@ export class SerfboundSerfEngine {
         this.#workConvert(serf, building, 400, resourceType.flour, resourceType.bread);
         break;
       case buildingType.fisher:
-        // Fisher: catches from adjacent water fish stocks.
-        if (serf.workCounter >= 500) {
-          serf.workCounter = 0;
-          for (let offset = 1; offset < 151; offset += 1) {
-            const candidate = this.world.positionAddSpirally(building.position, offset);
-            if (
-              this.world.minerals[candidate] === 0 &&
-              this.world.resourceAmounts[candidate]! > 0 &&
-              this.world.typesUp[candidate]! <= 3
-            ) {
-              this.world.resourceAmounts[candidate] = this.world.resourceAmounts[candidate]! - 1;
-              this.#emitProduct(building, resourceType.fish);
-              break;
-            }
-          }
-        }
+        // The fisher's outdoor trip (SB-38-01): stand at the shore
+        // and bob the rod (131/132), ten draws at the reference odds.
+        this.#workOutdoorTrip(serf, building, 500, delta, this.#fisherTrip());
         break;
       case buildingType.pigFarm:
         // Pig farm: wheat feeds pigs (one pig per two wheat, condensed).
@@ -2575,25 +2529,255 @@ export class SerfboundSerfEngine {
     }
   }
 
-  #plantTree(building: WorldBuilding): void {
-    for (let offset = 1; offset < 151; offset += 1) {
-      const candidate = this.world.positionAddSpirally(building.position, offset);
-      if (
-        this.world.objectAt(candidate) === mapObject.none &&
-        this.world.pathsAt(candidate) === 0 &&
-        this.world.hasOwner(candidate) &&
-        this.world.canBuildSmall(candidate)
-      ) {
-        // The forester plants a sapling (Serf.cs: NewPine + rand & 1);
-        // the map clock matures it (SB-37-01).
-        this.world.setObject(
-          candidate,
-          mapObject.newPine + (this.random.next() & 1),
-          null,
-        );
+  // The outdoor trip (SB-38-01): the generic visible cycle for the
+  // professions that work one spot per outing — rest inside, walk
+  // out the door to the picked spot, strike the pose for one or more
+  // attempts, and carry the result home in hand. Built on the same
+  // door slides and shared-counter free walk as #workHarvest.
+  #workOutdoorTrip(
+    serf: WorldSerf,
+    building: WorldBuilding,
+    cycleTicks: number,
+    delta: number,
+    trip: {
+      pickTarget: (building: WorldBuilding) => number;
+      arriveAnimation: (target: number) => number;
+      attemptTicks: number;
+      attempts: number;
+      complete: (target: number) => number;
+    },
+  ): void {
+    if (serf.workPhase === 0) {
+      if (serf.workCounter < Math.trunc(cycleTicks / 2)) {
         return;
       }
+
+      serf.workCounter = 0;
+      const target = trip.pickTarget(building);
+      if (target < 0) {
+        // Nothing to do out there; rest another cycle.
+        return;
+      }
+
+      serf.workPhase = 1;
+      serf.workTargetPosition = target;
+      serf.walkingDestination = 0;
+      serf.counter = 0;
+      serf.position = this.world.move(building.position, "DownRight");
+      this.#leaveBuilding(
+        serf,
+        building.position,
+        31 - (roadBuildingSlope[building.type] ?? 15),
+        serfState.working,
+      );
+      return;
     }
+
+    if (serf.workPhase === 1) {
+      if (serf.position === serf.workTargetPosition) {
+        serf.workPhase = 2;
+        serf.workCounter = 0;
+        serf.walkingWaitCounter = 0; // the attempt index while working
+        serf.animation = trip.arriveAnimation(serf.workTargetPosition);
+        return;
+      }
+
+      this.#freeWalkToward(serf, serf.workTargetPosition, delta);
+      return;
+    }
+
+    if (serf.workPhase === 2) {
+      if (serf.workCounter < trip.attemptTicks) {
+        return;
+      }
+
+      serf.workCounter = 0;
+      const product = trip.complete(serf.workTargetPosition);
+      serf.walkingWaitCounter += 1;
+      if (product >= 0 || serf.walkingWaitCounter >= trip.attempts) {
+        // Carry the result home visibly; -1 walks home empty-handed.
+        serf.carriedResource = product;
+        serf.walkingWaitCounter = 0;
+        serf.workPhase = 3;
+        serf.walkingDestination = 0;
+        serf.counter = 0;
+      }
+
+      return;
+    }
+
+    const homeFlag = this.world.move(building.position, "DownRight");
+    if (serf.position === homeFlag) {
+      serf.workPhase = 0;
+      serf.workCounter = 0;
+      serf.workTargetPosition = -1;
+      if (serf.carriedResource >= 0) {
+        this.#emitProduct(building, serf.carriedResource);
+        serf.carriedResource = -1;
+      }
+
+      this.#enterBuilding(serf, building, serfState.working);
+      return;
+    }
+
+    this.#freeWalkToward(serf, homeFlag, delta);
+  }
+
+  // The reference fishing-spot facing (Serf.cs 6562–6573): water in
+  // the down triangle with grass up-left faces 132; water to the
+  // left with grass above faces 131; anything else is no spot.
+  #fishingAnimationAt(position: number): number {
+    if (
+      this.world.typesDown[position]! <= mapTerrain.water3 &&
+      this.world.typesUp[this.world.move(position, "UpLeft")]! >= mapTerrain.grass0
+    ) {
+      return 132;
+    }
+
+    if (
+      this.world.typesDown[this.world.move(position, "Left")]! <= mapTerrain.water3 &&
+      this.world.typesUp[this.world.move(position, "Up")]! >= mapTerrain.grass0
+    ) {
+      return 131;
+    }
+
+    return 0;
+  }
+
+  // The water the fisher's rod reaches from a shore spot, with fish
+  // in it (the reference checks Left/Down or Right/DownRight by
+  // facing; condensed to the first stocked direction of the four).
+  #fishableWaterAt(position: number): number {
+    for (const direction of ["Left", "Down", "Right", "DownRight"] as const) {
+      const adjacent = this.world.move(position, direction);
+      if (this.world.isInWater(adjacent) && this.world.resourceAmounts[adjacent]! > 0) {
+        return adjacent;
+      }
+    }
+
+    return -1;
+  }
+
+  #fisherTrip() {
+    return {
+      pickTarget: (building: WorldBuilding): number => {
+        for (let offset = 1; offset < 151; offset += 1) {
+          const candidate = this.world.positionAddSpirally(building.position, offset);
+          if (
+            this.world.objectAt(candidate) === mapObject.none &&
+            this.world.pathsAt(candidate) === 0 &&
+            this.#fishingAnimationAt(candidate) !== 0 &&
+            this.#fishableWaterAt(candidate) >= 0
+          ) {
+            return candidate;
+          }
+        }
+
+        return -1;
+      },
+      arriveAnimation: (target: number): number => this.#fishingAnimationAt(target),
+      // One rod bob per attempt; ten bobs per trip (Flags == 10).
+      attemptTicks: 448,
+      attempts: 10,
+      complete: (target: number): number => {
+        const water = this.#fishableWaterAt(target);
+        if (water < 0) {
+          return -1;
+        }
+
+        const stock = this.world.resourceAmounts[water]!;
+        if ((this.random.next() & 0x3f) + 4 < stock) {
+          this.world.resourceAmounts[water] = stock - 1;
+          return resourceType.fish;
+        }
+
+        return -1;
+      },
+    };
+  }
+
+  #farmerTrip() {
+    const isField = (value: number): boolean =>
+      value >= mapObject.field0 && value <= mapObject.field5;
+    return {
+      pickTarget: (building: WorldBuilding): number => {
+        // Harvest the nearest standing field; otherwise sow.
+        for (let offset = 1; offset < 151; offset += 1) {
+          const candidate = this.world.positionAddSpirally(building.position, offset);
+          if (isField(this.world.objectAt(candidate))) {
+            return candidate;
+          }
+        }
+
+        for (let offset = 1; offset < 151; offset += 1) {
+          const candidate = this.world.positionAddSpirally(building.position, offset);
+          if (
+            this.world.objectAt(candidate) === mapObject.none &&
+            this.world.pathsAt(candidate) === 0 &&
+            this.world.hasOwner(candidate) &&
+            this.world.canBuildSmall(candidate)
+          ) {
+            return candidate;
+          }
+        }
+
+        return -1;
+      },
+      // The scythe at a field (136), the seed bag on open ground (135).
+      arriveAnimation: (target: number): number =>
+        isField(this.world.objectAt(target)) ? 136 : 135,
+      attemptTicks: 1100,
+      attempts: 1,
+      complete: (target: number): number => {
+        const value = this.world.objectAt(target);
+        if (isField(value)) {
+          this.world.setObject(
+            target,
+            value === mapObject.field5 ? mapObject.fieldExpired : value + 1,
+            null,
+          );
+          return resourceType.wheat;
+        }
+
+        if (value === mapObject.none && this.world.pathsAt(target) === 0) {
+          this.world.setObject(target, mapObject.seeds0, null);
+        }
+
+        return -1;
+      },
+    };
+  }
+
+  #foresterTrip() {
+    return {
+      pickTarget: (building: WorldBuilding): number => {
+        for (let offset = 1; offset < 151; offset += 1) {
+          const candidate = this.world.positionAddSpirally(building.position, offset);
+          if (
+            this.world.objectAt(candidate) === mapObject.none &&
+            this.world.pathsAt(candidate) === 0 &&
+            this.world.hasOwner(candidate) &&
+            this.world.canBuildSmall(candidate)
+          ) {
+            return candidate;
+          }
+        }
+
+        return -1;
+      },
+      arriveAnimation: (): number => 122,
+      attemptTicks: 700,
+      attempts: 1,
+      complete: (target: number): number => {
+        // Plant the sapling at his own feet (Serf.cs: NewPine + rand
+        // & 1); the map clock matures it (SB-37-01).
+        if (this.world.objectAt(target) === mapObject.none && this.world.pathsAt(target) === 0) {
+          this.world.setObject(target, mapObject.newPine + (this.random.next() & 1), null);
+        }
+
+        return -1;
+      },
+    };
   }
 
   // Route a product to demand: a connected consumer building wanting this
