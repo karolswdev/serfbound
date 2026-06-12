@@ -1402,3 +1402,88 @@ test("the toolmaker draws from the player's tool priorities (SB-36-07)", () => {
     assert.equal(inventory.resources[tool] ?? 0, 0, `no ${tool} was drawn`);
   }
 });
+
+test("the emergency program: short stocks funnel construction into the essential trio (SB-36-08)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+  const player = world.players[0];
+
+  // Five planks against the seven the missing trio would cost:
+  // the program must trip.
+  const inventory = world.inventoryForPlayer(0);
+  inventory.resources.fill(0);
+  inventory.resources[7] = 5;
+  inventory.resources[9] = 10;
+
+  // A hut site queued BEFORE the program trips, with its materials
+  // already staged behind the castle door.
+  const hut = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 3, -1), 11, 0);
+  const hutFlag = world.flags.get(hut.flagIndex);
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  const engine = new SerfboundSerfEngine(world);
+  assert.equal(engine.dispatchConstructionLogistics(hut, 0), true, "the hut dispatches pre-emergency");
+  const stagedForHut = inventory.pendingOut.filter(
+    (entry) => entry.destinationFlagIndex === hutFlag.index,
+  ).length;
+  assert.equal(stagedForHut, 2, "a plank and a stone wait behind the door");
+  const planksAfterDispatch = inventory.resources[7];
+
+  engine.update(16);
+  assert.equal(player.emergencyProgramActive, true, "the program trips on short planks");
+  assert.equal(
+    inventory.pendingOut.some((entry) => entry.destinationFlagIndex === hutFlag.index),
+    false,
+    "the hut's staged materials were clawed back",
+  );
+  assert.equal(inventory.resources[7], planksAfterDispatch + 1, "the plank returned to stock");
+
+  // New non-essential work is refused; the essential chain builds.
+  // Both sites sit on real roads so the refusal is the emergency,
+  // not unreachability.
+  const hut2 = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, -1, 3), 11, 0);
+  assert.notEqual(hut2, null, "second hut site builds");
+  assert.equal(
+    world.buildRoad({ start: castleFlag.position, directions: ["Down", "Down", "Down", "Down"] }, 0),
+    true,
+    "the south road connects",
+  );
+  assert.equal(engine.dispatchConstructionLogistics(hut2, 32), false, "no huts in an emergency");
+
+  const lumberjack = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 6, -1), 2, 0);
+  assert.notEqual(lumberjack, null, "lumberjack site builds");
+  assert.equal(
+    world.buildRoad({ start: hutFlag.position, directions: ["Right", "Right", "Right"] }, 0),
+    true,
+    "the corridor extends to the lumberjack",
+  );
+  assert.equal(
+    engine.dispatchConstructionLogistics(lumberjack, 32),
+    true,
+    "the lumberjack site goes through",
+  );
+
+  // Stand the trio; the program lifts and the held sites re-dispatch.
+  lumberjack.isDone = true;
+  const sawmill = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 3, 3), 17, 0);
+  assert.notEqual(sawmill, null, "sawmill site builds");
+  sawmill.isDone = true;
+  const stonecutter = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, -3, -1), 4, 0);
+  assert.notEqual(stonecutter, null, "stonecutter site builds");
+  stonecutter.isDone = true;
+
+  engine.update(128);
+  assert.equal(player.emergencyProgramActive, false, "the trio lifts the program");
+  assert.equal(
+    inventory.pendingOut.some((entry) => entry.destinationFlagIndex === hutFlag.index),
+    true,
+    "the hut's logistics re-dispatched on recovery",
+  );
+});

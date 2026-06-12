@@ -260,6 +260,9 @@ export type WorldPlayer = {
   knightOccupation: number[];
   // The priority book (SB-36-07).
   economy: PlayerEconomySettings;
+  // Player.EmergencyProgramActive (SB-36-08): planks/stones ran out
+  // and construction funnels into the wood-and-stone chain.
+  emergencyProgramActive: boolean;
   // Game.PlayerDefeated: the castle fell.
   defeated: boolean;
 };
@@ -379,6 +382,7 @@ export class SerfboundGameWorld {
       castleKnightsWanted: 3,
       knightOccupation: [0x10, 0x21, 0x32, 0x43],
       economy: defaultEconomySettings(),
+      emergencyProgramActive: false,
       defeated: false,
     }));
     this.#spiralPositions = classicSpiralPattern.map(([x, y]) =>

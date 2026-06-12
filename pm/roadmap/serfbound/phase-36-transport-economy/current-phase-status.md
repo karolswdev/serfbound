@@ -1,13 +1,13 @@
 # Phase 36 — The Transport Economy in Full
 
-**Last updated:** 2026-06-12 (SB-36-07 done: the priority book is
-player data — flag/inventory/tool priorities and the distribution
-splits on every WorldPlayer with the reference defaults, consumed by
-pickup, the swap, the stock book, the toolmaker's weighted draw, and
-the export sweep; inventory resource modes in/stop/out ship with it.
-Earlier today: SB-36-02 flag scheduling, SB-36-05 stock priorities,
-and SB-35-03's pacing interim retired).
-**Status:** in progress.
+**Last updated:** 2026-06-12 (SB-36-08 done: a castle short of
+planks or stones trips the emergency program — non-essential
+construction halts and its in-flight materials return, the
+wood-and-stone chain builds, recovery re-dispatches what was held.
+The day shipped SB-36-02, -05, -07, -08 and retired SB-35-03's
+pacing interim. **Every engineering story in the phase is done; only
+the maintainer's device gate SB-36-06 remains.**)
+**Status:** in progress — at the device gate.
 
 ## Goal
 
@@ -72,8 +72,9 @@ at the castle door" and the unstaffed split road at the root.
   priorities feeding the toolmaker, inventory in/stop/out modes
   honored by dispatch. (SB-36-07 — serf modes ride Phase 38;
   planksConstruction waits for SB-36-08 to consume it.)
-- [ ] A castle short of planks or stones enters the emergency
-  program and recovers from it. (SB-36-08, addendum row 21)
+- [x] A castle short of planks or stones enters the emergency
+  program and recovers from it. (SB-36-08 — trip, claw-back,
+  essential-only dispatch, recovery re-dispatch.)
 
 ## Story status
 
@@ -86,4 +87,4 @@ at the castle door" and the unstaffed split road at the root.
 | SB-36-05 | Stock and priorities | done | story-05-stock-and-priorities.md | evidence-story-05.md |
 | SB-36-06 | The device gate | backlog | — | — |
 | SB-36-07 | The priority book | done | story-07-the-priority-book.md | evidence-story-07.md |
-| SB-36-08 | The emergency program | backlog | — | — |
+| SB-36-08 | The emergency program | done | story-08-the-emergency-program.md | evidence-story-08.md |

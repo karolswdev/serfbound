@@ -425,6 +425,7 @@ export class SerfboundSerfEngine {
     this.#updateAmbientDecay();
     this.#handlePathSplits(gameTick);
     this.#sweepFlagScheduling();
+    this.#sweepEmergencyProgram(gameTick);
     this.#sweepTransportStaffing(gameTick);
     this.#sweepWorkerRequests(gameTick);
     this.#sweepInventoryExports(gameTick);
@@ -1245,6 +1246,170 @@ export class SerfboundSerfEngine {
           destinationFlagIndex: consumer.flagIndex,
         });
         break;
+      }
+    }
+  }
+
+  // The wood-and-stone chain the emergency program protects.
+  static readonly #essentialBuildingTypes = new Set<number>([
+    buildingType.lumberjack,
+    buildingType.sawmill,
+    buildingType.stonecutter,
+  ]);
+
+  // Player.UpdateEmergencyProgram (SB-36-08): OFF when one
+  // lumberjack, one stonecutter, and one sawmill each stand done or
+  // fully supplied; ON when inventory planks or stones minus the
+  // cost of the missing essentials reach zero. Activation cancels
+  // the non-essential construction pipeline; deactivation
+  // re-dispatches what it held back.
+  #lastEmergencySweepTick = -1;
+  #sweepEmergencyProgram(gameTick: number): void {
+    if (
+      this.#lastEmergencySweepTick >= 0 &&
+      ((gameTick - this.#lastEmergencySweepTick) & 0xffff) < 64
+    ) {
+      return;
+    }
+
+    this.#lastEmergencySweepTick = gameTick;
+    for (const player of this.world.players) {
+      if (!player.hasCastle || player.defeated) {
+        continue;
+      }
+
+      const essentials = new Map<number, { count: number; supplied: boolean }>();
+      for (const type of SerfboundSerfEngine.#essentialBuildingTypes) {
+        essentials.set(type, { count: 0, supplied: false });
+      }
+
+      for (const building of this.world.buildings.values()) {
+        if (building.player !== player.index) {
+          continue;
+        }
+
+        const entry = essentials.get(building.type);
+        if (entry === undefined) {
+          continue;
+        }
+
+        entry.count += 1;
+        if (building.isDone || this.#fullySupplied(building)) {
+          entry.supplied = true;
+        }
+      }
+
+      // Recovery: the trio stands done or supplied.
+      if ([...essentials.values()].every((entry) => entry.supplied)) {
+        if (player.emergencyProgramActive) {
+          player.emergencyProgramActive = false;
+          this.#redispatchHeldConstruction(player.index, gameTick);
+        }
+
+        continue;
+      }
+
+      const inventory = this.world.inventoryForPlayer(player.index);
+      if (inventory === null) {
+        continue;
+      }
+
+      let planksNeeded = 0;
+      let stonesNeeded = 0;
+      for (const [type, entry] of essentials) {
+        if (entry.count === 0) {
+          const [planks, stones] = buildingConstructionCosts[type] ?? [0, 0];
+          planksNeeded += planks;
+          stonesNeeded += stones;
+        }
+      }
+
+      const remainingPlanks = (inventory.resources[resourceType.plank] ?? 0) - planksNeeded;
+      const remainingStones = (inventory.resources[resourceType.stone] ?? 0) - stonesNeeded;
+      if ((remainingPlanks <= 0 || remainingStones <= 0) && !player.emergencyProgramActive) {
+        player.emergencyProgramActive = true;
+        this.#cancelNonEssentialConstruction(player.index);
+      }
+    }
+  }
+
+  // HasAllConstructionMaterialsAtLocation, approximated: everything
+  // delivered or already consumed covers the cost table.
+  #fullySupplied(building: WorldBuilding): boolean {
+    const [planks, stones] = buildingConstructionCosts[building.type] ?? [0, 0];
+    const onSite =
+      (building.deliveredResources[resourceType.plank] ?? 0) +
+      (building.deliveredResources[resourceType.stone] ?? 0) +
+      building.consumedMaterials;
+    return onSite >= planks + stones;
+  }
+
+  // Game.FlagResetTransport, scoped to the emergency activation:
+  // queued castle exports to unfinished non-essential sites return
+  // to stock, flag slots and carriers bound for them lose their
+  // destinations (the next sweep re-homes the resources), and the
+  // sites re-enter the dispatch queue for the recovery.
+  #cancelNonEssentialConstruction(playerIndex: number): void {
+    const heldFlags = new Set<number>();
+    for (const building of this.world.buildings.values()) {
+      if (
+        building.player !== playerIndex ||
+        building.isDone ||
+        building.type === buildingType.castle ||
+        SerfboundSerfEngine.#essentialBuildingTypes.has(building.type)
+      ) {
+        continue;
+      }
+
+      heldFlags.add(building.flagIndex);
+      building.requestedResources[resourceType.plank] = 0;
+      building.requestedResources[resourceType.stone] = 0;
+      this.#dispatchedBuildings.delete(building.index);
+    }
+
+    if (heldFlags.size === 0) {
+      return;
+    }
+
+    const inventory = this.world.inventoryForPlayer(playerIndex);
+    if (inventory !== null) {
+      for (let entry = inventory.pendingOut.length - 1; entry >= 0; entry -= 1) {
+        const pending = inventory.pendingOut[entry]!;
+        if (heldFlags.has(pending.destinationFlagIndex)) {
+          inventory.resources[pending.resource] =
+            (inventory.resources[pending.resource] ?? 0) + 1;
+          inventory.pendingOut.splice(entry, 1);
+        }
+      }
+    }
+
+    for (const flag of this.world.flags.values()) {
+      for (const slot of flag.slots) {
+        if (slot.resource >= 0 && heldFlags.has(slot.destinationFlagIndex)) {
+          slot.destinationFlagIndex = 0;
+          slot.scheduledDirection = null;
+        }
+      }
+    }
+
+    for (const serf of this.serfs.values()) {
+      if (serf.carriedResource >= 0 && heldFlags.has(serf.carriedDestination)) {
+        serf.carriedDestination = 0;
+      }
+    }
+  }
+
+  // The emergency lifted: every unfinished site it held back gets
+  // its construction logistics dispatched again.
+  #redispatchHeldConstruction(playerIndex: number, gameTick: number): void {
+    for (const building of this.world.buildings.values()) {
+      if (
+        building.player === playerIndex &&
+        !building.isDone &&
+        building.type !== buildingType.castle &&
+        !this.#dispatchedBuildings.has(building.index)
+      ) {
+        this.dispatchConstructionLogistics(building, gameTick);
       }
     }
   }
@@ -2400,6 +2565,16 @@ export class SerfboundSerfEngine {
 
     const player = this.world.players[building.player];
     if (player === undefined || player.castlePosition === null) {
+      return false;
+    }
+
+    // Building.UpdateUnfinished (SB-36-08): during an active
+    // emergency only the wood-and-stone chain builds. The site stays
+    // out of the dispatched set so the recovery re-dispatches it.
+    if (
+      player.emergencyProgramActive &&
+      !SerfboundSerfEngine.#essentialBuildingTypes.has(building.type)
+    ) {
       return false;
     }
 
