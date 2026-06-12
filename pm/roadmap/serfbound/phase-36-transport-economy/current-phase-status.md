@@ -1,7 +1,10 @@
 # Phase 36 — The Transport Economy in Full
 
-**Last updated:** 2026-06-11 (SB-36-04 done: roads reinforce under
-load up to the reference MaxTransporters caps, and recorded
+**Last updated:** 2026-06-11 (the parity-audit addendum widened the
+phase: SB-36-07 takes the engine-side settings data — the priority
+lists the SB-36-02 scheduler must consult — and SB-36-08 takes the
+emergency program. Earlier today, SB-36-04 done: roads reinforce
+under load up to the reference MaxTransporters caps, and recorded
 serfRequested bits are serviced).
 **Status:** in progress.
 
@@ -31,6 +34,15 @@ at the castle door" and the unstaffed split road at the root.
   TransporterToServe (Serf.cs).
 - Building.Stock {available, requested, maximum, priority} with the
   dynamic `policy >> (8 + total)` priorities (Building.cs).
+- PlayerSettings.cs: the 26-entry flag and inventory transport
+  priority lists the scheduler consults, the distribution splits
+  (food to 4 mines; plank construction/boatbuilder/toolmaker; steel;
+  coal 3-way; wheat), 9 tool-making priorities, inventory in/stop/out
+  modes for resources and serfs — engine data with reference
+  defaults; the player-facing sliders ride Phase 41.
+- Player.cs emergency program: a castle short of planks/stones
+  collapses construction priorities to lumberjack/sawmill/
+  stonecutter until supply recovers (EmergencyActive/Neutral).
 
 ## Exit criteria (evidence required)
 
@@ -48,6 +60,13 @@ at the castle door" and the unstaffed split road at the root.
   priorities. (SB-36-05)
 - [ ] On-device: the maintainer splits a live road and watches both
   halves work. (SB-36-06, the device gate)
+- [ ] The priority book exists as engine data with reference
+  defaults — flag/inventory transport priority lists consulted by
+  the scheduler, distribution splits feeding stock priorities, tool
+  priorities feeding the toolmaker, inventory in/stop/out modes
+  honored by dispatch. (SB-36-07, from the audit addendum row 18)
+- [ ] A castle short of planks or stones enters the emergency
+  program and recovers from it. (SB-36-08, addendum row 21)
 
 ## Story status
 
@@ -59,3 +78,5 @@ at the castle door" and the unstaffed split road at the root.
 | SB-36-04 | Park, wake, and reinforce | done | story-04-park-wake-reinforce.md | evidence-story-04.md |
 | SB-36-05 | Stock and priorities | backlog | — | — |
 | SB-36-06 | The device gate | backlog | — | — |
+| SB-36-07 | The priority book | backlog | — | — |
+| SB-36-08 | The emergency program | backlog | — | — |

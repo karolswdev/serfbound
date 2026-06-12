@@ -160,11 +160,20 @@ and either prove the new behavior intentionally or defer the decision.
 | 36 | The transport economy in full: out the castle door, flag scheduling, split roads staff themselves | scaffolded | [phase-36-transport-economy](./phase-36-transport-economy/) |
 | 37 | The living map: trees grow, fields age, fish migrate | scaffolded | [phase-37-living-map](./phase-37-living-map/) |
 | 38 | Professions, tools, and fire — ends at the alpha gate | scaffolded | [phase-38-professions-tools-fire](./phase-38-professions-tools-fire/) |
+| 39 | Knight fidelity: the full fight, garrison disciplines, commanded attacks | scaffolded | [phase-39-knight-fidelity](./phase-39-knight-fidelity/) |
+| 40 | Boats and waterways: the boatbuilder works, sailors carry cargo | scaffolded | [phase-40-boats-and-waterways](./phase-40-boats-and-waterways/) |
+| 41 | Levers and ledgers: settings sliders, notifications, stat windows, minimap modes | scaffolded | [phase-41-levers-and-ledgers](./phase-41-levers-and-ledgers/) |
 
 The simulation-fidelity sequence (35–38) is derived from the
 [reference parity audit](./reference-parity-audit.md) — the honest
 accounting, system by system, of what the engine condensed or
-skipped against Freeserf.Core, with the alpha bar defined.
+skipped against Freeserf.Core, with the alpha bar defined. The
+same-day addendum (second pass, rows 17–22) audited the systems the
+first pass itself skipped — water transport, the player settings
+surface, notifications, statistics/score, the emergency program,
+minimap modes — and phases them as 39–41 (knights, off the "later"
+pile, lead at 39), with the engine-side settings data and emergency
+program folded into Phase 36 where the scheduler consumes them.
 
 ## Delivery Gates
 
