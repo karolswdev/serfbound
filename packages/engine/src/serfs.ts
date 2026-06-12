@@ -6,6 +6,7 @@ import {
   militaryKnightsNeeded,
   type SerfboundGameWorld,
   type WorldBuilding,
+  type WorldFlag,
 } from "./game-world.js";
 import {
   inventoryPromoteSerfToKnight,
@@ -91,6 +92,9 @@ const roadBuildingSlope: readonly number[] = [
   5, 18, 18, 15, 18, 22, 22, 22, 22, 18, 16, 18, 1, 10, 1, 15,
   15, 16, 15, 15, 10, 15, 20, 15, 18,
 ];
+
+// Flag.MaxTransporters by road length category (SB-36-04).
+const maxTransportersByCategory: readonly number[] = [1, 2, 3, 4, 6, 8, 11, 15];
 
 // The working pose (SB-35-03): reference staged work at the target.
 // Logging fells the tree in five visible stages (animation 116 +
@@ -365,6 +369,7 @@ export class SerfboundSerfEngine {
   update(gameTick: number): void {
     this.#updateAmbientDecay();
     this.#handlePathSplits(gameTick);
+    this.#sweepTransportStaffing(gameTick);
     this.#sweepWorkerRequests(gameTick);
     this.#sweepInventoryExports(gameTick);
     this.#dispatchResourceOut(gameTick);
@@ -1190,6 +1195,117 @@ export class SerfboundSerfEngine {
         }
       });
     }
+  }
+
+  // Park, wake, and reinforce (SB-36-04): roads staff up under load.
+  // The reference grants MaxTransporters by length category
+  // {1,2,3,4,6,8,11,15} and parks/wakes idle serfs; condensed here to
+  // a 64-tick staffing sweep — a road whose end flags hold more
+  // scheduled work than its transporters can lift gets another serf
+  // (up to the cap, pool slack permitting), and recorded
+  // serfRequested bits are serviced the same way.
+  #lastStaffingSweepTick = -1;
+  #sweepTransportStaffing(gameTick: number): void {
+    if (
+      this.#lastStaffingSweepTick >= 0 &&
+      ((gameTick - this.#lastStaffingSweepTick) & 0xffff) < 64
+    ) {
+      return;
+    }
+
+    this.#lastStaffingSweepTick = gameTick;
+    for (const flag of this.world.flags.values()) {
+      for (const direction of directionOrder) {
+        const path = flag.paths[direction];
+        if (!path.hasPath) {
+          continue;
+        }
+
+        // Visit each road once, from its lower-index end.
+        if (path.otherFlagIndex < flag.index) {
+          continue;
+        }
+
+        const servers = this.#roadServers(flag, direction);
+        const maxForLength = maxTransportersByCategory[path.lengthCategory] ?? 1;
+
+        let wanted = path.serfRequested ? 1 : 0;
+        if (wanted === 0 && servers.total > 0 && servers.idle === 0) {
+          // Congestion: scheduled work routed over this road with every
+          // server busy asks for reinforcement.
+          const otherFlag = this.world.flags.get(path.otherFlagIndex);
+          const backlog =
+            this.#scheduledOver(flag, direction) +
+            (otherFlag === undefined || path.otherEndDirection === null
+              ? 0
+              : this.#scheduledOver(otherFlag, path.otherEndDirection));
+          if (backlog > 1) {
+            wanted = 1;
+          }
+        }
+
+        if (wanted === 0 || servers.total >= maxForLength) {
+          path.serfRequested = servers.total >= maxForLength ? false : path.serfRequested;
+          continue;
+        }
+
+        const inventory = this.world.inventoryForPlayer(flag.player);
+        if (inventory === null || inventory.genericSerfs <= 4) {
+          path.serfRequested = true;
+          continue;
+        }
+
+        const transporter = this.spawnGenericSerf(flag.player, gameTick);
+        if (transporter !== null) {
+          this.assignTransporter(transporter, flag.index, direction, gameTick);
+          path.serfRequested = false;
+        }
+      }
+    }
+  }
+
+  // The serfs serving a road (anchored at either end), and how many
+  // are idle at their posts versus mid-haul.
+  #roadServers(flag: WorldFlag, direction: Direction): { total: number; idle: number } {
+    const path = flag.paths[direction];
+    let total = 0;
+    let idle = 0;
+    for (const serf of this.serfs.values()) {
+      if (serf.roadDirection === null) {
+        continue;
+      }
+
+      const serves =
+        (serf.roadFlagIndex === flag.index && serf.roadDirection === direction) ||
+        (serf.roadFlagIndex === path.otherFlagIndex &&
+          serf.roadDirection === path.otherEndDirection);
+      if (!serves) {
+        continue;
+      }
+
+      total += 1;
+      if (serf.state === serfState.idleOnPath) {
+        idle += 1;
+      }
+    }
+
+    return { total, idle };
+  }
+
+  // Scheduled work at a flag routed out through a direction.
+  #scheduledOver(flag: WorldFlag, direction: Direction): number {
+    let count = 0;
+    for (const slot of flag.slots) {
+      if (slot.resource < 0 || slot.destinationFlagIndex === 0) {
+        continue;
+      }
+
+      if (this.#directionToward(flag.index, slot.destinationFlagIndex) === direction) {
+        count += 1;
+      }
+    }
+
+    return count;
   }
 
   #sweepWorkerRequests(gameTick: number): void {

@@ -871,3 +871,137 @@ test("a flag splitting a road keeps one half staffed and staffs the other (SB-36
   }
   assert.equal(servers.size >= 2, true, `two transporters serve the split road (${servers.size})`);
 });
+
+test("a congested road reinforces up to its length cap, and requests are serviced (SB-36-04)", async () => {
+  const engineModule = await import("@serfbound/engine");
+  const {
+    SerfboundCommandRouter,
+    SerfboundSerfEngine,
+    startSerfboundLocalGame,
+  } = engineModule;
+  const started = startSerfboundLocalGame({
+    data: {
+      kind: "imported-dos-pa-catalog",
+      archiveName: "SPAU.PA",
+      byteLength: 1_282_805,
+      entryCount: 4000,
+      definedArchiveEntries: 3805,
+      fixupCount: 252,
+    },
+  });
+  const world = started.game.world();
+  const router = new SerfboundCommandRouter(started.game.state, world);
+  const tileFor = (position) => ({
+    column: position & world.geometry.columnMask,
+    row: (position >>> world.geometry.rowShift) & world.geometry.rowMask,
+    position,
+  });
+  let castlePosition = -1;
+  for (let position = 0; position < world.tileCount; position += 1) {
+    if (world.canBuildCastle(position, 0)) {
+      castlePosition = position;
+      break;
+    }
+  }
+  router.dispatch({ type: "game.build-castle", source: "pointer", tile: tileFor(castlePosition) });
+  const castleFlagPosition = world.move(castlePosition, "DownRight");
+
+  // A 5-segment road (length category > 0 -> cap >= 2).
+  let cursor = castleFlagPosition;
+  for (let step = 0; step < 5; step += 1) {
+    cursor = world.move(cursor, "Right");
+  }
+  const endPosition = cursor;
+  assert.equal(
+    router.dispatch({ type: "game.build-flag", source: "pointer", tile: tileFor(endPosition) })
+      .status,
+    "accepted",
+  );
+  assert.equal(
+    router.dispatch({
+      type: "game.build-road",
+      source: "pointer",
+      tile: tileFor(castleFlagPosition),
+      toTile: tileFor(endPosition),
+      directions: ["Right", "Right", "Right", "Right", "Right"],
+    }).status,
+    "accepted",
+  );
+
+  const engine = new SerfboundSerfEngine(world);
+  const castleFlag = world.flagAt(castleFlagPosition);
+  const endFlag = world.flagAt(endPosition);
+  const first = engine.spawnGenericSerf(0, 0);
+  assert.equal(engine.assignTransporter(first, castleFlag.index, "Right", 0), true);
+
+  // Flood the castle flag with work destined across the road.
+  for (let load = 0; load < 4; load += 1) {
+    assert.equal(world.dropResource(castleFlag.index, 7, endFlag.index), true);
+  }
+
+  const countServers = () => {
+    let servers = 0;
+    for (const serf of engine.serfs.values()) {
+      if (serf.roadDirection !== null) {
+        servers += 1;
+      }
+    }
+
+    return servers;
+  };
+
+  let tick = 0;
+  let reinforced = false;
+  for (let step = 0; step < 4000 && !reinforced; step += 1) {
+    tick += 8;
+    engine.update(tick);
+    reinforced = countServers() >= 2;
+  }
+
+  assert.equal(reinforced, true, "the backlog pulled a second transporter onto the road");
+
+  // A recorded serfRequested bit on an unstaffed road is serviced
+  // and cleared (at-cap roads drop stale requests instead).
+  let secondDirection = null;
+  for (const direction of ["Down", "DownRight", "Up", "UpLeft", "Left"]) {
+    if (castleFlag.paths[direction].hasPath) {
+      continue;
+    }
+
+    let probe = castleFlagPosition;
+    for (let step = 0; step < 4; step += 1) {
+      probe = world.move(probe, direction);
+    }
+
+    if (
+      router.dispatch({ type: "game.build-flag", source: "pointer", tile: tileFor(probe) })
+        .status !== "accepted"
+    ) {
+      continue;
+    }
+
+    if (
+      router.dispatch({
+        type: "game.build-road",
+        source: "pointer",
+        tile: tileFor(castleFlagPosition),
+        toTile: tileFor(probe),
+        directions: [direction, direction, direction, direction],
+      }).status === "accepted"
+    ) {
+      secondDirection = direction;
+      break;
+    }
+  }
+  assert.notEqual(secondDirection, null, "a second road exists for the request leg");
+  castleFlag.paths[secondDirection].serfRequested = true;
+  const before = countServers();
+  let serviced = false;
+  for (let step = 0; step < 2000 && !serviced; step += 1) {
+    tick += 8;
+    engine.update(tick);
+    serviced = countServers() > before && castleFlag.paths[secondDirection].serfRequested === false;
+  }
+
+  assert.equal(serviced, true, "the recorded request was serviced and cleared");
+});

@@ -1,9 +1,8 @@
 # Phase 36 — The Transport Economy in Full
 
-**Last updated:** 2026-06-11 (SB-36-03 done: the maintainer's
-split-road bug is fixed at the system level — both halves staff
-themselves; felled-wood decay bridged from Phase 37; the AI links
-to the nearest flag).
+**Last updated:** 2026-06-11 (SB-36-04 done: roads reinforce under
+load up to the reference MaxTransporters caps, and recorded
+serfRequested bits are serviced).
 **Status:** in progress.
 
 ## Goal
@@ -42,8 +41,9 @@ at the castle door" and the unstaffed split road at the root.
 - [x] Splitting a road reassigns the transporter to one half and
   staffs the other; gated by a test that builds a flag mid-road and
   watches both halves carry. (SB-36-03)
-- [ ] Roads staff up to the reference MaxTransporters by length;
-  idle transporters park and wake. (SB-36-04)
+- [x] Roads staff up to the reference MaxTransporters by length;
+  requests are serviced (the reference park/wake choreography stays
+  condensed — recorded). (SB-36-04)
 - [ ] Building stocks split available/requested with reference
   priorities. (SB-36-05)
 - [ ] On-device: the maintainer splits a live road and watches both
@@ -56,6 +56,6 @@ at the castle door" and the unstaffed split road at the root.
 | SB-36-01 | Out the castle door | done | story-01-out-the-castle-door.md | evidence-story-01.md |
 | SB-36-02 | Flag scheduling | backlog | — | — |
 | SB-36-03 | The split road staffs itself | done | story-03-the-split-road-staffs-itself.md | evidence-story-03.md |
-| SB-36-04 | Park, wake, and reinforce | backlog | — | — |
+| SB-36-04 | Park, wake, and reinforce | done | story-04-park-wake-reinforce.md | evidence-story-04.md |
 | SB-36-05 | Stock and priorities | backlog | — | — |
 | SB-36-06 | The device gate | backlog | — | — |
