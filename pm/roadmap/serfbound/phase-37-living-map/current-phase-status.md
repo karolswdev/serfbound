@@ -1,11 +1,14 @@
 # Phase 37 — The Living Map
 
-**Last updated:** 2026-06-12 (SB-37-02 done: the map grows every
-field — Seeds0..5 → Field0..5 → FieldExpired → None on the clock —
-and the farmer is just a man with a scythe: harvest the nearest
-standing field, a stage per cut, or sow. Earlier: SB-37-01, the map
-clock itself).
-**Status:** in progress.
+**Last updated:** 2026-06-12 (SB-37-03 done: fish spawn and
+migrate, a fished-out bay restocks from its neighbors. With
+SB-37-01's map clock and SB-37-02's fields, **every story in the
+phase is done in one day** — the map lives. The determinism
+criterion held on every commit: ambience rides the shared RNG and
+the lockstep gates stayed green. The maintainer sees it all on his
+next device pass, alongside the 35/36 gates).
+**Status:** stories complete — visual confirmation rides the
+maintainer's device pass.
 
 ## Goal
 
@@ -34,9 +37,10 @@ forester plants something that takes time to become a tree.
   and the instant-maturity shortcut is deleted. (SB-37-01)
 - [x] Fields advance and expire on the map clock; the farmer sows
   and harvests what the MAP grew. (SB-37-02)
-- [ ] Fish spawn and migrate; a fished-out bay recovers. (SB-37-03)
-- [ ] Determinism holds: ambience rides the shared RNG and the
-  lockstep checksum gates stay green. (every story)
+- [x] Fish spawn and migrate; a fished-out bay recovers. (SB-37-03)
+- [x] Determinism holds: ambience rides the shared RNG and the
+  lockstep checksum gates stay green. (held on every story's
+  full-sweep gate)
 
 ## Story status
 
@@ -44,4 +48,4 @@ forester plants something that takes time to become a tree.
 |---|---|---|---|---|
 | SB-37-01 | Trees grow and stumps rot | done | story-01-trees-grow-and-stumps-rot.md | evidence-story-01.md |
 | SB-37-02 | Fields on the map clock | done | story-02-fields-on-the-map-clock.md | evidence-story-02.md |
-| SB-37-03 | Fish | backlog | — | — |
+| SB-37-03 | Fish | done | story-03-fish.md | evidence-story-03.md |

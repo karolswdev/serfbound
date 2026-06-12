@@ -1629,3 +1629,56 @@ test("fields grow on the map clock, not in the farmer's head (SB-37-02)", () => 
   assert.equal(sawField, true, "the lone seeds became a field on the map clock");
   assert.equal(lifecycleDone, true, "the unharvested field expired and vanished");
 });
+
+test("fish spawn and migrate: a fished-out bay recovers (SB-37-03)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  // A water patch far from the settlement: a generous block so the
+  // four-triangle test holds in its interior.
+  const bayAnchor = world.geometry.positionAdd(castleFlag.position, 16, 16);
+  for (let dx = -2; dx <= 3; dx += 1) {
+    for (let dy = -2; dy <= 3; dy += 1) {
+      const at = world.geometry.positionAdd(bayAnchor, dx, dy);
+      world.typesUp[at] = 0;
+      world.typesDown[at] = 0;
+    }
+  }
+
+  const stocked = bayAnchor;
+  const fishedOut = world.geometry.positionAdd(bayAnchor, 1, 0);
+  assert.equal(world.isInWater(stocked), true, "the stocked tile is in water");
+  assert.equal(world.isInWater(fishedOut), true, "the neighbor tile is in water");
+  world.resourceAmounts[stocked] = 3;
+  world.resourceAmounts[fishedOut] = 0;
+
+  const engine = new SerfboundSerfEngine(world);
+  let bayTotalGrew = false;
+  let fishedOutRecovered = false;
+  const startTotal = 3;
+  for (
+    let tick = 0;
+    tick < 1200000 && !(bayTotalGrew && fishedOutRecovered);
+    tick += 16
+  ) {
+    engine.update(tick);
+    let bayTotal = 0;
+    for (let dx = -2; dx <= 3; dx += 1) {
+      for (let dy = -2; dy <= 3; dy += 1) {
+        bayTotal += world.resourceAmounts[world.geometry.positionAdd(bayAnchor, dx, dy)];
+      }
+    }
+
+    if (bayTotal > startTotal + 4) {
+      bayTotalGrew = true;
+    }
+
+    if (world.resourceAmounts[fishedOut] > 0) {
+      fishedOutRecovered = true;
+    }
+  }
+
+  assert.equal(bayTotalGrew, true, "the bay's stock grew by spawning");
+  assert.equal(fishedOutRecovered, true, "the fished-out tile restocked by migration");
+});

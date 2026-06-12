@@ -1610,9 +1610,29 @@ export class SerfboundSerfEngine {
     this.#mapUpdatePosition = position;
   }
 
-  // Map.UpdatePublic: the world ages at the visited tile. Fish
-  // (UpdateHidden) ride SB-37-03.
+  // Map.UpdateHidden then UpdatePublic: the world ages at the
+  // visited tile.
   #updateMapTile(position: number): void {
+    // Fish spawn and migrate in water (SB-37-03): under ten, a fish
+    // spawns at 63-in-64 odds; one swims toward an adjacent water
+    // tile in one of four directions — a fished-out bay restocks
+    // from its neighbors.
+    if (this.world.isInWater(position) && this.world.resourceAmounts[position]! > 0) {
+      const randomValue = this.random.next();
+      if (this.world.resourceAmounts[position]! < 10 && (randomValue & 0x3f00) !== 0) {
+        this.world.resourceAmounts[position] = this.world.resourceAmounts[position]! + 1;
+      }
+
+      const migration = (["Right", "DownRight", "Left", "UpLeft"] as const)[
+        (randomValue >> 2) & 3
+      ]!;
+      const adjacent = this.world.move(position, migration);
+      if (this.world.isInWater(adjacent)) {
+        this.world.resourceAmounts[position] = this.world.resourceAmounts[position]! - 1;
+        this.world.resourceAmounts[adjacent] = this.world.resourceAmounts[adjacent]! + 1;
+      }
+    }
+
     const objectValue = this.world.objectAt(position);
     if (objectValue === mapObject.stub) {
       if ((this.random.next() & 3) === 0) {
