@@ -1,9 +1,9 @@
 # Routes for api.serfbound.com (SB-29-03), attached to the shared
 # catalyst-gateway listeners added by
 # patches/catalyst-gateway-listeners.json. Path-split: the identity
-# service lives under /identity, the mailbox under /mailbox, each
-# rewritten to the service root so the Phase 25 service code is
-# unchanged.
+# service lives under /identity, the mailbox under /mailbox, the maps
+# service under /maps, each rewritten to the service root so the
+# service code is unchanged.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -50,6 +50,21 @@ spec:
         - group: ""
           kind: Service
           name: mailbox
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /maps
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: maps
           port: 80
 ---
 # HTTP→HTTPS. ACME solver routes match their specific token path and

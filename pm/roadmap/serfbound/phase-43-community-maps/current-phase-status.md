@@ -1,12 +1,12 @@
 # Phase 43 — Community Maps (sharing)
 
-**Last updated:** 2026-06-13 (SB-43-06 done: an opt-in, signed
-play-ping gives maps a times-played stat without breaking the
-serverless/accountless unbreakable — accountless play stays invisible.
-The gallery now carries title, author, thumbnail, rating, downloads,
-AND times-played. Earlier: SB-43-01, the maps service. The deploy to
-api.serfbound.com is SB-43-02, an outward action on the live cluster).
-**Status:** in progress.
+**Last updated:** 2026-06-13 (SB-43-02 STAGED: the maps service deploy
+is manifest-complete — deploy/maps.yaml (PVC+Deployment+Service), a
+/maps route on the catalyst gateway, the image-build CI, and a runbook;
+kubeconform reports 17/17 valid. The apply to the live LKE cluster is
+the maintainer's outward action (needs the gitignored kubeconfig + go).
+Earlier: SB-43-01 the maps service, SB-43-06 play counts).
+**Status:** in progress — SB-43-02 staged, awaiting the deploy.
 
 ## Goal
 
@@ -43,9 +43,10 @@ template) and never puts original game data on the wire.
 - [x] The maps service: publish/list/fetch with signature verification,
   structural+size validation, payload cap + per-key quota; the "no
   original-data field exists" contract test green. (SB-43-01)
-- [ ] Deployed to the backbone: `/maps` live on `api.serfbound.com`,
-  game-down-independence proven (gallery offline ⇒ local play
-  untouched). (SB-43-02)
+- [~] Deployed to the backbone: `/maps` live on `api.serfbound.com`,
+  game-down-independence proven. (SB-43-02 — STAGED: manifests +
+  route + CI + runbook complete and kubeconform-valid; the apply is
+  the maintainer's outward action.)
 - [ ] The gallery + library shell: browse/filter/sort/rate/report with
   sprite-free false-color thumbnails (browsing needs no imported data;
   the service stays clean of original art), download into the local
@@ -63,7 +64,7 @@ template) and never puts original game data on the wire.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-43-01 | The maps service | done | story-01-the-maps-service.md | evidence-story-01.md |
-| SB-43-02 | Deploy to the backbone | backlog | — | — |
+| SB-43-02 | Deploy to the backbone | staged | story-02-deploy-to-the-backbone.md | — (awaiting deploy) |
 | SB-43-03 | The gallery and library shell | backlog | — | — |
 | SB-43-04 | Custom maps in multiplayer | backlog | — | — |
 | SB-43-05 | Moderation and the device gate | backlog | — | — |
