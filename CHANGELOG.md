@@ -1,5 +1,43 @@
 # Serfbound Changelog
 
+## serfbound-v0.2.0 — 2026-06-13
+
+The simulation-fidelity release: the reference parity audit, system by
+system, closed — plus the in-browser map builder.
+
+- **Locomotion (Phase 35)**: one movement system on the reference
+  counter tables with slope; building doors with leave/enter slides;
+  driven work poses (the five-stage tree fall with felled-tree map
+  objects, sliced stonecutting). The "teleporting lumberjack" is dead.
+- **The transport economy in full (Phase 36)**: resources carried out
+  the castle door by hand; flag slots scheduled per direction over the
+  real network search with priority pickup; split roads that staff
+  themselves; roads that reinforce under load; the stock priorities,
+  the player's priority book, and the emergency program. "Materials
+  appearing at the castle door" is dead.
+- **The living map (Phase 37)**: the reference map clock — trees grow
+  from saplings, felled trunks rot to stubs, fields ripen and expire on
+  the clock, fish spawn and migrate. The map changes without you.
+- **Professions, tools, fire (Phase 38)**: the fisher, farmer, and
+  forester work in the open; the geologist prospects and plants signs;
+  tools gate professions (no axe, no lumberjack); a demolished building
+  burns down with escaping serfs; action sounds ride the animation
+  frames.
+- **Knight fidelity (Phase 39)**: the garrison disciplines
+  (reproduction clock, serf-to-knight rate, the two-phase cycling
+  swap); the commanded attack from the border garrisons; gold-and-
+  castle-score morale on the reference cadence; the free fight on open
+  ground.
+- **Boats (Phase 40)**: the boatbuilder builds boats — the last
+  buildable no-op retired.
+- **The map builder (Phase 42)**: an in-browser map editor that looks
+  exactly like the game (the real tiles, import-gated) — paint terrain
+  and heights with the slope clamp, place objects/minerals/starts by
+  the engine's own rules, validate playability, and play your map
+  locally. A self-verifying custom-map format that plays clean.
+- **Render fixes**: runtime-laid map objects (felled trunks, saplings,
+  signs) now render; serfs on inclines no longer sink into the terrain.
+
 ## serfbound-v0.1.0 — 2026-06-10
 
 The first public release: the complete classic game, browser-native,
