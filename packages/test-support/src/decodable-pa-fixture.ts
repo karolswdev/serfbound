@@ -183,11 +183,11 @@ export function createDecodableGeneratedPaArchive(): Uint8Array {
     });
   }
 
-  // Resource stack sprites for flags (game_object 135.. -> entries
+  // Resource stack sprites for flags (game_object 0..25 -> entries
   // 456..481, SB-34 round 7).
   for (let resource = 0; resource < 26; resource += 1) {
     entries.push({
-      index: 321 + 135 + resource,
+      index: 321 + resource,
       bytes: concatBytes([spriteHeader(8, 8, -4, -4), fullCoverageRuns(8 * 8, 100 + resource * 4)]),
     });
   }

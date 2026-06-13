@@ -395,3 +395,54 @@ test("runtime-laid objects render: the felled trunk's sprite is in the atlas (SB
     "the felled-trunk sprite is loaded without a felled object on the map",
   );
 });
+
+test("flag resources decode to their own sprite, not a fire frame (device-gate fix 2026-06-13)", () => {
+  // Resources waiting on a flag render as game_object sprite =
+  // resource type (0..25). A stray +135 base put every resource on a
+  // fire-animation frame on real data (fish showed as a flame). Each
+  // resource's sprite must resolve in the atlas.
+  for (let resource = 0; resource < 26; resource += 1) {
+    assert.notEqual(
+      landscapeAssets.atlas.regions[`res:${resource}`],
+      undefined,
+      `resource ${resource} has its own decoded sprite`,
+    );
+  }
+});
+
+test("a flag carrying a resource emits a resolvable res: sprite (device-gate fix 2026-06-13)", async () => {
+  const { SerfboundGameWorld, mapTerrain: terrain } = await import("@serfbound/engine");
+  const ls = generateClassicMap(3, [0x1234, 0x5678, 0x9abc]);
+  const world = new SerfboundGameWorld({
+    ...ls,
+    heights: new Uint8Array(ls.tileCount).fill(4),
+    typesUp: new Uint8Array(ls.tileCount).fill(terrain.grass1),
+    typesDown: new Uint8Array(ls.tileCount).fill(terrain.grass1),
+    objects: new Uint8Array(ls.tileCount),
+    minerals: new Uint8Array(ls.tileCount),
+    resourceAmounts: new Uint8Array(ls.tileCount),
+  });
+  const castle = world.geometry.position(20, 20);
+  world.buildCastle(castle, 0);
+  const castleFlag = world.flagAt(world.move(castle, "DownRight"));
+  // Drop a fish (resource 0) into a slot, destined nowhere in particular.
+  assert.equal(world.dropResource(castleFlag.index, 0, 0), true);
+
+  const worldAssets = buildLandscapeRenderAssets(decodedAssets, world);
+  const scene = createLandscapeScene({
+    size: { width: 960, height: 540 },
+    assets: worldAssets,
+    scroll: { column: 0, row: 0 },
+    world,
+  });
+
+  const resourceSprites = scene.sprites.filter((sprite) => sprite.key.startsWith("res:"));
+  assert.equal(resourceSprites.length > 0, true, "the flag's fish renders a res: sprite");
+  for (const sprite of resourceSprites) {
+    assert.notEqual(
+      worldAssets.atlas.regions[sprite.key],
+      undefined,
+      `${sprite.key} resolves in the atlas`,
+    );
+  }
+});

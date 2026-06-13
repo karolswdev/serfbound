@@ -715,9 +715,14 @@ export function buildDecodedRenderAssets(
 
   // Resource sprites for flag stacks (reference game_object 135 +
   // resource type — SB-34 round 7).
+  // Resources waiting on a flag render as game_object sprite =
+  // resource type 0..25 (the reference RenderFlag uses
+  // GetSpriteInfo(GameObject, resource) directly). A stray +135 base
+  // landed every resource on a fire-animation frame on real data —
+  // fish showed as a flame (device-gate finding, 2026-06-13).
   const rawResourceObjects = new Map<number, DecodedDosSprite>();
   for (let resource = 0; resource < 26; resource += 1) {
-    const sprite = decodeSafely(archive, "game_object", 135 + resource);
+    const sprite = decodeSafely(archive, "game_object", resource);
     if (sprite !== null) {
       rawResourceObjects.set(resource, sprite);
     }
