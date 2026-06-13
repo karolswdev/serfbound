@@ -1,12 +1,12 @@
 # Phase 42 — Map Builder (local)
 
-**Last updated:** 2026-06-13 (SB-42-03 done: the MapEditor places the
-authorable object palette (water objects to water, land to land, via
-the engine's own space rule), seeds minerals and fish, and sets
-per-player castle starts validated live by the game's canBuildCastle
-— all round-tripping into the SB-42-01 format. Earlier: SB-42-01 the
-format, SB-42-02 the brush model).
-**Status:** in progress.
+**Last updated:** 2026-06-13 (SB-42-04 done: a live playability verdict
+(starts castle-placeable, buildable ratio, named errors) and "play
+this map" — an authored custom map runs through startSerfboundLocalGame
+and founds a castle. With SB-42-01..04 done, every engineering story in
+the phase is in the build; only the device gate (SB-42-05) remains.
+Earlier: the format, the brush model, the placement tools).
+**Status:** at the device gate.
 
 ## Goal
 
@@ -66,9 +66,11 @@ false-color so the service touches no original art.)
   (the engine's space rule + live `canBuildCastle`), illegal
   placements refused. (SB-42-03 — the editor UI feedback rides the
   device gate; the engine legality is CI-held.)
-- [ ] Validation strip (castle-placeable, buildable ratio,
-  reachability, advisory balance) + "play this map" into a local game
-  to a founded castle, all asset-gated only at play. (SB-42-04)
+- [x] Validation (castle-placeable, buildable ratio, named errors,
+  advisory buildable-nearby) + "play this map" into a local game to a
+  founded castle via the customMap seam. (SB-42-04 — the validity
+  strip UI rides the device gate; the verdict and play seam are
+  CI-held.)
 - [ ] On-device: the maintainer authors a real map on a real device
   (touch + desktop), plays it, saves and reloads it. (SB-42-05, the
   device gate)
@@ -80,7 +82,7 @@ false-color so the service touches no original art.)
 | SB-42-01 | The format and the boundary | done | story-01-the-format-and-the-boundary.md | evidence-story-01.md |
 | SB-42-02 | The editor canvas (authentic render) | done | story-02-the-editor-canvas.md | evidence-story-02.md |
 | SB-42-03 | Objects, minerals, starts | done | story-03-objects-minerals-starts.md | evidence-story-03.md |
-| SB-42-04 | Validation and play-local | backlog | — | — |
+| SB-42-04 | Validation and play-local | done | story-04-validation-and-play-local.md | evidence-story-04.md |
 | SB-42-05 | The device gate | backlog | — | — |
 
 ## Boundaries

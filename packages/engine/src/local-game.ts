@@ -36,6 +36,9 @@ export type SerfboundLocalGameStartOptions = {
   readonly initialSupplies?: number;
   readonly playerCount?: number;
   readonly playerSupplies?: readonly number[];
+  // Play an authored custom map (SB-42-04): its size and landscape
+  // supersede the seed; its starts seed the player slots.
+  readonly customMap?: SerfboundCustomMap;
 };
 
 export type SerfboundLocalGameSnapshot = {
@@ -177,7 +180,10 @@ export function startSerfboundLocalGame(
     };
   }
 
-  const mapSize = Math.trunc(options.mapSize ?? 3);
+  // A custom map fixes the size; otherwise the seed/option drives it.
+  const mapSize = options.customMap
+    ? options.customMap.size
+    : Math.trunc(options.mapSize ?? 3);
   if (!Number.isInteger(mapSize) || mapSize < 1 || mapSize > 23) {
     return {
       status: "rejected",
@@ -203,13 +209,15 @@ export function startSerfboundLocalGame(
     random,
   });
   const initialSupplies = Math.max(0, Math.min(40, Math.trunc(options.initialSupplies ?? 20)));
+  const playerCount = options.playerCount ?? options.customMap?.playerCount;
   const game = new SerfboundLocalGame(
     options.data,
     {
       mapSize,
       seedString,
       initialSupplies,
-      ...(options.playerCount === undefined ? {} : { playerCount: options.playerCount }),
+      ...(options.customMap === undefined ? {} : { customMap: options.customMap }),
+      ...(playerCount === undefined ? {} : { playerCount }),
       ...(options.playerSupplies === undefined
         ? {}
         : { playerSupplies: [...options.playerSupplies] }),

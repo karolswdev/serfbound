@@ -168,7 +168,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 39 | Knight fidelity: the full fight, garrison disciplines, commanded attacks | at the device gate | [phase-39-knight-fidelity](./phase-39-knight-fidelity/) |
 | 40 | Boats and waterways: the boatbuilder works, sailors carry cargo | in progress | [phase-40-boats-and-waterways](./phase-40-boats-and-waterways/) |
 | 41 | Levers and ledgers: settings sliders, notifications, stat windows, minimap modes | scaffolded | [phase-41-levers-and-ledgers](./phase-41-levers-and-ledgers/) |
-| 42 | Map builder: an in-browser map editor that looks exactly like the game, play custom maps locally | scaffolded | [phase-42-map-builder](./phase-42-map-builder/) |
+| 42 | Map builder: an in-browser map editor that looks exactly like the game, play custom maps locally | at the device gate | [phase-42-map-builder](./phase-42-map-builder/) |
 | 43 | Community maps: publish, browse, and play shared maps on serfbound.com | scaffolded | [phase-43-community-maps](./phase-43-community-maps/) |
 
 Phases 42–43 (the map builder and community map sharing) come from a

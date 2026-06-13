@@ -1,6 +1,6 @@
 import { MapGeometry, type Direction } from "./index.js";
 import { SerfboundGameWorld } from "./game-world.js";
-import { mapMinerals, mapTerrain } from "./map-generator.js";
+import { mapMinerals, mapSpace, mapSpaceFromObject, mapTerrain } from "./map-generator.js";
 import type { ClassicMapLandscape } from "./map-generator.js";
 
 // The map editor's brush model (SB-42-02): a mutable landscape that
@@ -53,6 +53,99 @@ type ByteChange = {
   readonly oldValue: number;
   readonly newValue: number;
 };
+
+// The minimum buildable-land fraction a playable map needs (advisory
+// floor; the gallery rating is the real balance signal).
+const minBuildableRatio = 0.05;
+
+export type MapValidationError =
+  | { readonly kind: "missing-start"; readonly player: number }
+  | { readonly kind: "start-not-placeable"; readonly player: number; readonly position: number }
+  | { readonly kind: "insufficient-buildable"; readonly ratio: number };
+
+export type MapValidationVerdict = {
+  readonly playable: boolean;
+  readonly errors: readonly MapValidationError[];
+  readonly buildableRatio: number;
+  readonly perPlayer: readonly {
+    readonly player: number;
+    readonly placeable: boolean;
+    readonly buildableNearby: number;
+  }[];
+};
+
+// A tile counts as buildable land when both triangles are land
+// (terrain >= grass0) and the object on it leaves the ground open.
+function isBuildableLand(landscape: ClassicMapLandscape, position: number): boolean {
+  return (
+    landscape.typesUp[position]! >= mapTerrain.grass0 &&
+    landscape.typesDown[position]! >= mapTerrain.grass0 &&
+    mapSpaceFromObject[landscape.objects[position]!]! === mapSpace.open
+  );
+}
+
+// Evaluate a map's playability the engine's own way: each player has a
+// start that canBuildCastle accepts, and the map holds enough buildable
+// land. Pure over the landscape + starts — every client agrees.
+export function evaluateMapPlayability(
+  landscape: ClassicMapLandscape,
+  starts: readonly { readonly player: number; readonly position: number }[],
+  playerCount: number,
+): MapValidationVerdict {
+  const world = new SerfboundGameWorld(landscape, Math.max(1, playerCount));
+
+  let buildable = 0;
+  for (let pos = 0; pos < landscape.tileCount; pos += 1) {
+    if (isBuildableLand(landscape, pos)) {
+      buildable += 1;
+    }
+  }
+
+  const buildableRatio = landscape.tileCount === 0 ? 0 : buildable / landscape.tileCount;
+  const errors: MapValidationError[] = [];
+  const perPlayer: {
+    player: number;
+    placeable: boolean;
+    buildableNearby: number;
+  }[] = [];
+
+  const byPlayer = new Map(starts.map((start) => [start.player, start]));
+  for (let player = 0; player < playerCount; player += 1) {
+    const start = byPlayer.get(player);
+    if (start === undefined) {
+      errors.push({ kind: "missing-start", player });
+      perPlayer.push({ player, placeable: false, buildableNearby: 0 });
+      continue;
+    }
+
+    const placeable = world.canBuildCastle(start.position, 0);
+    if (!placeable) {
+      errors.push({ kind: "start-not-placeable", player, position: start.position });
+    }
+
+    // Buildable land in the start's 37-tile spiral neighborhood
+    // (advisory; the world carries the full spiral pattern).
+    let nearby = 0;
+    for (let i = 0; i < 37; i += 1) {
+      if (isBuildableLand(landscape, world.positionAddSpirally(start.position, i))) {
+        nearby += 1;
+      }
+    }
+
+    perPlayer.push({ player, placeable, buildableNearby: nearby });
+  }
+
+  if (buildableRatio < minBuildableRatio) {
+    errors.push({ kind: "insufficient-buildable", ratio: buildableRatio });
+  }
+
+  return {
+    playable: errors.length === 0,
+    errors,
+    buildableRatio,
+    perPlayer,
+  };
+}
 
 export class MapEditor {
   readonly geometry: MapGeometry;
@@ -356,6 +449,16 @@ export class MapEditor {
     return [...this.#starts.entries()]
       .map(([player, start]) => ({ player, ...start }))
       .sort((a, b) => a.player - b.player);
+  }
+
+  // Validate the current draft: playability the engine's own way.
+  // playerCount defaults to the highest start's player + 1 (or 1).
+  validate(playerCount?: number): MapValidationVerdict {
+    const starts = this.starts;
+    const count =
+      playerCount ??
+      (starts.length === 0 ? 1 : Math.max(...starts.map((start) => start.player)) + 1);
+    return evaluateMapPlayability(this.toLandscape(), starts, count);
   }
 
   // The current authored landscape — handed to encodeCustomMap (SB-42-01)

@@ -210,3 +210,79 @@ test("castle starts validate live and round-trip through the format (SB-42-03)",
   // And the landscape still decodes clean.
   decodeCustomMapLandscape(record);
 });
+
+const catalogData = {
+  kind: "imported-dos-pa-catalog",
+  archiveName: "SPAU.PA",
+  byteLength: 1_282_805,
+  entryCount: 4000,
+  definedArchiveEntries: 3805,
+  fixupCount: 252,
+};
+
+test("validation gives a playable verdict, and names what's wrong (SB-42-04)", () => {
+  const editor = flatEditor();
+  // Find two legal sites on the plateau.
+  const legal = [];
+  for (let pos = 0; pos < editor.tileCount && legal.length < 2; pos += 1) {
+    if (editor.isCastlePlaceable(pos) && !legal.some((p) => editor.geometry.move(p, "DownRight") === pos)) {
+      legal.push(pos);
+    }
+  }
+  assert.equal(legal.length, 2, "two legal sites found");
+
+  editor.setStart(0, legal[0], 20);
+  editor.setStart(1, legal[1], 20);
+  const verdict = editor.validate(2);
+  assert.equal(verdict.playable, true, "two good starts on a grass plateau is playable");
+  assert.equal(verdict.errors.length, 0);
+  assert.equal(verdict.buildableRatio > 0.5, true, "the grass plateau is mostly buildable");
+  assert.equal(verdict.perPlayer.every((p) => p.placeable && p.buildableNearby > 0), true);
+
+  // A missing start for player 2 is named.
+  const short = editor.validate(3);
+  assert.equal(short.playable, false);
+  assert.equal(short.errors.some((e) => e.kind === "missing-start" && e.player === 2), true);
+
+  // An all-water map has no buildable land.
+  const ocean = flatEditor();
+  ocean.typesUp.fill(0);
+  ocean.typesDown.fill(0);
+  const drowned = ocean.validate(1);
+  assert.equal(drowned.playable, false);
+  assert.equal(drowned.errors.some((e) => e.kind === "insufficient-buildable"), true);
+});
+
+test("play this map: an authored custom map runs in a local game (SB-42-04)", async () => {
+  const { startSerfboundLocalGame, encodeCustomMap, serfState } = await import("@serfbound/engine");
+
+  // Author a small playable map, set a start, export it.
+  const editor = flatEditor();
+  let start = -1;
+  for (let pos = 0; pos < editor.tileCount && start < 0; pos += 1) {
+    if (editor.isCastlePlaceable(pos)) start = pos;
+  }
+  editor.setStart(0, start, 20);
+  assert.equal(editor.validate(1).playable, true, "the authored map is playable");
+
+  const record = encodeCustomMap(editor.toLandscape(), {
+    title: "PLAYTEST",
+    authorKeyId: "k",
+    authorName: "T",
+    createdAtIso: "2026-06-13T00:00:00.000Z",
+  }, { playerCount: 1, starts: editor.starts });
+
+  // Play it through the customMap seam (catalog metadata only, no real
+  // SPAU.PA — CI-safe).
+  const started = startSerfboundLocalGame({ data: catalogData, customMap: record });
+  assert.equal(started.status, "started", "the custom map starts a local game");
+  const world = started.game.world();
+  assert.equal(world.size, editor.size, "the world is the authored map's size");
+
+  // The authored landscape reached the world: found a castle at the
+  // authored start and prove it stands.
+  assert.equal(world.canBuildCastle(start, 0), true, "the authored start is castle-placeable in-game");
+  const castle = world.buildCastle(start, 0);
+  assert.notEqual(castle, null, "a castle founds on the authored map");
+  assert.equal(world.players[0].hasCastle, true, "the player holds a castle on their custom map");
+});
