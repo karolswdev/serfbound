@@ -106,6 +106,10 @@ not contain .NET runtime code, desktop-shell code, or a desktop deliverable.
 - `pm/roadmap/serfbound/adoption/social-identity-decision.md` - the 2026-06-11
   product evolution: opt-in social Serfbound with familiar sign-in; supersedes
   the Phase 25 identity decision by maintainer direction; the two unbreakables.
+- `pm/roadmap/serfbound/adoption/map-builder-and-community-maps-decision.md` -
+  the 2026-06-13 product expansion: an asset-free in-browser map editor and
+  community map sharing on serfbound.com; design canon for Phases 42-43; the
+  asset boundary resolved by construction (the tool needs no original data).
 - `pm/roadmap/serfbound/reference-tools/` - isolated Phase 1 reference capture
   tooling that may inspect source behavior but is not Serfbound product code.
 - `pm/roadmap/serfbound/reference-fixtures/ci/` - committed CI-safe oracle
@@ -161,8 +165,17 @@ and either prove the new behavior intentionally or defer the decision.
 | 37 | The living map: trees grow, fields age, fish migrate | stories complete | [phase-37-living-map](./phase-37-living-map/) |
 | 38 | Professions, tools, and fire — ends at the alpha gate | at the alpha gate | [phase-38-professions-tools-fire](./phase-38-professions-tools-fire/) |
 | 39 | Knight fidelity: the full fight, garrison disciplines, commanded attacks | at the device gate | [phase-39-knight-fidelity](./phase-39-knight-fidelity/) |
-| 40 | Boats and waterways: the boatbuilder works, sailors carry cargo | scaffolded | [phase-40-boats-and-waterways](./phase-40-boats-and-waterways/) |
+| 40 | Boats and waterways: the boatbuilder works, sailors carry cargo | in progress | [phase-40-boats-and-waterways](./phase-40-boats-and-waterways/) |
 | 41 | Levers and ledgers: settings sliders, notifications, stat windows, minimap modes | scaffolded | [phase-41-levers-and-ledgers](./phase-41-levers-and-ledgers/) |
+| 42 | Map builder: an asset-free in-browser map editor, play custom maps locally | scaffolded | [phase-42-map-builder](./phase-42-map-builder/) |
+| 43 | Community maps: publish, browse, and play shared maps on serfbound.com | scaffolded | [phase-43-community-maps](./phase-43-community-maps/) |
+
+Phases 42–43 (the map builder and community map sharing) come from a
+maintainer-directed product expansion, not the parity audit: an
+asset-free in-browser map editor — a tool usable with no original
+data and no account — and sharing those maps on serfbound.com over
+the existing backbone. The design canon is
+[map-builder-and-community-maps-decision.md](./adoption/map-builder-and-community-maps-decision.md).
 
 The simulation-fidelity sequence (35–38) is derived from the
 [reference parity audit](./reference-parity-audit.md) — the honest
