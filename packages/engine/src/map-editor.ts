@@ -1,4 +1,6 @@
 import { MapGeometry, type Direction } from "./index.js";
+import { SerfboundGameWorld } from "./game-world.js";
+import { mapMinerals, mapTerrain } from "./map-generator.js";
 import type { ClassicMapLandscape } from "./map-generator.js";
 
 // The map editor's brush model (SB-42-02): a mutable landscape that
@@ -10,6 +12,20 @@ import type { ClassicMapLandscape } from "./map-generator.js";
 
 const maxSlope = 32;
 const terrainMax = 15;
+
+// The authorable object palette (SB-42-03): the natural decorations a
+// map author places. Runtime objects (flags, buildings, stubs, felled
+// wood, seeds, signs) are excluded — the game places those.
+const waterObjectValues = new Set<number>([28, 29, 30, 31, 88, 89]);
+const authorableObjectValues = (() => {
+  const set = new Set<number>();
+  for (let v = 8; v <= 31; v += 1) set.add(v); // trees, pines, palms, water trees
+  for (let v = 72; v <= 82; v += 1) set.add(v); // stones, sandstone, cross
+  set.add(88);
+  set.add(89); // water stones
+  for (let v = 90; v <= 92; v += 1) set.add(v); // cactus, dead tree
+  return set;
+})();
 const neighborDirections: readonly Direction[] = [
   "Right",
   "DownRight",
@@ -238,6 +254,108 @@ export class MapEditor {
 
     this.#undo.push(stroke);
     return true;
+  }
+
+  // Whether both triangles of a tile are water (terrain 0..3) / land.
+  #isWaterTile(position: number): boolean {
+    return (
+      this.typesUp[position]! <= mapTerrain.water3 &&
+      this.typesDown[position]! <= mapTerrain.water3
+    );
+  }
+
+  #isLandTile(position: number): boolean {
+    return (
+      this.typesUp[position]! >= mapTerrain.grass0 &&
+      this.typesDown[position]! >= mapTerrain.grass0
+    );
+  }
+
+  // Whether an object value may be placed on a tile: only the
+  // authorable palette, water objects in water, land objects on land.
+  canPlaceObject(position: number, object: number): boolean {
+    if (object === 0) {
+      return true; // erase is always legal
+    }
+
+    if (!authorableObjectValues.has(object)) {
+      return false;
+    }
+
+    return waterObjectValues.has(object)
+      ? this.#isWaterTile(position)
+      : this.#isLandTile(position);
+  }
+
+  // Place an object (or erase with 0); refuses an illegal placement.
+  placeObject(position: number, object: number): boolean {
+    if (!this.canPlaceObject(position, object)) {
+      return false;
+    }
+
+    this.#write(arrayIds.objects, position, object);
+    return true;
+  }
+
+  eraseObject(position: number): void {
+    this.#write(arrayIds.objects, position, 0);
+  }
+
+  // Seed a hidden mineral deposit (gold/iron/coal/stone) of an amount.
+  // Minerals are hidden until a geologist samples them, so the editor
+  // allows them on any tile (authoring freedom).
+  seedMineral(position: number, mineral: number, amount: number): boolean {
+    if (mineral < mapMinerals.gold || mineral > mapMinerals.stone) {
+      return false;
+    }
+
+    this.#write(arrayIds.minerals, position, mineral);
+    this.#write(arrayIds.resourceAmounts, position, amount);
+    return true;
+  }
+
+  // Seed fish stock in shallow water (mineral none + a resource amount).
+  seedFish(position: number, amount: number): boolean {
+    if (!this.#isWaterTile(position)) {
+      return false;
+    }
+
+    this.#write(arrayIds.minerals, position, mapMinerals.none);
+    this.#write(arrayIds.resourceAmounts, position, amount);
+    return true;
+  }
+
+  // --- player starts (authoring metadata, not landscape bytes) ----------------
+
+  readonly #starts = new Map<number, { position: number; supplies: number }>();
+
+  // Whether a castle could be founded at a position, asked of a fresh
+  // world built from the current landscape (no owners, so any legal
+  // open buildable site passes) — the game's own canBuildCastle.
+  isCastlePlaceable(position: number): boolean {
+    const world = new SerfboundGameWorld(this.toLandscape(), 1);
+    return world.canBuildCastle(position, 0);
+  }
+
+  // Set a player's castle start; refuses an unbuildable site.
+  setStart(player: number, position: number, supplies = 20): boolean {
+    if (!this.isCastlePlaceable(position)) {
+      return false;
+    }
+
+    this.#starts.set(player, { position, supplies });
+    return true;
+  }
+
+  clearStart(player: number): void {
+    this.#starts.delete(player);
+  }
+
+  // The authored starts, sorted by player, ready for encodeCustomMap.
+  get starts(): { player: number; position: number; supplies: number }[] {
+    return [...this.#starts.entries()]
+      .map(([player, start]) => ({ player, ...start }))
+      .sort((a, b) => a.player - b.player);
   }
 
   // The current authored landscape — handed to encodeCustomMap (SB-42-01)

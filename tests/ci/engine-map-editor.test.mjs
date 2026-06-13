@@ -15,11 +15,15 @@ const meta = {
   createdAtIso: "2026-06-13T00:00:00.000Z",
 };
 
-function flatEditor(size = 3, height = 100) {
+function flatEditor(size = 3, height = 4) {
   const base = generateClassicMap(size, [1, 2, 3]);
   const editor = new MapEditor(base);
-  // Flatten so the slope-clamp test starts from a clean plateau.
+  // A blank canvas: flat grass plateau, no objects — what "new map"
+  // gives the author.
   editor.heights.fill(height);
+  editor.typesUp.fill(5); // grass1
+  editor.typesDown.fill(5);
+  editor.objects.fill(0);
   return editor;
 }
 
@@ -121,4 +125,88 @@ test("toLandscape round-trips through the custom-map format (SB-42-02)", () => {
       `${name} survives the editor → encode → decode trip`,
     );
   }
+});
+
+test("objects respect the engine's space rule: land on land, water in water (SB-42-03)", () => {
+  const editor = flatEditor();
+  // A land tile (the flat map is grass1 = 5) and a hand-made water tile.
+  const land = editor.geometry.position(10, 10);
+  const water = editor.geometry.position(20, 20);
+  editor.typesUp[water] = 0;
+  editor.typesDown[water] = 0;
+
+  // A land tree (tree0 = 8) places on land, refuses on water.
+  assert.equal(editor.placeObject(land, 8), true, "tree on land");
+  assert.equal(editor.objects[land], 8);
+  assert.equal(editor.placeObject(water, 8), false, "tree refused on water");
+
+  // A water tree (28) the reverse.
+  assert.equal(editor.placeObject(water, 28), true, "water tree in water");
+  assert.equal(editor.objects[water], 28);
+  assert.equal(editor.placeObject(land, 28), false, "water tree refused on land");
+
+  // A non-authorable object (a castle, 4) is refused outright.
+  assert.equal(editor.placeObject(land, 4), false, "castle is not an authorable object");
+
+  // Erase always works.
+  editor.eraseObject(land);
+  assert.equal(editor.objects[land], 0);
+});
+
+test("minerals and fish write the right bytes; fish need water (SB-42-03)", () => {
+  const editor = flatEditor();
+  const mountain = editor.geometry.position(10, 10);
+  const water = editor.geometry.position(20, 20);
+  editor.typesUp[water] = 0;
+  editor.typesDown[water] = 0;
+
+  // A coal seam (mineral 3) of 12.
+  assert.equal(editor.seedMineral(mountain, 3, 12), true);
+  assert.equal(editor.minerals[mountain], 3);
+  assert.equal(editor.resourceAmounts[mountain], 12);
+
+  // An out-of-range mineral is refused.
+  assert.equal(editor.seedMineral(mountain, 9, 5), false);
+
+  // Fish (mineral none + amount) in water, refused on land.
+  assert.equal(editor.seedFish(water, 8), true);
+  assert.equal(editor.minerals[water], 0);
+  assert.equal(editor.resourceAmounts[water], 8);
+  assert.equal(editor.seedFish(mountain, 8), false, "no fish on dry land");
+});
+
+test("castle starts validate live and round-trip through the format (SB-42-03)", async () => {
+  const { decodeCustomMapLandscape, encodeCustomMap } = await import("@serfbound/engine");
+  const editor = flatEditor();
+  // Find a castle-placeable tile on the flat grass plateau.
+  let legal = -1;
+  for (let pos = 0; pos < editor.tileCount && legal < 0; pos += 1) {
+    if (editor.isCastlePlaceable(pos)) {
+      legal = pos;
+    }
+  }
+  assert.notEqual(legal, -1, "the flat map has a legal castle site");
+
+  assert.equal(editor.setStart(0, legal, 30), true, "a legal start is accepted");
+  assert.equal(editor.starts.length, 1);
+  assert.equal(editor.starts[0].player, 0);
+  assert.equal(editor.starts[0].position, legal);
+  assert.equal(editor.starts[0].supplies, 30);
+
+  // Block a tile with a stone and prove the start there is refused.
+  const blocked = editor.geometry.position(12, 12);
+  editor.placeObject(blocked, 72); // stone0 (impassable)
+  assert.equal(editor.setStart(1, blocked, 20), false, "a blocked site is refused");
+
+  // The accepted start rides into the custom-map format.
+  const record = encodeCustomMap(editor.toLandscape(), {
+    title: "STARTS",
+    authorKeyId: "k",
+    authorName: "T",
+    createdAtIso: "2026-06-13T00:00:00.000Z",
+  }, { playerCount: 1, starts: editor.starts });
+  assert.equal(record.starts.length, 1);
+  assert.equal(record.starts[0].position, legal);
+  // And the landscape still decodes clean.
+  decodeCustomMapLandscape(record);
 });
