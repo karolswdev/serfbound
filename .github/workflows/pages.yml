@@ -23,6 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Full history so `git describe` can name the nearest release tag.
+          fetch-depth: 0
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -40,7 +43,19 @@ jobs:
         run: npm run build:web
       - name: Stamp version
         run: |
-          echo "{\"version\": \"${GITHUB_REF_NAME:-dev}\", \"commit\": \"${GITHUB_SHA}\"}" > dist/version.json
+          # The nearest release tag (v*), or empty for a dispatch off a
+          # branch. The app shows tag · short-commit so serfbound.com tells
+          # you exactly which build it is serving.
+          export SERFBOUND_TAG="$(git describe --tags --match 'v*' --abbrev=0 2>/dev/null || true)"
+          node -e '
+            const fs = require("fs");
+            fs.writeFileSync("dist/version.json", JSON.stringify({
+              version: process.env.GITHUB_REF_NAME || "dev",
+              tag: process.env.SERFBOUND_TAG || undefined,
+              commit: process.env.GITHUB_SHA || "",
+              builtAtIso: new Date().toISOString(),
+            }) + "\n");
+          '
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

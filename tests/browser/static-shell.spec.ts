@@ -44,6 +44,12 @@ test("static app shell renders without original data or a desktop companion", as
   await expect(shell).toBeVisible();
   await expect(page.getByRole("heading", { name: "Serfbound" })).toBeVisible();
   await expect(page.getByTestId("runtime-pill")).toHaveText("Ready");
+  // SB-20-05: the build stamp is visible and reads a non-empty label so a
+  // player can see which build serfbound.com is serving (no version.json
+  // in the test build, so it stays the static "dev build").
+  const buildStamp = page.getByTestId("build-stamp");
+  await expect(buildStamp).toBeVisible();
+  await expect(buildStamp).not.toBeEmpty();
   await expect(page.getByTestId("data-state")).toHaveText("No game data");
   await expect(page.getByTestId("game-state")).toHaveText("Data needed");
   await expect(page.getByTestId("game-detail")).toHaveText(
@@ -837,7 +843,7 @@ test("the error report copies actionable, data-free context on demand", async ({
   const report = await page.evaluate(() => navigator.clipboard.readText());
   const parsed = JSON.parse(report);
   expect(parsed.product).toBe("serfbound");
-  expect(parsed.version).toBe("0.1.0");
+  expect(parsed.version).toBe("0.2.0");
   expect(JSON.stringify(parsed.errors)).toContain("e2e-intake-test-error");
   expect(report).not.toContain("SPAU");
 });

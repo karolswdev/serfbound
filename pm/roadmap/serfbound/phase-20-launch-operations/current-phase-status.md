@@ -49,6 +49,7 @@ post-launch roadmap — with multiplayer as the headline post-launch track.
 | SB-20-02 | Error reporting and issue intake | done | story-02-error-reporting-intake.md | evidence-story-02.md |
 | SB-20-03 | Full-game documentation refresh | done | story-03-documentation-refresh.md | evidence-story-03.md |
 | SB-20-04 | Launch readiness and post-launch roadmap | done | story-04-launch-readiness-roadmap.md | evidence-story-04.md |
+| SB-20-05 | The visible build stamp (post-launch operations addition) | done | story-05-visible-build-stamp.md | evidence-story-05.md |
 
 ## Where we are
 

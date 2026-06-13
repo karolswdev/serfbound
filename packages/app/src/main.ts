@@ -278,8 +278,40 @@ export function registerServiceWorker(): void {
 // Privacy-respecting error intake: errors buffer locally; the player
 // copies a context report (no game data, no archive bytes) into an
 // issue by explicit action only.
-const serfboundVersion = "0.1.0";
+const serfboundVersion = "0.2.0";
 const errorBuffer: { message: string; stack: string; at: string }[] = [];
+
+// The build stamp (SB-20-05): serfbound.com shows exactly which tag and
+// commit it is serving, so a player (or bug-hunter) can tell at a glance
+// whether they're on the build they think they are. `version.json` is
+// stamped at deploy time; this is the pure, CI-gateable formatter that
+// turns it into a short human label.
+export type SerfboundBuildInfo = {
+  readonly version?: string;
+  readonly tag?: string;
+  readonly commit?: string;
+  readonly builtAtIso?: string;
+};
+
+export function formatBuildStamp(raw: unknown): string {
+  const info =
+    raw !== null && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const asText = (key: string): string | undefined => {
+    const value = info[key];
+    return typeof value === "string" && value.length > 0 ? value : undefined;
+  };
+
+  // A real tag wins over a branch name; "dev"/"main" are not releases.
+  const tag = asText("tag");
+  const version = asText("version");
+  const release = tag ?? (version && version !== "dev" && version !== "main" ? version : undefined);
+  const label = release ?? "dev build";
+
+  const commit = asText("commit") ?? "";
+  const shortCommit = /^[0-9a-f]{7,}$/i.test(commit) ? commit.slice(0, 7) : "";
+
+  return shortCommit ? `${label} · ${shortCommit}` : label;
+}
 
 function recordError(message: string, stack: string | undefined): void {
   errorBuffer.push({
@@ -543,7 +575,14 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
               <h1 id="serfbound-title">Serfbound</h1>
             </div>
           </div>
-          <div class="runtime-pill" data-testid="runtime-pill">Ready</div>
+          <div class="scene__toolbar-status">
+            <div class="runtime-pill" data-testid="runtime-pill">Ready</div>
+            <span
+              class="build-stamp"
+              data-testid="build-stamp"
+              title="The tag and commit this build is serving"
+            >dev build</span>
+          </div>
         </div>
         <div class="scene__stage">
           <canvas
@@ -890,6 +929,38 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   } catch {
     // No location (tests without DOM navigation): player surface.
   }
+
+  // Build stamp (SB-20-05): fetch the deploy-time version.json and show
+  // the tag + commit this build is serving. Failure is silent — a local
+  // dev build has no version.json and the element just reads "dev build".
+  void (async () => {
+    const stampElement = root.querySelector<HTMLElement>("[data-testid='build-stamp']");
+    if (stampElement === null) {
+      return;
+    }
+    try {
+      const response = await fetch("./version.json", { cache: "no-store" });
+      if (!response.ok) {
+        return;
+      }
+      const info = (await response.json()) as SerfboundBuildInfo;
+      const label = formatBuildStamp(info);
+      stampElement.textContent = label;
+      const fullCommit =
+        typeof info.commit === "string" && /^[0-9a-f]{7,}$/i.test(info.commit)
+          ? info.commit
+          : undefined;
+      stampElement.title = [
+        `Serving ${label}`,
+        fullCommit ? `commit ${fullCommit}` : undefined,
+        typeof info.builtAtIso === "string" ? `built ${info.builtAtIso}` : undefined,
+      ]
+        .filter(Boolean)
+        .join(" — ");
+    } catch {
+      // Offline or no version.json: the static "dev build" label stands.
+    }
+  })();
 
   // Chrome states (SB-32-02, standard §4): the shell composition
   // follows the player's journey — pre-import, title, running. CSS
