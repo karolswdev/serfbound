@@ -2,7 +2,7 @@
 
 - **Project:** serfbound
 - **Phase:** 43
-- **Status:** staged (awaiting the maintainer's deploy)
+- **Status:** done (applied to LKE lke577204 on 2026-06-13)
 - **Depends on:** SB-43-01
 - **Unblocks:** SB-43-03, SB-43-04
 - **Owner:** maintainer (the apply)

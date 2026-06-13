@@ -5,8 +5,9 @@ handshake carries `mapContentHash` so peers verify they hold the same
 community map, with a CI proof that a custom map plays divergence-free
 in lockstep. The on-screen lobby wiring rides the device gate. Earlier:
 SB-43-03 client + thumbnail, SB-43-01 service, SB-43-06 play counts).
-**Status:** in progress — SB-43-02 staged (awaiting the deploy);
-SB-43-05 moderation + device gate is the only remaining story.
+**Status:** in progress — SB-43-02 DEPLOYED (maps live on
+api.serfbound.com); SB-43-05 moderation + device gate (and the
+gallery's mapsUrl wiring) is the only remaining story.
 
 ## Goal
 
@@ -43,10 +44,11 @@ template) and never puts original game data on the wire.
 - [x] The maps service: publish/list/fetch with signature verification,
   structural+size validation, payload cap + per-key quota; the "no
   original-data field exists" contract test green. (SB-43-01)
-- [~] Deployed to the backbone: `/maps` live on `api.serfbound.com`,
-  game-down-independence proven. (SB-43-02 — STAGED: manifests +
-  route + CI + runbook complete and kubeconform-valid; the apply is
-  the maintainer's outward action.)
+- [x] Deployed to the backbone: `/maps` live on `api.serfbound.com`,
+  game-down-independence proven. (SB-43-02 — APPLIED 2026-06-13 to LKE
+  lke577204: maps Deployment 1/1 + Service + 10Gi PVC, the
+  `serfbound-api` route carrying the /maps rule;
+  `GET /maps/maps` -> `{"maps":[]}` HTTP 200.)
 - [~] The gallery + library shell: browse/filter/sort/rate/report with
   sprite-free false-color thumbnails. (SB-43-03 — the signed client and
   the pure thumbnail are CI-held; the on-screen shell, library store,
@@ -66,7 +68,7 @@ template) and never puts original game data on the wire.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-43-01 | The maps service | done | story-01-the-maps-service.md | evidence-story-01.md |
-| SB-43-02 | Deploy to the backbone | staged | story-02-deploy-to-the-backbone.md | — (awaiting deploy) |
+| SB-43-02 | Deploy to the backbone | done | story-02-deploy-to-the-backbone.md | evidence-story-02.md |
 | SB-43-03 | The gallery and library shell | done | story-03-the-gallery-and-library-shell.md | evidence-story-03.md |
 | SB-43-04 | Custom maps in multiplayer | done | story-04-custom-maps-in-multiplayer.md | evidence-story-04.md |
 | SB-43-05 | Moderation and the device gate | backlog | — | — |

@@ -48,10 +48,17 @@ kubectl apply -f deploy/maps.yaml
 kubectl apply -f deploy/httproute.yaml          # now carries the /maps rule
 kubectl -n serfbound rollout status deploy/maps
 
-# 3. Smoke test — an empty gallery on a fresh store:
-curl -s https://api.serfbound.com/maps          # -> {"maps":[]}
+# 3. Smoke test — an empty gallery on a fresh store. The gateway strips
+#    the /maps prefix (ReplacePrefixMatch -> /) and the service's own
+#    list route is GET /maps, so the reachable path is /maps/maps (the
+#    maps client's base is .../maps and it appends /maps — the same
+#    shape as identity's .../identity + /accounts):
+curl -s https://api.serfbound.com/maps/maps     # -> {"maps":[]}
 ```
 
-Nothing here is applied to the cluster until the maintainer runs the
-above. Rollback: `kubectl -n serfbound delete -f deploy/maps.yaml` and
-re-apply `httproute.yaml` from the previous revision.
+**Deployed 2026-06-13** (SB-43-02 done): maps Deployment 1/1, Service +
+10Gi PVC bound, `serfbound-api` HTTPRoute carrying the /maps rule;
+`GET https://api.serfbound.com/maps/maps` -> `{"maps":[]}` (HTTP 200),
+identity/mailbox routes unaffected. Rollback:
+`kubectl -n serfbound delete -f deploy/maps.yaml` and re-apply
+`httproute.yaml` from the previous revision.
