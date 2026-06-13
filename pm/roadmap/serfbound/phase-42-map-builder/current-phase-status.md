@@ -1,10 +1,11 @@
 # Phase 42 — Map Builder (local)
 
-**Last updated:** 2026-06-13 (SB-42-01 done: the serfbound.custom-map
-v1 format round-trips a landscape byte-identically and plays to the
-same checksum, malformed payloads reject not clamp, the customMap seam
-feeds the local game, and the asset-and-legal-boundary addendum
-landed. The foundation the editor builds on).
+**Last updated:** 2026-06-13 (SB-42-02 done: the MapEditor brush model
+turns terrain and height strokes into landscape bytes, holds the
+generator's ≤32 slope invariant (a cliff-sized delta cascades smooth),
+and reverses any stroke completely with undo/redo; toLandscape()
+round-trips through the SB-42-01 format. The authentic render + pointer
+wiring ride the device gate. Earlier: SB-42-01, the format).
 **Status:** in progress.
 
 ## Goal
@@ -56,10 +57,11 @@ false-color so the service touches no original art.)
   encode → decode → byte-identical arrays and equal
   `computeGameChecksum`; malformed payloads reject (not clamp); the
   asset-and-legal-boundary addendum lands. (SB-42-01)
-- [ ] The editor canvas renders the real tiles: with imported
-  `SPAU.PA`, paint terrain and heights and see the authentic WebGL2
-  scene update identically to the game; a stroke writes the expected
-  bytes (CI-gated on the engine layer, asset-free). (SB-42-02)
+- [x] The editor canvas: the MapEditor brush model writes expected
+  bytes for terrain and height strokes, holds the ≤32 slope invariant,
+  and undoes/redoes a stroke completely (CI-gated, asset-free). The
+  authentic WebGL2 render + pointer→tile wiring ride the device gate
+  (SB-42-05). (SB-42-02)
 - [ ] Objects, minerals, and per-player castle starts place legally
   (live `canBuildCastle`), illegal placements refused with located
   feedback. (SB-42-03)
@@ -75,7 +77,7 @@ false-color so the service touches no original art.)
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-42-01 | The format and the boundary | done | story-01-the-format-and-the-boundary.md | evidence-story-01.md |
-| SB-42-02 | The editor canvas (authentic render) | backlog | — | — |
+| SB-42-02 | The editor canvas (authentic render) | done | story-02-the-editor-canvas.md | evidence-story-02.md |
 | SB-42-03 | Objects, minerals, starts | backlog | — | — |
 | SB-42-04 | Validation and play-local | backlog | — | — |
 | SB-42-05 | The device gate | backlog | — | — |
