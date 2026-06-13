@@ -140,6 +140,8 @@ export * from "./async-match.js";
 export * from "./profile-store.js";
 export * from "./identity-client.js";
 export * from "./mailbox-client.js";
+export * from "./maps-client.js";
+export * from "./map-thumbnail.js";
 export * from "./online-config.js";
 export * from "./online-surface.js";
 export * from "./online-match.js";
