@@ -9,12 +9,14 @@ pm/roadmap/serfbound/adoption/map-builder-and-community-maps-decision.md).
 
 Share authored maps on serfbound.com: publish, browse, search, rate,
 report, and download community maps, and play them — including in
-multiplayer — verified by checksum the same way generated maps are. The
-gallery is an **asset-free tool** like the editor (false-color
-thumbnails and previews, no imported data needed to browse or
-download); original assets are required only to play. Sharing reuses
-the existing backbone (device-key identity, the zero-dependency
-service template) and never touches original game data.
+multiplayer — verified by checksum the same way generated maps are.
+Browsing needs no imported data because gallery **thumbnails are
+sprite-free false-color** (`minimapTerrainColors`) — this keeps the
+service clean of original art, not because the editor is asset-free
+(it is import-gated and authentic, Phase 42). A downloaded map plays
+with the player's own assets, like any map. Sharing reuses the
+existing backbone (device-key identity, the zero-dependency service
+template) and never puts original game data on the wire.
 
 ## Codebase / backbone ground truth
 
@@ -41,9 +43,10 @@ service template) and never touches original game data.
 - [ ] Deployed to the backbone: `/maps` live on `api.serfbound.com`,
   game-down-independence proven (gallery offline ⇒ local play
   untouched). (SB-43-02)
-- [ ] The gallery + library shell: browse/filter/sort/rate/report,
-  false-color thumbnails, download into the local library and play —
-  all browseable with ZERO imported data. (SB-43-03)
+- [ ] The gallery + library shell: browse/filter/sort/rate/report with
+  sprite-free false-color thumbnails (browsing needs no imported data;
+  the service stays clean of original art), download into the local
+  library and play with the player's own assets. (SB-43-03)
 - [ ] Custom maps in multiplayer: handshake v2 with `mapContentHash`,
   a lockstep/correspondence match on a custom map with
   `firstChecksumDivergence === null` to a dual-attested result.

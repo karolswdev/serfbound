@@ -107,9 +107,10 @@ not contain .NET runtime code, desktop-shell code, or a desktop deliverable.
   product evolution: opt-in social Serfbound with familiar sign-in; supersedes
   the Phase 25 identity decision by maintainer direction; the two unbreakables.
 - `pm/roadmap/serfbound/adoption/map-builder-and-community-maps-decision.md` -
-  the 2026-06-13 product expansion: an asset-free in-browser map editor and
-  community map sharing on serfbound.com; design canon for Phases 42-43; the
-  asset boundary resolved by construction (the tool needs no original data).
+  the 2026-06-13 product expansion: an in-browser map editor (real tiles via
+  the production renderer, import-gated like playing) and community map sharing
+  on serfbound.com; design canon for Phases 42-43; baking assets in so it needs
+  no import is Phase 31, inherited when that written-permission gate lands.
 - `pm/roadmap/serfbound/reference-tools/` - isolated Phase 1 reference capture
   tooling that may inspect source behavior but is not Serfbound product code.
 - `pm/roadmap/serfbound/reference-fixtures/ci/` - committed CI-safe oracle
@@ -167,14 +168,15 @@ and either prove the new behavior intentionally or defer the decision.
 | 39 | Knight fidelity: the full fight, garrison disciplines, commanded attacks | at the device gate | [phase-39-knight-fidelity](./phase-39-knight-fidelity/) |
 | 40 | Boats and waterways: the boatbuilder works, sailors carry cargo | in progress | [phase-40-boats-and-waterways](./phase-40-boats-and-waterways/) |
 | 41 | Levers and ledgers: settings sliders, notifications, stat windows, minimap modes | scaffolded | [phase-41-levers-and-ledgers](./phase-41-levers-and-ledgers/) |
-| 42 | Map builder: an asset-free in-browser map editor, play custom maps locally | scaffolded | [phase-42-map-builder](./phase-42-map-builder/) |
+| 42 | Map builder: an in-browser map editor that looks exactly like the game, play custom maps locally | scaffolded | [phase-42-map-builder](./phase-42-map-builder/) |
 | 43 | Community maps: publish, browse, and play shared maps on serfbound.com | scaffolded | [phase-43-community-maps](./phase-43-community-maps/) |
 
 Phases 42–43 (the map builder and community map sharing) come from a
 maintainer-directed product expansion, not the parity audit: an
-asset-free in-browser map editor — a tool usable with no original
-data and no account — and sharing those maps on serfbound.com over
-the existing backbone. The design canon is
+in-browser map editor that renders with the real game tiles
+(import-gated like playing — it reuses the production sprite scene, so
+authored maps look pixel-identical to played ones), and sharing those
+maps on serfbound.com over the existing backbone. The design canon is
 [map-builder-and-community-maps-decision.md](./adoption/map-builder-and-community-maps-decision.md).
 
 The simulation-fidelity sequence (35–38) is derived from the

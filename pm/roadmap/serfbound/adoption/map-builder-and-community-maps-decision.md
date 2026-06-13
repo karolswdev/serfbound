@@ -8,20 +8,23 @@ phases build to.
 **Author:** design spike, refined with the maintainer's directive.
 
 > **Maintainer directive (2026-06-13), and the spine of this design:**
-> *"The map builder should totally be usable without even providing
-> [SPAU.PA]. That's not a game… that's a tool."*
+> the map builder **must look and work exactly like the game** — the
+> real decoded tiles, not schematic placeholders. The editor reuses
+> the **production sprite renderer** (`landscape-scene.ts`), so an
+> authored map is pixel-identical to a played one.
 >
-> The editor and the gallery are **asset-free tools.** They render
-> maps **schematically** — false-color terrain (the existing
-> `minimapTerrainColors`, `popup.ts:225`) and simple geometric object
-> markers — and need no original game data whatsoever. You build,
-> validate, save, publish, browse, and download maps with **zero
-> imported data and zero account.** Original assets are required only
-> to *play* a map in the authentic game — exactly today's rule
-> (`local-game.ts` rejects a play start with `missing-imported-data`).
-> This makes the asset-boundary argument (§7) far stronger: the tool
-> ships and needs no game data, and the open question that gated this
-> proposal is **resolved by construction** — see §7.0.
+> **Asset path: import-gated (maintainer decision, 2026-06-13).** The
+> builder requires the player's own imported `SPAU.PA`, exactly as
+> *playing* does today (`local-game.ts` rejects with
+> `missing-imported-data` when assets are absent), and renders with
+> their real tiles. It does **not** bundle or bake original assets in;
+> that would cross the asset boundary and is **Phase 31** territory
+> (hard-gated on *written* rights-holder permission, currently
+> verbal-only). When Phase 31's written grant lands and assets cache
+> for everyone, the builder inherits import-free use automatically —
+> the same gate, not a builder-specific one. An earlier idea of an
+> asset-free *synthetic* render is **dropped** (§7.0): the maintainer
+> wants the real art, and import-gating keeps it boundary-clean today.
 
 ---
 
@@ -454,35 +457,39 @@ shapes what is even possible.
 This is the constraint that could sink the feature if gotten wrong, so
 the argument is made carefully against `asset-and-legal-boundary.md`.
 
-### 7.0 The tool needs no game data at all (the maintainer's pivot)
+### 7.0 The editor looks exactly like the game, and is import-gated
 
-The original draft argued maps render *only* with the player's own
-imported assets. The maintainer's directive makes the position
-stronger: **the builder and gallery are asset-free tools that render
-schematically**, so the question "is a shared map clean?" is resolved
-*by construction*, not by argument:
+**The editor renders with the real tiles, identical to the game.** It
+mounts the *production* sprite scene (`landscape-scene.ts`) over the
+draft landscape — the same code that draws a played map — so an
+authored map is pixel-identical to a played one. No schematic
+placeholders. (An earlier asset-free synthetic-render idea is dropped;
+the maintainer wants the real art.)
 
-- **The editor renders without any original data.** Terrain draws as
-  flat false-color (the `minimapTerrainColors` table, `popup.ts:225` —
-  one solid color per `mapTerrain` value, already in the codebase);
-  objects draw as simple geometric markers (a circle for a tree, a
-  diamond for stone, a tinted dot for a mineral), not decoded sprites.
-  A player with no `SPAU.PA` opens the editor and builds a complete,
-  valid map. This is a *tool*, like any level editor, not the game.
-- **The gallery renders without any original data.** Thumbnails and
-  map previews are the same false-color render. Browsing and
-  downloading need no imported assets.
-- **Only *playing* needs your own assets** — the authentic WebGL2
-  sprite scene requires imported `SPAU.PA`, exactly as a generated map
-  does today. The map file still carries no art; the player's own data
-  supplies the *look*, the synthetic render supplies the *tool*.
+Because the real tiles are decoded from the player's own `SPAU.PA`,
+the builder is **import-gated, exactly like playing:** it requires
+imported data and rejects with `missing-imported-data` when absent
+(`local-game.ts:167`), the same rule a generated map already obeys.
+This keeps the feature on the right side of the asset boundary with
+zero new posture: the builder ships no original data, and a map file
+still carries none — the player's own assets supply the look.
 
-So there are two render paths, and the asset-free one is the default
-for all tool surfaces: **synthetic** (false-color + markers, no
-original data — editor, gallery, thumbnails) and **authentic** (the
-production sprite scene, needs the player's own `SPAU.PA` — playing).
-Nothing the service ever stores or ships touches original art, and a
-map is usable as a *design artifact* by anyone, asset or no.
+**"Baking the tiles in" is Phase 31, not this feature.** Shipping or
+hosting the converted sprite data so the builder (and the whole game)
+need no import is exactly the Phase-31 "licensed asset delivery" work,
+hard-gated on *written* rights-holder permission (currently
+verbal-only). When that grant lands and assets cache once for
+everyone, the builder inherits import-free use automatically — it is
+the same gate the whole game waits on, not a builder-specific one.
+Until then, the boundary holds: no original art in the repo or on the
+service.
+
+The one place a sprite-derived pixel could still leak off-client is a
+gallery **thumbnail** (§5, §7.2): those are rendered from a flat
+false-color terrain map (the `minimapTerrainColors` table,
+`popup.ts:225`) — never decoded sprites — so the gallery stays
+browsable and the service stays clean even though the editor itself
+is import-gated and authentic.
 
 ### 7.1 The legal argument: a map is user-authored data, not an asset
 
@@ -516,33 +523,33 @@ A useful analogy the boundary doc's spirit supports: sharing a list of
 chess moves is not sharing the chess set. A custom map is the board
 layout; the pieces (sprites) are the player's own imported `SPAU.PA`.
 
-### 7.2 The technical enforcement: the tool is synthetic, playing needs your own assets
+### 7.2 The technical enforcement: import-gated authentic render, sprite-free service
 
 The argument is backed by enforcement, not trust:
 
 - **The format physically cannot carry sprite data.** `landscape` is
   base64 of exactly `6 × tileCount` bytes whose ranges are the terrain/
   object/mineral *enumerations*; decode rejects any other length or
-  out-of-range byte (§4.3). There is no blob field.
-- **Every tool surface renders synthetically, never from sprites.**
-  The editor, the gallery, thumbnails, and map previews all draw from
-  the false-color terrain table + geometric object markers (§7.0) — no
-  decoded sprite ever touches a tool surface, so the tool is legal and
-  usable with zero imported data. Original art off the service, by
-  construction.
-- **Only the authentic *play* render uses imported assets.** When a
-  player launches a map into the real game, the production sprite scene
-  (`landscape-scene.ts`) resolves terrain/object indices to *decoded
-  sprites from the player's own `SPAU.PA`* — and the local-game start
-  rejects with `missing-imported-data` if absent (`local-game.ts:167`),
-  exactly as a generated map does today. The map carries the
+  out-of-range byte (§4.3). There is no blob field. A map carries the
   *what-goes-where*; the player's own assets carry the
-  *what-it-looks-like*; the synthetic render carries the *tool*.
+  *what-it-looks-like*.
+- **The editor is import-gated, like playing.** It renders the draft
+  with the production sprite scene (`landscape-scene.ts`) from the
+  player's own decoded `SPAU.PA`, and rejects with
+  `missing-imported-data` when absent (`local-game.ts:167`) — the same
+  rule a generated map obeys. Serfbound ships no original art for the
+  builder; baking it in is Phase 31 (§7.0).
+- **The service and gallery touch no sprite pixels.** What crosses the
+  wire is the six byte arrays + text metadata + a **sprite-free
+  thumbnail** rendered from the false-color terrain table
+  (`minimapTerrainColors`), never decoded sprites — so the gallery is
+  browsable with no imported data and original art stays off
+  `api.serfbound.com`, exactly the mailbox's "no field for it"
+  posture.
 - **Stop-signal:** if anyone ever proposes routing a *decoded sprite*
-  into a tool surface (a "real sprite" thumbnail or editor preview), it
-  goes back to a rights review — the synthetic/authentic split is the
-  enforced boundary, same discipline as the boundary doc's stop
-  signals.
+  into the service or a thumbnail, it goes back to a rights review —
+  the boundary is "real tiles on the player's own client, never on the
+  wire."
 
 ### 7.3 Boundary-doc addendum required
 
@@ -577,17 +584,16 @@ ships sharing on the backbone. Splitting this way means the riskiest
   `computeGameChecksum`; malformed payloads reject (not clamp).
   *Depends on:* nothing. *Riskiest unknown:* none — this is the safe
   foundation, deliberately first.
-- **SB-42-02 — The synthetic editor canvas.** A **synthetic** render of
-  the live draft landscape — false-color terrain
-  (`minimapTerrainColors`) + geometric object markers, **no imported
-  data required** (the maintainer's pivot, §7.0); pointer→tile via the
-  Phase 5 projection; terrain-paint and height brushes with the
-  `adjustMapHeight` slope clamp; undo/redo ring. *Exit:* with **zero
-  imported assets**, edit a blank map's terrain and heights and see the
-  synthetic scene update; a CI test asserts a stroke writes the
-  expected bytes. *(The authentic sprite preview, for players who have
-  imported data, is an optional later enhancement — the tool's default
-  is asset-free.)*
+- **SB-42-02 — The editor canvas (authentic render).** Mount the
+  **production** `landscape-scene` over the live draft landscape — the
+  real decoded tiles, pixel-identical to the game, import-gated like
+  playing (§7.0); pointer→tile via the Phase 5 projection; terrain-paint
+  and height brushes with the `adjustMapHeight` slope clamp; undo/redo
+  ring; recompose only the affected triangles per stroke. *Exit:* with
+  imported `SPAU.PA`, edit a blank map's terrain and heights and see the
+  authentic WebGL2 scene update identically to the game; a CI test
+  (asset-free, on the engine layer) asserts a stroke writes the
+  expected bytes.
 - **SB-42-03 — Objects, minerals, starts.** Object/mineral palette with
   `mapSpaceFromObject` legality, cluster brushes, and the per-player
   castle-start tool running live `canBuildCastle`. *Exit:* place all
@@ -646,16 +652,17 @@ work (42-02/03/04) once the format exists.
 ## 9. Open questions & risks
 
 - **[RESOLVED 2026-06-13] The asset-boundary question.** The original
-  draft flagged this as the gating unknown: is a shared map clean, or
-  does it need a Phase-31-style written rights review? The maintainer's
-  directive resolves it *by construction* (§7.0): the builder and
-  gallery are asset-free synthetic tools needing no game data at all,
-  and original assets are required only to play — exactly today's rule.
-  A map of integer terrain/object indices, rendered false-color, is
-  categorically unlike the converted-sprite payloads the boundary
-  forbids. *Verdict:* accept as engineering policy via the SB-42-01
-  addendum to `asset-and-legal-boundary.md` and the synthetic/authentic
-  split stop-signal. No written rights gate.
+  draft flagged this as the gating unknown. The maintainer's decision
+  settles it: the editor renders the **real tiles** (looks exactly like
+  the game) and is **import-gated like playing** — it requires the
+  player's own `SPAU.PA` and ships no original art. A *map* is integer
+  terrain/object indices (no sprite bytes), so a shared map is clean
+  user-authored data, and the service carries only those bytes + a
+  sprite-free thumbnail. *Verdict:* accept as engineering policy via
+  the SB-42-01 addendum to `asset-and-legal-boundary.md`. "Baking the
+  tiles in" so the builder needs no import is **Phase 31** (written
+  rights permission, currently verbal-only) — the builder inherits it
+  automatically when that lands; it is not a builder-specific gate.
 - **Determinism of hand-authored terrain.** *Risk:* an authored
   landscape that the generator would never produce (sheer cliffs,
   isolated islands, water/land patterns) could expose untested
