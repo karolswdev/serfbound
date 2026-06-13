@@ -183,6 +183,67 @@ h1 {
   padding-top: var(--sb-space-4);
 }
 
+/* The map editor surface (SB-42-05): a tool bar and status readout below
+   the shared canvas; shown only while the editor is open. */
+.editor-surface[hidden] {
+  display: none;
+}
+
+.editor-surface {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--sb-space-2);
+  padding-top: var(--sb-space-3);
+}
+
+.editor-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-space-3);
+}
+
+.editor-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2);
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2);
+}
+
+.editor-tool {
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-sm);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  color: var(--sb-steel);
+  background: var(--sb-steel-dim);
+  font-size: var(--sb-text-sm);
+  cursor: pointer;
+}
+
+.editor-tool[aria-pressed="true"] {
+  color: var(--sb-ink);
+  background: var(--sb-steel);
+  border-color: var(--sb-steel);
+  font-weight: var(--sb-weight-bold);
+}
+
+.editor-status__ok {
+  color: var(--sb-steel);
+  font-size: var(--sb-text-sm);
+}
+
+.editor-status__warn {
+  color: var(--sb-gold);
+  font-size: var(--sb-text-sm);
+}
+
 [data-serfbound-chrome="pre-import"] .welcome {
   display: block;
 }

@@ -57,6 +57,7 @@ import {
   type SerfboundCommandResult,
   type SerfboundLocalGame,
   type SerfboundLocalGameDataSource,
+  type SerfboundCustomMap,
   type SerfboundLocalGameSnapshot,
   type SerfboundLocalGameStartResult,
 } from "@serfbound/engine";
@@ -86,6 +87,7 @@ import {
   type LandscapeRenderAssets,
   type MapScroll,
 } from "./landscape-scene.js";
+import { MapEditorScreen } from "./editor-screen.js";
 import {
   buildDecodedRenderAssets,
   createFirstRenderLayerScene,
@@ -141,6 +143,7 @@ export * from "./profile-store.js";
 export * from "./identity-client.js";
 export * from "./mailbox-client.js";
 export * from "./maps-client.js";
+export * from "./editor-screen.js";
 export * from "./map-thumbnail.js";
 export * from "./online-config.js";
 export * from "./online-surface.js";
@@ -611,6 +614,17 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
               <p class="welcome__hint">Don't own the game? The free demo's SPAU.PA works too.</p>
             </div>
           </div>
+          <div class="editor-surface" data-testid="editor-surface" hidden>
+            <div class="editor-bar">
+              <div class="editor-tools" data-testid="editor-tools" role="toolbar" aria-label="Map tools"></div>
+              <div class="editor-actions">
+                <button class="secondary-action" data-testid="editor-validate-button" type="button">Validate</button>
+                <button class="primary-action" data-testid="editor-play-button" type="button">Play this map</button>
+                <button class="secondary-action" data-testid="editor-exit-button" type="button">Back</button>
+              </div>
+            </div>
+            <div class="editor-status" data-testid="editor-status"></div>
+          </div>
         </div>
       </section>
       <aside class="status-panel" aria-label="Serfbound status">
@@ -669,6 +683,12 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
               type="button"
               disabled
             >Start game</button>
+            <button
+              class="secondary-action"
+              data-testid="open-editor-button"
+              type="button"
+              disabled
+            >Build a map</button>
           </div>
         </section>
         <section class="panel-group panel-group--ledger">
@@ -968,11 +988,13 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   // state changes.
   const syncChromeState = () => {
     const chrome =
-      root.dataset.serfboundGameState === "running"
-        ? "running"
-        : root.dataset.serfboundDataState === "supported"
-          ? "title"
-          : "pre-import";
+      root.dataset.serfboundEditor === "open"
+        ? "editor"
+        : root.dataset.serfboundGameState === "running"
+          ? "running"
+          : root.dataset.serfboundDataState === "supported"
+            ? "title"
+            : "pre-import";
     if (root.dataset.serfboundChrome !== chrome) {
       root.dataset.serfboundChrome = chrome;
       // The game must be ON SCREEN when it starts: on the stacked
@@ -989,7 +1011,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   syncChromeState();
   new MutationObserver(syncChromeState).observe(root, {
     attributes: true,
-    attributeFilter: ["data-serfbound-game-state", "data-serfbound-data-state"],
+    attributeFilter: ["data-serfbound-game-state", "data-serfbound-data-state", "data-serfbound-editor"],
   });
 
   const canvas = root.querySelector<HTMLCanvasElement>("[data-testid='terrain-preview']");
@@ -1284,6 +1306,11 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   };
 
   const renderCurrentScene = () => {
+    // The map editor owns the shared canvas while open (SB-42-05); the
+    // game's scene loop must not overwrite the editor's render.
+    if (root.dataset.serfboundEditor === "open") {
+      return;
+    }
     syncOnboarding();
     playWorkSounds();
     const panelButtons = computePanelButtons();
@@ -2252,6 +2279,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   };
   let panRemainder = { x: 0, y: 0 };
   canvas.addEventListener("pointerdown", (event) => {
+    // The map editor owns the canvas while open (SB-42-05).
+    if (root.dataset.serfboundEditor === "open") {
+      return;
+    }
     audioService.unlock();
     if (audioService.musicState === "ready") {
       audioService.playMusic();
@@ -2275,6 +2306,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     }
   });
   canvas.addEventListener("pointermove", (event) => {
+    if (root.dataset.serfboundEditor === "open") {
+      return;
+    }
     if (currentLandscapeAssets === undefined) {
       gestureTracker.move(event.pointerId, event.clientX, event.clientY);
       return;
@@ -2419,6 +2453,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     playerCount?: number;
     playerSupplies?: number[];
     multiplayerLocalPlayer?: number;
+    customMap?: SerfboundCustomMap;
   }) => {
     const { multiplayerLocalPlayer, ...gameOptions } = options;
     const result =
@@ -2464,6 +2499,68 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     syncLocalGameSaveControls(root, currentLocalGameSnapshot, currentSavedLocalGame, currentImportedDataSource);
   };
   startGameNowRef = startGameNow;
+
+  // The map editor (SB-42-05): "Build a map" opens the editor over the
+  // shared canvas; it renders the authentic tiles from imported data,
+  // paints via the tool palette, and hands a custom-map record back to
+  // the local-game start flow to play.
+  let currentEditor: MapEditorScreen | undefined;
+  const editorSurface = root.querySelector<HTMLElement>("[data-testid='editor-surface']");
+  const closeEditor = () => {
+    currentEditor?.dispose();
+    currentEditor = undefined;
+    delete root.dataset.serfboundEditor;
+    if (editorSurface !== null) {
+      editorSurface.hidden = true;
+    }
+    renderCurrentScene();
+  };
+  root
+    .querySelector<HTMLButtonElement>("[data-testid='open-editor-button']")
+    ?.addEventListener("click", () => {
+      if (currentDecodedAssets === undefined || currentEditor !== undefined) {
+        return;
+      }
+      const editorCanvas = root.querySelector<HTMLCanvasElement>("[data-testid='terrain-preview']");
+      const paletteHost = root.querySelector<HTMLElement>("[data-testid='editor-tools']");
+      const statusHost = root.querySelector<HTMLElement>("[data-testid='editor-status']");
+      if (editorCanvas === null || paletteHost === null || statusHost === null) {
+        return;
+      }
+
+      root.dataset.serfboundEditor = "open";
+      if (editorSurface !== null) {
+        editorSurface.hidden = false;
+      }
+      currentEditor = new MapEditorScreen({
+        canvas: editorCanvas,
+        paletteHost,
+        statusHost,
+        decodedAssets: currentDecodedAssets,
+        authorKeyId: "local",
+        authorName: currentProfile.name,
+        nowIso: () => new Date().toISOString(),
+        onRender: ({ spriteCount, mode }) => {
+          root.dataset.serfboundSceneMode = mode;
+          root.dataset.serfboundSpriteCount = String(spriteCount);
+        },
+        onPlay: (map) => {
+          closeEditor();
+          startGameNow({ customMap: map });
+        },
+        onExit: () => closeEditor(),
+      });
+    });
+  root
+    .querySelector<HTMLButtonElement>("[data-testid='editor-play-button']")
+    ?.addEventListener("click", () => currentEditor?.play(`${currentProfile.name}'s map`));
+  root
+    .querySelector<HTMLButtonElement>("[data-testid='editor-validate-button']")
+    ?.addEventListener("click", () => currentEditor?.validate());
+  root
+    .querySelector<HTMLButtonElement>("[data-testid='editor-exit-button']")
+    ?.addEventListener("click", () => closeEditor());
+
   // Loopback multiplayer (SB-22-04): host/join a two-player lockstep
   // game between two tabs of this browser over a BroadcastChannel —
   // zero servers, original data never crossing the wire.
@@ -4467,6 +4564,12 @@ function syncGameReadiness(root: HTMLElement): void {
   const startButton = getStartGameButton(root);
   startButton.textContent = "Start game";
   startButton.disabled = !hasImportedData;
+  // The map editor's render is import-gated (authentic tiles), so the
+  // entry only enables once data is imported (SB-42-05).
+  const editorButton = root.querySelector<HTMLButtonElement>("[data-testid='open-editor-button']");
+  if (editorButton !== null) {
+    editorButton.disabled = !hasImportedData;
+  }
 }
 
 function localGameDataSourceFromCatalog(

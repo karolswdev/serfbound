@@ -1,12 +1,15 @@
 # Phase 42 — Map Builder (local)
 
-**Last updated:** 2026-06-13 (SB-42-04 done: a live playability verdict
-(starts castle-placeable, buildable ratio, named errors) and "play
-this map" — an authored custom map runs through startSerfboundLocalGame
-and founds a castle. With SB-42-01..04 done, every engineering story in
-the phase is in the build; only the device gate (SB-42-05) remains.
-Earlier: the format, the brush model, the placement tools).
-**Status:** at the device gate.
+**Last updated:** 2026-06-13 (SB-42-05 done: the editor is **on
+screen** — "Build a map" opens it from the title, the authentic
+landscape renders, the tool palette paints terrain/heights/objects/
+minerals/starts, validate reports a verdict, and "Play this map" starts
+a local game on the authored map. Browser-gated in real chromium plus a
+CI reducer/palette gate. The builder the player was promised now
+exists. Earlier: the format, brush model, placement tools, validation
+and play seam).
+**Status:** playable surface shipped; the on-device maintainer gate +
+save-to-library/publish are the next slice.
 
 ## Goal
 
@@ -71,9 +74,16 @@ false-color so the service touches no original art.)
   founded castle via the customMap seam. (SB-42-04 — the validity
   strip UI rides the device gate; the verdict and play seam are
   CI-held.)
+- [x] The editor on screen: **Build a map** opens the editor from the
+  title screen, the authentic landscape renders, the tool palette
+  paints terrain/heights/objects/minerals/starts, validate reports a
+  verdict, and **Play this map** starts a local game on the authored
+  map. (SB-42-05 — the reducer + palette + play seam are CI-held; the
+  reachable surface + authentic render + paint + play are browser-gated
+  in real chromium.)
 - [ ] On-device: the maintainer authors a real map on a real device
-  (touch + desktop), plays it, saves and reloads it. (SB-42-05, the
-  device gate)
+  (touch + desktop), and saving to the on-device library + publishing
+  to the gallery is the next slice. (maintainer device gate)
 
 ## Story status
 
@@ -83,7 +93,7 @@ false-color so the service touches no original art.)
 | SB-42-02 | The editor canvas (authentic render) | done | story-02-the-editor-canvas.md | evidence-story-02.md |
 | SB-42-03 | Objects, minerals, starts | done | story-03-objects-minerals-starts.md | evidence-story-03.md |
 | SB-42-04 | Validation and play-local | done | story-04-validation-and-play-local.md | evidence-story-04.md |
-| SB-42-05 | The device gate | backlog | — | — |
+| SB-42-05 | The editor on screen | done | story-05-the-editor-on-screen.md | evidence-story-05.md |
 
 ## Boundaries
 
