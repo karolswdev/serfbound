@@ -234,6 +234,35 @@ h1 {
   font-weight: var(--sb-weight-bold);
 }
 
+.editor-size {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sb-space-2);
+}
+
+.editor-size__label {
+  color: var(--sb-steel);
+  font-size: var(--sb-text-sm);
+}
+
+.editor-size__button {
+  min-width: 2em;
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-sm);
+  padding: var(--sb-space-2);
+  color: var(--sb-steel);
+  background: var(--sb-steel-dim);
+  font-size: var(--sb-text-sm);
+  cursor: pointer;
+}
+
+.editor-size__button[aria-pressed="true"] {
+  color: var(--sb-ink);
+  background: var(--sb-steel);
+  border-color: var(--sb-steel);
+  font-weight: var(--sb-weight-bold);
+}
+
 .editor-status__ok {
   color: var(--sb-steel);
   font-size: var(--sb-text-sm);

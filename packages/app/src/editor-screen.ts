@@ -31,6 +31,7 @@ import {
 export type EditorTool =
   | { readonly kind: "terrain"; readonly id: string; readonly label: string; readonly terrain: number; readonly radius: number }
   | { readonly kind: "height"; readonly id: string; readonly label: string; readonly delta: number; readonly radius: number }
+  | { readonly kind: "flatten"; readonly id: string; readonly label: string; readonly base: number; readonly radius: number }
   | { readonly kind: "object"; readonly id: string; readonly label: string; readonly object: number }
   | { readonly kind: "erase-object"; readonly id: string; readonly label: string }
   | { readonly kind: "mineral"; readonly id: string; readonly label: string; readonly mineral: number; readonly amount: number }
@@ -49,6 +50,7 @@ export const editorTools: readonly EditorTool[] = [
   { kind: "terrain", id: "snow", label: "Snow", terrain: mapTerrain.snow0, radius: 1 },
   { kind: "height", id: "raise", label: "Raise", delta: 8, radius: 1 },
   { kind: "height", id: "lower", label: "Lower", delta: -8, radius: 1 },
+  { kind: "flatten", id: "flatten", label: "Flatten", base: 0, radius: 1 },
   { kind: "object", id: "tree", label: "Tree", object: mapObject.tree0 },
   { kind: "object", id: "pine", label: "Pine", object: mapObject.pine0 },
   { kind: "object", id: "stone", label: "Stone", object: mapObject.stone0 },
@@ -75,16 +77,25 @@ export function applyEditorTool(
   editor: MapEditor,
   tool: EditorTool,
   position: number,
+  radiusOverride?: number,
 ): { readonly ok: boolean } {
+  // Terrain/height/flatten honour the active brush size when given.
+  const radiusFor = (toolRadius: number) =>
+    radiusOverride === undefined ? toolRadius : Math.max(0, Math.floor(radiusOverride));
   switch (tool.kind) {
     case "terrain":
       editor.beginStroke();
-      editor.paintTerrain(position, tool.terrain, tool.radius);
+      editor.paintTerrain(position, tool.terrain, radiusFor(tool.radius));
       editor.endStroke();
       return { ok: true };
     case "height":
       editor.beginStroke();
-      editor.raiseHeight(position, tool.delta, tool.radius);
+      editor.raiseHeight(position, tool.delta, radiusFor(tool.radius));
+      editor.endStroke();
+      return { ok: true };
+    case "flatten":
+      editor.beginStroke();
+      editor.setHeight(position, tool.base, radiusFor(tool.radius));
       editor.endStroke();
       return { ok: true };
     case "object":
@@ -146,6 +157,7 @@ export class MapEditorScreen {
   readonly #options: MapEditorScreenOptions;
   #editor: MapEditor;
   #activeToolId: string;
+  #brushRadius = 1;
   #scroll: MapScroll = { column: 0, row: 0 };
   #disposed = false;
   #pointerHandler: ((event: PointerEvent) => void) | undefined;
@@ -176,9 +188,19 @@ export class MapEditorScreen {
     this.#syncPaletteSelection();
   }
 
+  get brushRadius(): number {
+    return this.#brushRadius;
+  }
+
+  setBrushRadius(radius: number): void {
+    this.#brushRadius = Math.min(3, Math.max(1, Math.floor(radius)));
+    this.#syncPaletteSelection();
+  }
+
   // Apply the active tool at a map position (the pointer entry point).
+  // Brush tools (terrain/height/flatten) paint over the active size.
   applyAt(position: number): void {
-    applyEditorTool(this.#editor, this.activeTool, position);
+    applyEditorTool(this.#editor, this.activeTool, position, this.#brushRadius);
     this.render();
     this.#renderStatus();
   }
@@ -226,9 +248,10 @@ export class MapEditorScreen {
 
   #buildPalette(): void {
     const host = this.#options.paletteHost;
+    const doc = host.ownerDocument;
     host.replaceChildren();
     for (const tool of editorTools) {
-      const button = host.ownerDocument.createElement("button");
+      const button = doc.createElement("button");
       button.type = "button";
       button.className = "editor-tool";
       button.dataset["toolId"] = tool.id;
@@ -237,6 +260,27 @@ export class MapEditorScreen {
       button.addEventListener("click", () => this.setActiveTool(tool.id));
       host.appendChild(button);
     }
+
+    // The brush-size control: 1/2/3, applied to terrain/height/flatten.
+    const sizeGroup = doc.createElement("span");
+    sizeGroup.className = "editor-size";
+    sizeGroup.dataset["testid"] = "editor-size";
+    const sizeLabel = doc.createElement("span");
+    sizeLabel.className = "editor-size__label";
+    sizeLabel.textContent = "Brush";
+    sizeGroup.appendChild(sizeLabel);
+    for (const radius of [1, 2, 3]) {
+      const button = doc.createElement("button");
+      button.type = "button";
+      button.className = "editor-size__button";
+      button.dataset["brushRadius"] = String(radius);
+      button.dataset["testid"] = `editor-brush-${radius}`;
+      button.textContent = String(radius);
+      button.addEventListener("click", () => this.setBrushRadius(radius));
+      sizeGroup.appendChild(button);
+    }
+    host.appendChild(sizeGroup);
+
     this.#syncPaletteSelection();
   }
 
@@ -245,6 +289,12 @@ export class MapEditorScreen {
       button.setAttribute(
         "aria-pressed",
         button.dataset["toolId"] === this.#activeToolId ? "true" : "false",
+      );
+    }
+    for (const button of this.#options.paletteHost.querySelectorAll<HTMLButtonElement>(".editor-size__button")) {
+      button.setAttribute(
+        "aria-pressed",
+        button.dataset["brushRadius"] === String(this.#brushRadius) ? "true" : "false",
       );
     }
   }

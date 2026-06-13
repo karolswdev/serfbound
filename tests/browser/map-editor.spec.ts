@@ -58,6 +58,16 @@ test("the map editor opens, paints the authentic landscape, and plays", async ({
   await page.getByTestId("editor-validate-button").click();
   await expect(page.getByTestId("editor-verdict")).toBeVisible();
 
+  // Flatten with a wider brush (SB-42-06): the size control and the
+  // flatten tool engage, and a click repaints the area.
+  await expect(page.getByTestId("editor-size")).toBeVisible();
+  await page.getByTestId("editor-brush-3").click();
+  await expect(page.getByTestId("editor-brush-3")).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId("editor-tool-flatten").click();
+  await expect(page.getByTestId("editor-tool-flatten")).toHaveAttribute("aria-pressed", "true");
+  await canvas.click({ position: { x: box.width / 2, y: box.height / 2 } });
+  await expect(page.getByTestId("editor-verdict")).toBeVisible();
+
   // Exit returns to the title; the editor surface hides.
   await page.getByTestId("editor-exit-button").click();
   await expect(page.locator("#app")).toHaveAttribute("data-serfbound-chrome", "title");

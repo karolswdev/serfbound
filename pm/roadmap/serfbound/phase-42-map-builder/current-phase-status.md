@@ -94,6 +94,8 @@ false-color so the service touches no original art.)
 | SB-42-03 | Objects, minerals, starts | done | story-03-objects-minerals-starts.md | evidence-story-03.md |
 | SB-42-04 | Validation and play-local | done | story-04-validation-and-play-local.md | evidence-story-04.md |
 | SB-42-05 | The editor on screen | done | story-05-the-editor-on-screen.md | evidence-story-05.md |
+| SB-42-06 | Flatten and brush size | done | story-06-flatten-and-brush-size.md | evidence-story-06.md |
+| SB-42-07 | Copy and paste a region | backlog | — | — |
 
 ## Boundaries
 
