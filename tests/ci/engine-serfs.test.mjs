@@ -2468,3 +2468,58 @@ test("a mutual assault thins both columns before the walls (SB-39-01)", () => {
     `the columns thinned on open ground (${aliveWest} + ${aliveEast} of 6 survive)`,
   );
 });
+
+test("the boatbuilder builds boats from planks (SB-40-01)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+
+  const boatbuilder = world.buildBuilding(
+    world.geometry.positionAdd(castleFlag.position, 3, -1),
+    3,
+    0,
+  );
+  assert.notEqual(boatbuilder, null, "boatbuilder builds");
+  boatbuilder.isDone = true;
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  const inventory = world.inventoryForPlayer(0);
+  const engine = new SerfboundSerfEngine(world);
+  const transporter = engine.spawnGenericSerf(0, 0);
+  engine.assignTransporter(transporter, castleFlag.index, "Right", 0);
+
+  // With no planks delivered, nothing is built.
+  let boatsMade = 0;
+  engine.onProduct = (type, product) => {
+    if (type === 3 && product === 8) {
+      boatsMade += 1;
+    }
+  };
+  let tick = 0;
+  for (; tick < 60000; tick += 16) {
+    engine.update(tick);
+  }
+  assert.equal(boatsMade, 0, "no planks, no boats");
+
+  // Feed it planks: boats flow, one per plank, and the transporter
+  // carries them home.
+  boatbuilder.deliveredResources[7] = 3; // planks
+  const boatsBefore = inventory.resources[8] ?? 0;
+  for (; tick < 400000 && (inventory.resources[8] ?? 0) <= boatsBefore; tick += 16) {
+    engine.update(tick);
+  }
+
+  assert.equal(boatsMade, 3, "three planks made three boats");
+  assert.equal(
+    (inventory.resources[8] ?? 0) > boatsBefore,
+    true,
+    "the boats reached the inventory",
+  );
+  assert.equal(boatbuilder.deliveredResources[7] ?? 0, 0, "the planks were consumed");
+});

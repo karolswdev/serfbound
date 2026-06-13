@@ -69,7 +69,7 @@ export type SerfStateValue = (typeof serfState)[keyof typeof serfState];
 // lumberjack, stonecutter, forester, sawmill, fisher, farm, mill, baker,
 // pig farm, butcher, the four mines, both smelters, toolmaker, weaponsmith
 const workedBuildingTypes = new Set<number>([
-  2, 4, 9, 17, 1, 12, 15, 16, 14, 13, 5, 6, 7, 8, 18, 23, 19, 20,
+  2, 4, 9, 17, 1, 12, 15, 16, 14, 13, 5, 6, 7, 8, 18, 23, 19, 20, 3,
 ]);
 
 // Demand routing: which completed buildings consume a product directly.
@@ -2361,6 +2361,11 @@ export class SerfboundSerfEngine {
         break;
       case buildingType.sawmill:
         this.#workConvert(serf, building, 350, resourceType.lumber, resourceType.plank);
+        break;
+      case buildingType.boatbuilder:
+        // HandleSerfBuildingBoat (SB-40-01): one plank becomes one
+        // boat — the buildable no-op is dead.
+        this.#workConvert(serf, building, 500, resourceType.plank, resourceType.boat);
         break;
       case buildingType.farm:
         // The farmer's outdoor trip (SB-38-01): scythe the nearest

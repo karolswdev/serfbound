@@ -30,7 +30,7 @@ plank distribution already reserves the boatbuilder's share
 
 ## Exit criteria (evidence required)
 
-- [ ] The boatbuilder works: planks in, the reference build cycle,
+- [x] The boatbuilder works: planks in, the reference build cycle,
   boats out — the no-op building is dead. (SB-40-01)
 - [ ] A road over water is a water path: it demands a boat and a
   sailor, and cargo crosses by boat at reference pacing; the
@@ -43,6 +43,6 @@ plank distribution already reserves the boatbuilder's share
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-40-01 | The boatbuilder builds boats | backlog | — | — |
+| SB-40-01 | The boatbuilder builds boats | done | story-01-the-boatbuilder-builds-boats.md | evidence-story-01.md |
 | SB-40-02 | Sailors on the water path | backlog | — | — |
 | SB-40-03 | The device gate | backlog | — | — |
