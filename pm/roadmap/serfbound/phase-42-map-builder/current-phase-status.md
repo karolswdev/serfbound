@@ -1,9 +1,11 @@
 # Phase 42 — Map Builder (local)
 
-**Last updated:** 2026-06-13 (scaffolded from the map-builder design
-canon; see
-pm/roadmap/serfbound/adoption/map-builder-and-community-maps-decision.md).
-**Status:** scaffolded.
+**Last updated:** 2026-06-13 (SB-42-01 done: the serfbound.custom-map
+v1 format round-trips a landscape byte-identically and plays to the
+same checksum, malformed payloads reject not clamp, the customMap seam
+feeds the local game, and the asset-and-legal-boundary addendum
+landed. The foundation the editor builds on).
+**Status:** in progress.
 
 ## Goal
 
@@ -50,7 +52,7 @@ false-color so the service touches no original art.)
 
 ## Exit criteria (evidence required)
 
-- [ ] The `serfbound.custom-map` v1 format round-trips: generate →
+- [x] The `serfbound.custom-map` v1 format round-trips: generate →
   encode → decode → byte-identical arrays and equal
   `computeGameChecksum`; malformed payloads reject (not clamp); the
   asset-and-legal-boundary addendum lands. (SB-42-01)
@@ -72,7 +74,7 @@ false-color so the service touches no original art.)
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-42-01 | The format and the boundary | backlog | — | — |
+| SB-42-01 | The format and the boundary | done | story-01-the-format-and-the-boundary.md | evidence-story-01.md |
 | SB-42-02 | The editor canvas (authentic render) | backlog | — | — |
 | SB-42-03 | Objects, minerals, starts | backlog | — | — |
 | SB-42-04 | Validation and play-local | backlog | — | — |

@@ -190,6 +190,49 @@ Stop and update this boundary before proceeding if any story proposes:
 - storing imported original data outside browser-local storage without a new
   explicit user/rights/privacy decision.
 
+## Addendum — User-Authored Custom Maps (SB-42-01, 2026-06-13)
+
+The map builder (Phases 42–43) introduces a new category of data:
+**user-authored custom maps.** This addendum records where they sit
+relative to the boundary.
+
+- **A custom map is user-authored data, not an original asset.** Its
+  payload is the six `ClassicMapLandscape` arrays — `heights`,
+  `typesUp`, `typesDown`, `objects`, `minerals`, `resourceAmounts` —
+  i.e. integer *enumeration indices* describing the author's
+  arrangement of terrain, objects, and minerals. The integer `7` means
+  "this triangle is grass3"; it is **not** the grass sprite. A map
+  contains no sprite, palette, audio, or font bytes. It belongs to the
+  allowed "data written for Serfbound" category, not the forbidden
+  original-asset categories.
+- **The format physically cannot carry original assets.** The
+  `serfbound.custom-map` format (`packages/engine/src/custom-map.ts`)
+  is base64 of exactly `6 × tileCount` enum-range bytes plus text
+  metadata; `decodeCustomMapLandscape` rejects any other length or
+  out-of-range byte and verifies a content hash — **reject, never
+  clamp.** There is no blob field. This is the same "no field for it"
+  guarantee the mailbox/session wire already holds.
+- **The editor renders the real tiles, import-gated like playing.** The
+  builder reuses the production sprite renderer over the player's own
+  imported `SPAU.PA`, rejecting with `missing-imported-data` when
+  absent — exactly as a generated map does. Serfbound ships **no
+  original art** for the builder.
+- **The maps service touches no original art.** Gallery thumbnails are
+  sprite-free false-color (`minimapTerrainColors`), never decoded
+  sprites; a shared map carries only its enum bytes + text. Original
+  game data never reaches `api.serfbound.com`.
+- **"Baking the tiles in" stays gated.** Shipping or hosting the
+  converted tile data so the builder (and the whole game) need no
+  import is the Phase 31 "licensed asset delivery" work, hard-gated on
+  *written* rights-holder permission. The map builder does not change
+  that gate; it inherits import-free use automatically when Phase 31
+  lands.
+
+**Stop signal (extends the list above):** stop and update this boundary
+before routing any *decoded original sprite* into the maps service, a
+gallery thumbnail, or any map-sharing payload — the line is "real tiles
+on the player's own client only, never on the wire."
+
 ## Sources Consulted
 
 - `README.md` - current `freeserf.net` data-file requirement.

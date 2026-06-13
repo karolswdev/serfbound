@@ -824,3 +824,4 @@ export * from "./checksum.js";
 export * from "./lockstep.js";
 export * from "./session-protocol.js";
 export * from "./correspondence.js";
+export * from "./custom-map.js";

@@ -2,6 +2,7 @@ import { FreeserfRandom, uint16 } from "./index.js";
 import { SerfboundGameWorld } from "./game-world.js";
 import { SerfboundSerfEngine } from "./serfs.js";
 import { generateClassicMap, type ClassicMapLandscape } from "./map-generator.js";
+import { decodeCustomMapLandscape, type SerfboundCustomMap } from "./custom-map.js";
 import { SerfboundGameState, type SerfboundGameSnapshot } from "./simulation.js";
 import { isSerfboundWorldAction, replayWorldActions } from "./world-commands.js";
 
@@ -22,6 +23,10 @@ export type SerfboundLocalGameSettings = {
   // Mission play: total player slots and per-player supplies presets.
   readonly playerCount?: number;
   readonly playerSupplies?: readonly number[];
+  // A hand-authored custom map (SB-42-01): when present its decoded
+  // landscape supersedes seed generation. The world plays it through
+  // the same pipeline a generated map uses.
+  readonly customMap?: SerfboundCustomMap;
 };
 
 export type SerfboundLocalGameStartOptions = {
@@ -280,6 +285,12 @@ export function restoreSerfboundLocalGame(
 export function landscapeForLocalGameSettings(
   settings: SerfboundLocalGameSettings,
 ): ClassicMapLandscape {
+  // A custom map's decoded landscape supersedes seed generation
+  // (SB-42-01).
+  if (settings.customMap !== undefined) {
+    return decodeCustomMapLandscape(settings.customMap);
+  }
+
   const [seed0, seed1, seed2] = FreeserfRandom.fromStringSeed(settings.seedString).state;
   return generateClassicMap(settings.mapSize, [seed0, seed1, seed2]);
 }
