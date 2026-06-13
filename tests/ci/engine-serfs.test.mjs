@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  FreeserfRandom,
   SerfboundGameWorld,
   SerfboundSerfEngine,
   counterFromAnimation,
@@ -2384,5 +2385,86 @@ test("the conquest paths drive castle score, and morale refreshes every 256 tick
     world.players[0].knightMorale >= 1024 + 1024 * 5 - 1,
     true,
     "the castle-score lift is in the refreshed morale",
+  );
+});
+
+function placeMarchingKnight(engine, world, player, position, target, rank, index) {
+  const knight = {
+    index, player, state: serfState.knightMarching, position,
+    tick: 0, animation: 0, counter: 0, walkingDirection: 0, walkingDestination: 0,
+    walkingWaitCounter: 0, slopeLength: 0, nextState: 0, roadFlagIndex: 0, roadDirection: null,
+    carriedResource: -1, carriedDestination: 0, buildTargetIndex: 0, workBuildingIndex: 0,
+    workPhase: position, workCounter: 0, workTargetPosition: target, isKnight: true,
+    garrisonTargetIndex: 0, geoTargetFlagIndex: 0, knightRank: rank, attackTargetIndex: 1,
+    fightOpponentIndex: 0, fightMove: 0, fightWon: false,
+  };
+  engine.serfs.set(index, knight);
+  engine.serfIndexes[position] = index;
+  return knight;
+}
+
+test("two enemy knights clash on open ground; one survives and marches on (SB-39-01)", () => {
+  const { world } = flatTwoPlayerWorld();
+  const engine = new SerfboundSerfEngine(world, FreeserfRandom.fromWord(0x1234));
+
+  // Two knights of opposing players, one tile apart, each marching
+  // toward the other's side.
+  const mid = world.geometry.position(25, 20);
+  const east = world.geometry.position(26, 20);
+  const a = placeMarchingKnight(engine, world, 0, mid, east, 2, 50001);
+  const b = placeMarchingKnight(engine, world, 1, east, mid, 0, 50002);
+
+  let resolved = false;
+  for (let tick = 16; tick < 40000 && !resolved; tick += 16) {
+    engine.update(tick);
+    const aAlive = engine.serfs.has(a.index) && a.state !== serfState.dead;
+    const bAlive = engine.serfs.has(b.index) && b.state !== serfState.dead;
+    const fighting =
+      a.state === serfState.knightFreeFighting || b.state === serfState.knightFreeFighting;
+    if (!fighting && (!aAlive || !bAlive)) {
+      resolved = true;
+    }
+  }
+
+  assert.equal(resolved, true, "the free fight resolved");
+  const aDead = !engine.serfs.has(a.index) || a.state === serfState.dead;
+  const bDead = !engine.serfs.has(b.index) || b.state === serfState.dead;
+  assert.equal(aDead !== bDead, true, "exactly one knight fell");
+  // The rank-2 veteran (a) should beat the rank-0 rookie (b) on equal ground.
+  assert.equal(bDead, true, "the rookie fell to the veteran");
+  assert.equal(
+    a.state === serfState.knightMarching || a.state === serfState.dead,
+    true,
+    "the survivor resumed his march",
+  );
+});
+
+test("a mutual assault thins both columns before the walls (SB-39-01)", () => {
+  const { world } = flatTwoPlayerWorld();
+  const engine = new SerfboundSerfEngine(world, FreeserfRandom.fromWord(0x77));
+
+  // Two columns of three, marching head-on through the same corridor.
+  let idx = 60000;
+  const west = [];
+  const east = [];
+  for (let i = 0; i < 3; i += 1) {
+    west.push(
+      placeMarchingKnight(engine, world, 0, world.geometry.position(22 + i, 20), world.geometry.position(30, 20), 1, idx++),
+    );
+    east.push(
+      placeMarchingKnight(engine, world, 1, world.geometry.position(28 - i, 20), world.geometry.position(20, 20), 1, idx++),
+    );
+  }
+
+  for (let tick = 16; tick < 200000; tick += 16) {
+    engine.update(tick);
+  }
+
+  const aliveWest = west.filter((k) => engine.serfs.has(k.index) && k.state !== serfState.dead).length;
+  const aliveEast = east.filter((k) => engine.serfs.has(k.index) && k.state !== serfState.dead).length;
+  assert.equal(
+    aliveWest + aliveEast < 6,
+    true,
+    `the columns thinned on open ground (${aliveWest} + ${aliveEast} of 6 survive)`,
   );
 });

@@ -59,6 +59,9 @@ export const serfState = {
   prospecting: 18,
   // EscapeBuilding (SB-38-04): out of the fire, home to the castle.
   escaping: 19,
+  // The free fight (SB-39-01): two marching enemy knights clash on
+  // open ground.
+  knightFreeFighting: 20,
 } as const;
 
 export type SerfStateValue = (typeof serfState)[keyof typeof serfState];
@@ -508,6 +511,9 @@ export class SerfboundSerfEngine {
           break;
         case serfState.knightAttackingVictory:
           this.#handleKnightAttackingVictory(serf, gameTick);
+          break;
+        case serfState.knightFreeFighting:
+          this.#handleKnightFreeFighting(serf, gameTick);
           break;
         case serfState.dead:
           this.#handleDead(serf, gameTick);
@@ -3678,6 +3684,14 @@ export class SerfboundSerfEngine {
     serf.counter -= delta;
 
     while (serf.counter < 0) {
+      // The free fight (SB-39-01): an enemy knight marching onto this
+      // tile or a neighbor stops the march dead — they clash here.
+      const enemy = this.#findFreeFightEnemy(serf);
+      if (enemy !== null) {
+        this.#startFreeFight(serf, enemy, gameTick);
+        return;
+      }
+
       if (serf.position === serf.workTargetPosition) {
         this.#engageBuilding(serf, gameTick);
         return;
@@ -3713,6 +3727,119 @@ export class SerfboundSerfEngine {
         return;
       }
     }
+  }
+
+  // An enemy marching knight on this knight's own tile or a neighbor,
+  // not already in a fight — the trigger for a free fight (SB-39-01).
+  #findFreeFightEnemy(serf: WorldSerf): WorldSerf | null {
+    const candidates = [serf.position];
+    for (const direction of directionOrder) {
+      candidates.push(this.world.move(serf.position, direction));
+    }
+
+    for (const position of candidates) {
+      const other = this.serfAt(position);
+      if (
+        other !== null &&
+        other.isKnight &&
+        other.player !== serf.player &&
+        other.state === serfState.knightMarching &&
+        other.fightOpponentIndex === 0
+      ) {
+        return other;
+      }
+    }
+
+    return null;
+  }
+
+  // Begin a free fight: the lower index drives (deterministic), the
+  // outcome is the reference SetFightOutcome, both knights freeze into
+  // the fight (SB-39-01).
+  #startFreeFight(a: WorldSerf, b: WorldSerf, gameTick: number): void {
+    const driver = a.index < b.index ? a : b;
+    const other = driver === a ? b : a;
+    driver.fightOpponentIndex = other.index;
+    other.fightOpponentIndex = driver.index;
+    this.#setFightOutcome(driver, other);
+    driver.state = serfState.knightFreeFighting;
+    other.state = serfState.knightFreeFighting;
+    driver.tick = gameTick;
+    other.tick = gameTick;
+    driver.counter = 0;
+    other.counter = 0;
+  }
+
+  // The free fight itself (SB-39-01): the driver runs the reference
+  // move/animation sequence — the same tables as the building assault
+  // — and on resolution the loser dies and the winner resumes his
+  // march toward his own target. Only the driver (lower index) steps
+  // the fight; the opponent mirrors.
+  #handleKnightFreeFighting(serf: WorldSerf, gameTick: number): void {
+    const opponent = this.serfs.get(serf.fightOpponentIndex);
+    if (opponent === undefined) {
+      // The other side resolved the fight already, or vanished.
+      if (serf.state === serfState.knightFreeFighting) {
+        this.#resumeMarchOrEngage(serf, gameTick);
+      }
+
+      return;
+    }
+
+    // The lower index drives; the higher waits for it.
+    if (serf.index > opponent.index) {
+      return;
+    }
+
+    const delta = (gameTick - serf.tick) & 0xffff;
+    serf.tick = gameTick;
+    opponent.tick = gameTick;
+    serf.counter -= delta;
+    opponent.counter = serf.counter;
+
+    while (serf.counter < 0) {
+      const move = knightAttackMoves[serf.fightMove]!;
+      if (move < 0) {
+        // serf.fightWon: the driver (the SetFightOutcome attacker) won.
+        const winner = serf.fightWon ? serf : opponent;
+        const loser = serf.fightWon ? opponent : serf;
+        loser.state = serfState.dead;
+        loser.animation = 147 + loser.knightRank;
+        loser.counter = 255;
+        loser.tick = gameTick;
+        loser.fightOpponentIndex = 0;
+        if (this.serfIndexes[loser.position] === loser.index) {
+          this.serfIndexes[loser.position] = 0;
+        }
+
+        winner.fightOpponentIndex = 0;
+        winner.tick = gameTick;
+        this.#resumeMarchOrEngage(winner, gameTick);
+        return;
+      }
+
+      serf.fightMove += 1;
+      const displayMove = serf.fightWon ? move : 4 - move;
+      const animationOffset = (this.random.next() * knightFightAnimMax[displayMove]!) >> 16;
+      const knightAnimation = knightFightAnim[displayMove * 16 + animationOffset]!;
+      serf.animation = 146 + ((knightAnimation >> 4) & 0xf);
+      opponent.animation = 156 + (knightAnimation & 0xf);
+      serf.counter = 72 + (this.random.next() & 0x18);
+      opponent.counter = serf.counter;
+    }
+  }
+
+  // After a free fight, the survivor goes back to what he was doing:
+  // engage the wall if he is on it, else resume the march.
+  #resumeMarchOrEngage(serf: WorldSerf, gameTick: number): void {
+    serf.counter = 0;
+    if (serf.position === serf.workTargetPosition && serf.attackTargetIndex !== 0) {
+      this.#engageBuilding(serf, gameTick);
+      return;
+    }
+
+    serf.state = serfState.knightMarching;
+    serf.workPhase = serf.position;
   }
 
   // Engage the target: the next defender steps out and the fight begins;

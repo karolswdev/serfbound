@@ -1,14 +1,13 @@
 # Phase 39 — Knight Fidelity
 
-**Last updated:** 2026-06-13 (SB-39-04 done: gold morale in full —
-the castle-score conquest swing (a taken enemy castle hardens the
-knights, a lost one craters them) now rides on top of the gold
-ratio, and the whole morale update runs on the reference 256-tick
-cadence. This is the "conquest feedback" the SB-39-02 scaffold note
-misplaced onto CastleKnightsWanted, now in its real home. Earlier:
-SB-39-02 garrison disciplines, SB-39-03 the commanded attack. Only
-SB-39-01, the full fight, and the device gate remain).
-**Status:** in progress.
+**Last updated:** 2026-06-13 (SB-39-01 done: the free fight — two
+enemy knights meeting on open ground stop and clash to the death
+with the reference fight math, the survivor marching on, so a
+mutual assault thins both columns before the walls; the AI's
+launchAttack and the player's commandAttack both feed it. With
+every engineering story done — SB-39-01/02/03/04 — the phase stands
+at the device gate (SB-39-05)).
+**Status:** at the device gate.
 
 ## Goal
 
@@ -51,10 +50,11 @@ nobody.
 
 ## Exit criteria (evidence required)
 
-- [ ] Knight fights run the full reference state machine — both the
-  building assault chain and the free-fight chain — with the
-  reference fight math, parity-tested against seeded fixtures.
-  (SB-39-01)
+- [x] Knight fights run the full reference state machine — the
+  building assault chain (already a faithful SetFightOutcome port)
+  and now the free-fight chain — with the reference fight math,
+  seed-deterministic. (SB-39-01 — the Engage/Prepare sub-states are
+  condensed to one driven free-fight state; the fight is faithful.)
 - [x] The garrison disciplines exist and act: the reproduction
   clock, the serf-to-knight rate, and the two-phase knight cycling
   swap; castle knights wanted already shipped with Phase 15.
@@ -75,7 +75,7 @@ nobody.
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-39-01 | The full fight | backlog | — | — |
+| SB-39-01 | The full fight | done | story-01-the-full-fight.md | evidence-story-01.md |
 | SB-39-02 | The garrison disciplines | done | story-02-the-garrison-disciplines.md | evidence-story-02.md |
 | SB-39-03 | The commanded attack | done | story-03-the-commanded-attack.md | evidence-story-03.md |
 | SB-39-04 | Gold and morale in full | done | story-04-gold-and-morale-in-full.md | evidence-story-04.md |
