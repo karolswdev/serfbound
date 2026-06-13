@@ -1,10 +1,10 @@
 # Phase 43 — Community Maps (sharing)
 
-**Last updated:** 2026-06-13 (SB-43-01 done: the maps service — the
-third zero-dep server on the identity/mailbox template — publishes
-signed maps, serves a gallery, rates and reports (quarantine), and
-honors author-signed deletes, with the boundary held (no field for
-original data, size-capped, per-key quota). The deploy to
+**Last updated:** 2026-06-13 (SB-43-06 done: an opt-in, signed
+play-ping gives maps a times-played stat without breaking the
+serverless/accountless unbreakable — accountless play stays invisible.
+The gallery now carries title, author, thumbnail, rating, downloads,
+AND times-played. Earlier: SB-43-01, the maps service. The deploy to
 api.serfbound.com is SB-43-02, an outward action on the live cluster).
 **Status:** in progress.
 
@@ -67,6 +67,7 @@ template) and never puts original game data on the wire.
 | SB-43-03 | The gallery and library shell | backlog | — | — |
 | SB-43-04 | Custom maps in multiplayer | backlog | — | — |
 | SB-43-05 | Moderation and the device gate | backlog | — | — |
+| SB-43-06 | Play counts (opt-in) | done | story-06-play-counts.md | evidence-story-06.md |
 
 ## Boundaries
 

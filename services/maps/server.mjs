@@ -163,6 +163,7 @@ function galleryView(entry) {
     rating: averageRating(entry),
     ratingCount: Object.keys(entry.ratings ?? {}).length,
     downloads: entry.downloads ?? 0,
+    timesPlayed: entry.timesPlayed ?? 0,
     publishedAtIso: entry.publishedAtIso,
   };
 }
@@ -247,6 +248,7 @@ export const server = createServer(async (request, response) => {
         map: stored,
         publishedAtIso: new Date().toISOString(),
         downloads: 0,
+        timesPlayed: 0,
         ratings: {},
         reports: {},
         quarantined: false,
@@ -313,6 +315,31 @@ export const server = createServer(async (request, response) => {
       entry.ratings[keyId] = stars;
       saveStore(store);
       send(response, 200, { rating: averageRating(entry), ratingCount: Object.keys(entry.ratings).length });
+      return;
+    }
+
+    // POST /maps/:id/played — a signed-in player opting to report a
+    // match they played on this map. Signed (so accountless play stays
+    // invisible — the unbreakable); a popularity signal, not a log.
+    const playedMatch = url.pathname.match(/^\/maps\/([0-9a-f-]{36})\/played$/);
+    if (request.method === "POST" && playedMatch !== null) {
+      const entry = store.maps[playedMatch[1]];
+      if (entry === undefined) {
+        send(response, 404, { error: "not-found" });
+        return;
+      }
+
+      const body = JSON.parse((await readBody(request)) || "{}");
+      const { publicKeyJwk, signedAtIso, signature } = body;
+      const payload = `played|${entry.mapId}|${signedAtIso}`;
+      if (!(await verifySignature(publicKeyJwk, payload, signature))) {
+        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+        return;
+      }
+
+      entry.timesPlayed = (entry.timesPlayed ?? 0) + 1;
+      saveStore(store);
+      send(response, 200, { timesPlayed: entry.timesPlayed });
       return;
     }
 

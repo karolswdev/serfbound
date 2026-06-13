@@ -195,3 +195,37 @@ test("rate once per key, report quarantines, author deletes (SB-43-01)", async (
   });
   assert.equal(authorDel.status, 200, "the author deletes their map");
 });
+
+test("a signed play-ping increments times-played; an unsigned one is refused (SB-43-06)", async () => {
+  const author = await generateIdentityKeys();
+  const map = await authoredMap(author, "POPULAR");
+  const { body } = await publish(author, map);
+  const mapId = body.mapId;
+
+  const player = await generateIdentityKeys();
+  const ping = async (keys, sig) => {
+    const signedAtIso = "2026-06-13T00:00:00.000Z";
+    const signature = sig ?? (await signIdentityPayload(keys, `played|${mapId}|${signedAtIso}`));
+    return fetch(`${serviceUrl}/maps/${mapId}/played`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ publicKeyJwk: keys.publicKeyJwk, signedAtIso, signature }),
+    });
+  };
+
+  const first = await (await ping(player)).json();
+  assert.equal(first.timesPlayed, 1, "the play-ping counted");
+  const second = await (await ping(player)).json();
+  assert.equal(second.timesPlayed, 2, "a second play counts (raw count)");
+
+  // The gallery and fetch views carry it.
+  const gallery = await (await fetch(`${serviceUrl}/maps`)).json();
+  const listed = gallery.maps.find((m) => m.mapId === mapId);
+  assert.equal(listed.timesPlayed, 2, "the gallery shows times played");
+  const fetched = await (await fetch(`${serviceUrl}/maps/${mapId}`)).json();
+  assert.equal(fetched.view.timesPlayed, 2, "the fetch view shows times played");
+
+  // An unsigned ping is refused (accountless play can't be counted).
+  const bad = await ping(player, "AAAA");
+  assert.equal(bad.status, 401, "a bad-signed play-ping is refused");
+});
