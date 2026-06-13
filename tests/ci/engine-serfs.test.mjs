@@ -2065,3 +2065,73 @@ test("tools make professionals: no axe, no lumberjack (SB-38-03)", () => {
   );
   assert.equal(inventory.resources[16], 0, "the builder took the hammer");
 });
+
+test("the garrison breathes: reproduction mints serfs and knights, cycling swaps the watch (SB-39-02)", () => {
+  const { world, castlePosition } = flatWorldWithCastle();
+  const castleFlag = world.flagAt(world.move(castlePosition, "DownRight"));
+  world.players[0].hasCastle = true;
+  const player = world.players[0];
+  const inventory = world.inventoryForPlayer(0);
+
+  // Hold the wanted-promotion loop still so only reproduction mints.
+  player.castleKnightsWanted = 0;
+  inventory.knights = 0;
+
+  const engine = new SerfboundSerfEngine(world);
+  const serfsBefore = inventory.genericSerfs;
+
+  // A maxed serf-to-knight rate wraps the accumulator every spawn:
+  // with swords and shields in stock, the newborn take the sword.
+  player.economy.serfToKnightRate = 65535;
+  inventory.resources[24] = 4; // swords
+  inventory.resources[25] = 4; // shields
+
+  let tick = 0;
+  for (; tick < 30000; tick += 16) {
+    engine.update(tick);
+  }
+
+  // Reset (60 - 20) * 50 = 2000 ticks per spawn: ~15 births.
+  assert.equal(
+    inventory.genericSerfs + inventory.knights > serfsBefore + 8,
+    true,
+    `the pool grew on the reproduction clock (${inventory.genericSerfs + inventory.knights} vs ${serfsBefore})`,
+  );
+  assert.equal(inventory.knights, 4, "every sword-and-shield pair became a knight");
+  assert.equal(inventory.resources[24], 0, "the swords were taken");
+
+  // The cycling swap: a threat-3 hut garrisons 3; phase one's reduced
+  // row wants 2, so the weakest walks home; phase two refills.
+  const hut = world.buildBuilding(world.geometry.positionAdd(castleFlag.position, 3, -1), 11, 0);
+  hut.isDone = true;
+  hut.threatLevel = 3;
+  assert.equal(
+    world.buildRoad(
+      { start: castleFlag.position, directions: ["Right", "Right", "Right", "Right"] },
+      0,
+    ),
+    true,
+  );
+
+  let garrisoned = false;
+  for (; tick < 200000 && !garrisoned; tick += 16) {
+    engine.update(tick);
+    garrisoned = hut.knights === 3;
+  }
+  assert.equal(garrisoned, true, "the hut garrisons to its occupation level");
+
+  assert.equal(engine.cycleKnights(0), true, "the cycle begins");
+  let kicked = false;
+  for (; tick < 400000 && !kicked; tick += 16) {
+    engine.update(tick);
+    kicked = hut.knights < 3;
+  }
+  assert.equal(kicked, true, "phase one kicks the excess knight home");
+
+  let refilled = false;
+  for (; tick < 700000 && !refilled; tick += 16) {
+    engine.update(tick);
+    refilled = hut.knights === 3 && !player.cyclingKnights;
+  }
+  assert.equal(refilled, true, "phase two refills the watch and the cycle clears");
+});

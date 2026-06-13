@@ -1,8 +1,14 @@
 # Phase 39 — Knight Fidelity
 
-**Last updated:** 2026-06-11 (scaffolded from the reference parity
-audit addendum; row 13 comes off the "later" pile).
-**Status:** scaffolded.
+**Last updated:** 2026-06-13 (SB-39-02 done: the castle breathes —
+the reproduction clock spawns serfs, the wrapping serf-to-knight
+accumulator marks who is born to the sword, and cycleKnights runs
+the two-phase garrison swap with the occupant tables' reduced rows.
+Two scaffold corrections recorded: CastleKnightsWanted has NO
+conquest feedback in the reference (UI buttons only — the claim
+below is struck), and sendStrongest rides SB-39-03 where
+garrison-sourced attack selection gives it meaning).
+**Status:** in progress.
 
 ## Goal
 
@@ -30,8 +36,9 @@ nobody.
   shared RNG.
 - Player.cs 1495–1571 + GameState.cs: KnightMorale from
   MapGoldMoraleFactor — depot gold against the map total — updated
-  every 256 ticks; conquest feedback (CastleKnightsWanted +1 per
-  conquered building, −1 on loss).
+  every 256 ticks. (~~Conquest feedback on CastleKnightsWanted~~ —
+  struck 2026-06-13: the reference has none; only the popup's
+  buttons drive the setting.)
 - PlayerSettings.cs: SerfToKnightRate, CastleKnightsWanted,
   SendStrongest, the knight-cycling flags and KnightCycleCounter
   two-phase swap.
@@ -48,9 +55,10 @@ nobody.
   building assault chain and the free-fight chain — with the
   reference fight math, parity-tested against seeded fixtures.
   (SB-39-01)
-- [ ] The garrison disciplines exist and act: castle knights wanted,
-  serf-to-knight rate, send strongest/weakest, and the two-phase
-  knight cycling swap. (SB-39-02)
+- [x] The garrison disciplines exist and act: the reproduction
+  clock, the serf-to-knight rate, and the two-phase knight cycling
+  swap; castle knights wanted already shipped with Phase 15.
+  (SB-39-02 — sendStrongest re-sliced into SB-39-03.)
 - [ ] The player commands attacks: pick a target, see how many
   knights can come, choose the count, watch them march from the
   right buildings. (SB-39-03)
@@ -64,7 +72,7 @@ nobody.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-39-01 | The full fight | backlog | — | — |
-| SB-39-02 | The garrison disciplines | backlog | — | — |
+| SB-39-02 | The garrison disciplines | done | story-02-the-garrison-disciplines.md | evidence-story-02.md |
 | SB-39-03 | The commanded attack | backlog | — | — |
 | SB-39-04 | Gold and morale in full | backlog | — | — |
 | SB-39-05 | The device gate | backlog | — | — |

@@ -1161,7 +1161,69 @@ export class SerfboundSerfEngine {
   // Military upkeep each engine pass: refresh knight morale on the stats
   // cadence and keep the castle's knight stock recruited (Player's
   // CastleKnightsWanted promoting generic serfs with sword + shield).
+  // CycleKnights (SB-39-02): phase one reduces every garrison's
+  // occupation; under 2048 the level restores and the refill is the
+  // second phase; at zero the cycle clears.
+  cycleKnights(playerIndex: number): boolean {
+    const player = this.world.players[playerIndex];
+    if (player === undefined || player.cyclingKnights) {
+      return false;
+    }
+
+    player.cyclingKnights = true;
+    player.cyclingReducedLevel = true;
+    player.knightCycleCounter = 2400;
+    return true;
+  }
+
+  #lastMilitaryClockTick = 0;
   #sweepMilitary(gameTick: number): void {
+    // The reproduction and cycling clocks (Player.cs Update).
+    const clockDelta = (gameTick - this.#lastMilitaryClockTick) & 0xffff;
+    this.#lastMilitaryClockTick = gameTick;
+    for (const player of this.world.players) {
+      if (player.cyclingKnights) {
+        player.knightCycleCounter -= clockDelta;
+        if (player.knightCycleCounter < 1) {
+          player.cyclingKnights = false;
+          player.cyclingReducedLevel = false;
+        } else if (player.knightCycleCounter < 2048 && player.cyclingReducedLevel) {
+          player.cyclingReducedLevel = false;
+        }
+      }
+
+      if (!player.hasCastle || player.defeated) {
+        continue;
+      }
+
+      const inventory = this.world.inventoryForPlayer(player.index);
+      if (inventory === null) {
+        continue;
+      }
+
+      // The castle breathes (SB-39-02): a serf spawns per expiry of
+      // the reproduction counter; the wrapping serf-to-knight
+      // accumulator marks which are born to the sword (burst cap 2,
+      // sword and shield required to actually promote).
+      const rate = player.economy.serfToKnightRate;
+      const reset = (60 - this.world.reproduction) * 50;
+      player.reproductionCounter -= clockDelta;
+      let knightsToSpawn = 0;
+      while (player.reproductionCounter < 0) {
+        player.serfToKnightCounter = (player.serfToKnightCounter + rate) & 0xffff;
+        if (player.serfToKnightCounter < rate) {
+          knightsToSpawn = Math.min(2, knightsToSpawn + 1);
+        }
+
+        inventory.genericSerfs += 1;
+        if (knightsToSpawn > 0 && inventoryPromoteSerfToKnight(inventory)) {
+          knightsToSpawn -= 1;
+        }
+
+        player.reproductionCounter += reset;
+      }
+    }
+
     if (this.#lastMoraleTick < 0 || ((gameTick - this.#lastMoraleTick) & 0xffff) >= 1024) {
       this.#lastMoraleTick = gameTick;
       for (const player of this.world.players) {
@@ -1191,7 +1253,42 @@ export class SerfboundSerfEngine {
         continue;
       }
 
-      const needed = militaryKnightsNeeded(building, player.knightOccupation);
+      const needed = militaryKnightsNeeded(
+        building,
+        player.knightOccupation,
+        player.cyclingReducedLevel,
+      );
+
+      // Excess garrison leaves, weakest first (UpdateMilitary's kick;
+      // one per sweep). He walks home through the escape path and
+      // reabsorbs into the knight pool.
+      if (building.knights > needed) {
+        // Residents idle at the post's position (the entry clears
+        // their garrison target — the same pattern the fire's
+        // evacuation reads).
+        let weakest: WorldSerf | null = null;
+        for (const serf of this.serfs.values()) {
+          if (
+            serf.isKnight &&
+            serf.position === building.position &&
+            serf.state === serfState.idleInStock &&
+            (weakest === null || serf.knightRank < weakest.knightRank)
+          ) {
+            weakest = serf;
+          }
+        }
+
+        if (weakest !== null) {
+          weakest.garrisonTargetIndex = 0;
+          weakest.state = serfState.escaping;
+          weakest.workPhase = 0;
+          weakest.counter = 0;
+          building.knights -= 1;
+        }
+
+        continue;
+      }
+
       if (building.knights + building.requestedKnights >= needed) {
         continue;
       }

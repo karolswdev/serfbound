@@ -67,6 +67,11 @@ test("the weaponsmith forges a sword, then a shield for free, per resource pair"
   assert.equal(road.status, "accepted", "weaponsmith road connects");
   engine.dispatchConstructionLogistics(smith, 0);
 
+  // Still the sword-counting scale: reproduction-born knights
+  // (SB-39-02) would eat the output as it lands.
+  world.players[0].economy.serfToKnightRate = 0;
+  world.players[0].castleKnightsWanted = 0;
+
   const inventory = world.inventoryForPlayer(0);
   // Isolate forging: keep the castle from recruiting the preset weapons
   // into knights while we count the smith's output, and empty the

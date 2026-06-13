@@ -87,9 +87,12 @@ export function militaryGoldCap(type: BuildingTypeValue): number {
 export function militaryKnightsNeeded(
   building: { type: BuildingTypeValue; threatLevel: number },
   knightOccupation: readonly number[],
+  reducedLevel = false,
 ): number {
+  // Cycling's first phase reads the occupant tables' reduced rows
+  // (Building.UpdateMilitary adds 5, SB-39-02).
   const maxOccupiedLevel = Math.min(
-    (knightOccupation[building.threatLevel]! >> 4) & 0xf,
+    ((knightOccupation[building.threatLevel]! >> 4) & 0xf) + (reducedLevel ? 5 : 0),
     9,
   );
   if (building.type === buildingType.hut) return hutOccupantsFromLevel[maxOccupiedLevel]!;
@@ -197,6 +200,9 @@ export type PlayerEconomySettings = {
   // Player.ResetToolPriority, indexed by tool (shovel..pincer): the
   // toolmaker's weighted draw.
   toolPriorities: number[];
+  // Player settings.SerfToKnightRate (SB-39-02): how much of the
+  // reproduction clock's output is born to the sword.
+  serfToKnightRate: number;
   // The distribution splits Building.Update priorities read.
   distributions: {
     foodStonemine: number;
@@ -229,6 +235,7 @@ export function defaultEconomySettings(): PlayerEconomySettings {
       14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 23,
     ],
     toolPriorities: [9825, 65500, 13100, 6550, 13100, 26200, 32750, 45850, 6550],
+    serfToKnightRate: 20000,
     distributions: {
       foodStonemine: 13100,
       foodCoalmine: 45850,
@@ -264,6 +271,15 @@ export type WorldPlayer = {
   knightOccupation: number[];
   // The priority book (SB-36-07).
   economy: PlayerEconomySettings;
+  // The reproduction clock and the wrapping serf-to-knight
+  // accumulator (Player.cs 1332-1370, SB-39-02). The 0x8000 seed's
+  // overflow is important, says the reference.
+  reproductionCounter: number;
+  serfToKnightCounter: number;
+  // CycleKnights (SB-39-02): the two-phase swap counter and flags.
+  knightCycleCounter: number;
+  cyclingKnights: boolean;
+  cyclingReducedLevel: boolean;
   // Player.EmergencyProgramActive (SB-36-08): planks/stones ran out
   // and construction funnels into the wood-and-stone chain.
   emergencyProgramActive: boolean;
@@ -354,6 +370,9 @@ export class SerfboundGameWorld {
   readonly owners: Int8Array;
   // GameInitBox player supplies setting consumed by buildCastle.
   initialSupplies = 20;
+  // GameInitBox reproduction setting (SB-39-02): the castle spawns a
+  // serf every (60 - reproduction) * 50 ticks.
+  reproduction = 20;
   // Mission per-player supplies (falls back to initialSupplies).
   playerSupplies: number[] | undefined;
   readonly objectIndexes: Uint32Array;
@@ -386,6 +405,11 @@ export class SerfboundGameWorld {
       castleKnightsWanted: 3,
       knightOccupation: [0x10, 0x21, 0x32, 0x43],
       economy: defaultEconomySettings(),
+      reproductionCounter: 2000,
+      serfToKnightCounter: 0x8000,
+      knightCycleCounter: 0,
+      cyclingKnights: false,
+      cyclingReducedLevel: false,
       emergencyProgramActive: false,
       defeated: false,
     }));
