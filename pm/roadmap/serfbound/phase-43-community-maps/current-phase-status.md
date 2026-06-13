@@ -1,9 +1,12 @@
 # Phase 43 — Community Maps (sharing)
 
-**Last updated:** 2026-06-13 (scaffolded from the map-builder design
-canon; see
-pm/roadmap/serfbound/adoption/map-builder-and-community-maps-decision.md).
-**Status:** scaffolded — gated on Phase 42 (the format and the editor).
+**Last updated:** 2026-06-13 (SB-43-01 done: the maps service — the
+third zero-dep server on the identity/mailbox template — publishes
+signed maps, serves a gallery, rates and reports (quarantine), and
+honors author-signed deletes, with the boundary held (no field for
+original data, size-capped, per-key quota). The deploy to
+api.serfbound.com is SB-43-02, an outward action on the live cluster).
+**Status:** in progress.
 
 ## Goal
 
@@ -37,7 +40,7 @@ template) and never puts original game data on the wire.
 
 ## Exit criteria (evidence required)
 
-- [ ] The maps service: publish/list/fetch with signature verification,
+- [x] The maps service: publish/list/fetch with signature verification,
   structural+size validation, payload cap + per-key quota; the "no
   original-data field exists" contract test green. (SB-43-01)
 - [ ] Deployed to the backbone: `/maps` live on `api.serfbound.com`,
@@ -59,7 +62,7 @@ template) and never puts original game data on the wire.
 
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
-| SB-43-01 | The maps service | backlog | — | — |
+| SB-43-01 | The maps service | done | story-01-the-maps-service.md | evidence-story-01.md |
 | SB-43-02 | Deploy to the backbone | backlog | — | — |
 | SB-43-03 | The gallery and library shell | backlog | — | — |
 | SB-43-04 | Custom maps in multiplayer | backlog | — | — |

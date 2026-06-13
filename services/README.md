@@ -1,6 +1,6 @@
 # Serfbound services — operations
 
-Two zero-dependency Node services back the optional online features.
+Three zero-dependency Node services back the optional online features.
 The game never requires them: accountless, serverless play is
 first-class forever, and clients re-verify every move themselves — the
 services store and forward; they never referee.
@@ -10,6 +10,7 @@ services store and forward; they never referee.
 ```bash
 node services/identity/server.mjs   # :4310, SERFBOUND_IDENTITY_PORT/STORE
 node services/mailbox/server.mjs    # :4320, SERFBOUND_MAILBOX_PORT/STORE
+node services/maps/server.mjs       # :4330, SERFBOUND_MAPS_PORT/STORE
 ```
 
 Storage is one JSON file per service (set `*_STORE`). Any host with
