@@ -618,6 +618,8 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             <div class="editor-bar">
               <div class="editor-tools" data-testid="editor-tools" role="toolbar" aria-label="Map tools"></div>
               <div class="editor-actions">
+                <button class="secondary-action" data-testid="editor-copy-button" type="button">Copy region</button>
+                <button class="secondary-action" data-testid="editor-paste-button" type="button">Paste</button>
                 <button class="secondary-action" data-testid="editor-validate-button" type="button">Validate</button>
                 <button class="primary-action" data-testid="editor-play-button" type="button">Play this map</button>
                 <button class="secondary-action" data-testid="editor-exit-button" type="button">Back</button>
@@ -2557,6 +2559,12 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   root
     .querySelector<HTMLButtonElement>("[data-testid='editor-validate-button']")
     ?.addEventListener("click", () => currentEditor?.validate());
+  root
+    .querySelector<HTMLButtonElement>("[data-testid='editor-copy-button']")
+    ?.addEventListener("click", () => currentEditor?.beginCopy());
+  root
+    .querySelector<HTMLButtonElement>("[data-testid='editor-paste-button']")
+    ?.addEventListener("click", () => currentEditor?.beginPaste());
   root
     .querySelector<HTMLButtonElement>("[data-testid='editor-exit-button']")
     ?.addEventListener("click", () => closeEditor());

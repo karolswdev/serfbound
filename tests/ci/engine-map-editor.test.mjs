@@ -286,3 +286,34 @@ test("play this map: an authored custom map runs in a local game (SB-42-04)", as
   assert.notEqual(castle, null, "a castle founds on the authored map");
   assert.equal(world.players[0].hasCastle, true, "the player holds a castle on their custom map");
 });
+
+test("copyRegion lifts a rectangle and pasteRegion reproduces it (SB-42-07)", () => {
+  const editor = flatEditor(4);
+  // Stamp a distinctive source tile (raised land + a tree) inside a 2x2
+  // block, leaving the other three at the flat grass base.
+  const mark = editor.geometry.position(10, 10);
+  editor.setHeight(mark, 20, 0);
+  assert.equal(editor.placeObject(mark, 8), true, "a tree sits on the raised land"); // tree0
+
+  const clip = editor.copyRegion(mark, editor.geometry.position(11, 11));
+  assert.equal(clip.columns, 2);
+  assert.equal(clip.rows, 2);
+  assert.equal(clip.heights[0], 20, "clip carries the source height");
+  assert.equal(clip.objects[0], 8, "clip carries the source object");
+
+  // Paste the block at a fresh corner; the destination reproduces the clip.
+  const target = editor.geometry.position(15, 15);
+  editor.pasteRegion(clip, target);
+  assert.equal(editor.heights[target], 20, "pasted height matches");
+  assert.equal(editor.objects[target], 8, "pasted object matches");
+  assert.equal(
+    editor.objects[editor.geometry.position(16, 16)],
+    0,
+    "the rest of the 2x2 block transferred as the open base",
+  );
+
+  // Paste is one undoable stroke.
+  assert.equal(editor.canUndo(), true);
+  editor.undo();
+  assert.notEqual(editor.heights[target], 20, "undo reverted the paste in one step");
+});

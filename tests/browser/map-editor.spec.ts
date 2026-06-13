@@ -68,6 +68,18 @@ test("the map editor opens, paints the authentic landscape, and plays", async ({
   await canvas.click({ position: { x: box.width / 2, y: box.height / 2 } });
   await expect(page.getByTestId("editor-verdict")).toBeVisible();
 
+  // Copy/paste a region (SB-42-07): Copy region → click two corners →
+  // Paste → click a destination, each step prompting in the status.
+  await page.getByTestId("editor-copy-button").click();
+  await expect(page.getByTestId("editor-region-hint")).toContainText("first corner");
+  await canvas.click({ position: { x: box.width * 0.3, y: box.height * 0.3 } });
+  await expect(page.getByTestId("editor-region-hint")).toContainText("opposite corner");
+  await canvas.click({ position: { x: box.width * 0.45, y: box.height * 0.45 } });
+  await expect(page.getByTestId("editor-region-hint")).toContainText("Copied");
+  await page.getByTestId("editor-paste-button").click();
+  await expect(page.getByTestId("editor-region-hint")).toContainText("Paste");
+  await canvas.click({ position: { x: box.width * 0.6, y: box.height * 0.6 } });
+
   // Exit returns to the title; the editor surface hides.
   await page.getByTestId("editor-exit-button").click();
   await expect(page.locator("#app")).toHaveAttribute("data-serfbound-chrome", "title");

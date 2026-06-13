@@ -63,6 +63,19 @@ export type MapValidationError =
   | { readonly kind: "start-not-placeable"; readonly player: number; readonly position: number }
   | { readonly kind: "insufficient-buildable"; readonly ratio: number };
 
+// A standalone rectangle of tiles lifted from the map — all six arrays,
+// row-major, `columns`×`rows` — ready to paste elsewhere (SB-42-07).
+export type MapRegionClip = {
+  readonly columns: number;
+  readonly rows: number;
+  readonly heights: Uint8Array;
+  readonly typesUp: Uint8Array;
+  readonly typesDown: Uint8Array;
+  readonly objects: Uint8Array;
+  readonly minerals: Uint8Array;
+  readonly resourceAmounts: Uint8Array;
+};
+
 export type MapValidationVerdict = {
   readonly playable: boolean;
   readonly errors: readonly MapValidationError[];
@@ -288,6 +301,76 @@ export class MapEditor {
     }
 
     this.#clampSlope(seeds);
+  }
+
+  // Copy the rectangle of tiles spanned by two corners (inclusive, by
+  // column/row — the intuitive bounding box, no toroidal shortcut) into
+  // a standalone clip: all six arrays, so a paste reproduces terrain,
+  // height, objects, and minerals exactly.
+  copyRegion(cornerA: number, cornerB: number): MapRegionClip {
+    const colA = this.geometry.positionColumn(cornerA);
+    const rowA = this.geometry.positionRow(cornerA);
+    const colB = this.geometry.positionColumn(cornerB);
+    const rowB = this.geometry.positionRow(cornerB);
+    const minColumn = Math.min(colA, colB);
+    const minRow = Math.min(rowA, rowB);
+    const columns = Math.abs(colB - colA) + 1;
+    const rows = Math.abs(rowB - rowA) + 1;
+    const count = columns * rows;
+
+    const clip: MapRegionClip = {
+      columns,
+      rows,
+      heights: new Uint8Array(count),
+      typesUp: new Uint8Array(count),
+      typesDown: new Uint8Array(count),
+      objects: new Uint8Array(count),
+      minerals: new Uint8Array(count),
+      resourceAmounts: new Uint8Array(count),
+    };
+
+    for (let dr = 0; dr < rows; dr += 1) {
+      for (let dc = 0; dc < columns; dc += 1) {
+        const source = this.geometry.position(minColumn + dc, minRow + dr);
+        const slot = dr * columns + dc;
+        clip.heights[slot] = this.heights[source]!;
+        clip.typesUp[slot] = this.typesUp[source]!;
+        clip.typesDown[slot] = this.typesDown[source]!;
+        clip.objects[slot] = this.objects[source]!;
+        clip.minerals[slot] = this.minerals[source]!;
+        clip.resourceAmounts[slot] = this.resourceAmounts[source]!;
+      }
+    }
+
+    return clip;
+  }
+
+  // Paste a clip with `target` as its top-left corner, as one undoable
+  // stroke, then re-clamp the ≤32 slope across the written tiles. The
+  // destination wraps on the toroidal map so a paste near an edge never
+  // writes out of bounds.
+  pasteRegion(clip: MapRegionClip, target: number): void {
+    const targetColumn = this.geometry.positionColumn(target);
+    const targetRow = this.geometry.positionRow(target);
+    const written: number[] = [];
+
+    this.beginStroke();
+    for (let dr = 0; dr < clip.rows; dr += 1) {
+      for (let dc = 0; dc < clip.columns; dc += 1) {
+        const destination = this.geometry.position(targetColumn + dc, targetRow + dr);
+        const slot = dr * clip.columns + dc;
+        this.#write(arrayIds.heights, destination, clip.heights[slot]!);
+        this.#write(arrayIds.typesUp, destination, clip.typesUp[slot]!);
+        this.#write(arrayIds.typesDown, destination, clip.typesDown[slot]!);
+        this.#write(arrayIds.objects, destination, clip.objects[slot]!);
+        this.#write(arrayIds.minerals, destination, clip.minerals[slot]!);
+        this.#write(arrayIds.resourceAmounts, destination, clip.resourceAmounts[slot]!);
+        written.push(destination);
+      }
+    }
+
+    this.#clampSlope(written);
+    this.endStroke();
   }
 
   // adjustMapHeight as a local worklist: any neighbor more than 32 from

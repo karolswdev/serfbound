@@ -6,6 +6,7 @@ import {
   mapTerrain,
   mapMinerals,
   type ClassicMapLandscape,
+  type MapRegionClip,
   type SerfboundCustomMap,
 } from "@serfbound/engine";
 import {
@@ -161,6 +162,12 @@ export class MapEditorScreen {
   #scroll: MapScroll = { column: 0, row: 0 };
   #disposed = false;
   #pointerHandler: ((event: PointerEvent) => void) | undefined;
+  // Region copy/paste (SB-42-07): a small click-sequence machine that
+  // sits over painting. "off" paints normally; "select-a"/"select-b"
+  // mark a rectangle (then copy it); "paste" drops the clip on click.
+  #regionMode: "off" | "select-a" | "select-b" | "paste" = "off";
+  #regionCornerA: number | null = null;
+  #clip: MapRegionClip | null = null;
 
   constructor(options: MapEditorScreenOptions) {
     this.#options = options;
@@ -197,11 +204,59 @@ export class MapEditorScreen {
     this.#syncPaletteSelection();
   }
 
-  // Apply the active tool at a map position (the pointer entry point).
-  // Brush tools (terrain/height/flatten) paint over the active size.
+  // A canvas click at a map position. In region mode it drives the
+  // copy/paste sequence; otherwise it paints the active tool.
   applyAt(position: number): void {
+    if (this.#regionMode !== "off") {
+      this.#handleRegionClick(position);
+      return;
+    }
     applyEditorTool(this.#editor, this.activeTool, position, this.#brushRadius);
     this.render();
+    this.#renderStatus();
+  }
+
+  // Enter copy mode: the next two clicks mark the rectangle's corners.
+  beginCopy(): void {
+    this.#regionMode = "select-a";
+    this.#regionCornerA = null;
+    this.#syncPaletteSelection();
+    this.#renderStatus();
+  }
+
+  // Enter paste mode (only meaningful once a clip exists): the next
+  // click drops the clip with that tile as its top-left corner.
+  beginPaste(): void {
+    if (this.#clip === null) {
+      return;
+    }
+    this.#regionMode = "paste";
+    this.#syncPaletteSelection();
+    this.#renderStatus();
+  }
+
+  get hasClip(): boolean {
+    return this.#clip !== null;
+  }
+
+  get regionMode(): "off" | "select-a" | "select-b" | "paste" {
+    return this.#regionMode;
+  }
+
+  #handleRegionClick(position: number): void {
+    if (this.#regionMode === "select-a") {
+      this.#regionCornerA = position;
+      this.#regionMode = "select-b";
+    } else if (this.#regionMode === "select-b" && this.#regionCornerA !== null) {
+      this.#clip = this.#editor.copyRegion(this.#regionCornerA, position);
+      this.#regionMode = "off";
+      this.#regionCornerA = null;
+    } else if (this.#regionMode === "paste" && this.#clip !== null) {
+      this.#editor.pasteRegion(this.#clip, position);
+      this.#regionMode = "off";
+      this.render();
+    }
+    this.#syncPaletteSelection();
     this.#renderStatus();
   }
 
@@ -304,6 +359,22 @@ export class MapEditorScreen {
     const playerCount = Math.max(1, this.#editor.starts.length);
     const verdict = this.#editor.validate(playerCount);
     const parts: string[] = [];
+
+    // Region copy/paste prompt comes first when a sequence is active.
+    const regionHint =
+      this.#regionMode === "select-a"
+        ? "Copy region: click the first corner."
+        : this.#regionMode === "select-b"
+          ? "Copy region: click the opposite corner."
+          : this.#regionMode === "paste"
+            ? "Paste: click where the region's top-left goes."
+            : this.#clip !== null
+              ? `Copied ${this.#clip.columns}×${this.#clip.rows} — press Paste, then click.`
+              : null;
+    if (regionHint !== null) {
+      parts.push(`<p class="editor-status__region" data-testid="editor-region-hint">${regionHint}</p>`);
+    }
+
     parts.push(
       verdict.playable
         ? `<p class="editor-status__ok" data-testid="editor-verdict">Playable — ${this.#editor.starts.length} start${this.#editor.starts.length === 1 ? "" : "s"}, ${(verdict.buildableRatio * 100).toFixed(0)}% buildable.</p>`

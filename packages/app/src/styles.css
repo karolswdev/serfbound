@@ -273,6 +273,12 @@ h1 {
   font-size: var(--sb-text-sm);
 }
 
+.editor-status__region {
+  color: var(--sb-gold);
+  font-size: var(--sb-text-sm);
+  font-weight: var(--sb-weight-bold);
+}
+
 [data-serfbound-chrome="pre-import"] .welcome {
   display: block;
 }
