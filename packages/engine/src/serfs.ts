@@ -1,5 +1,6 @@
 import { FreeserfRandom, type Direction } from "./index.js";
 import {
+  attackableKnightCount,
   buildingConstructionCosts,
   type DistributionKey,
   isMilitaryBuildingType,
@@ -3476,6 +3477,143 @@ export class SerfboundSerfEngine {
   // Player attack initiation, condensed: pull knights from the castle and
   // march them on the target building's flag (the reference selects them
   // from nearby military buildings; supply selection lands with the war UI).
+  // KnightsAvailableForAttack (SB-39-03): the player's military
+  // buildings within marching range of the target, each offering its
+  // spare garrison (present minus the occupation minimum), nearest
+  // first. The total is the count the player's UI offers.
+  knightsAvailableForAttack(
+    playerIndex: number,
+    targetBuildingIndex: number,
+  ): { maxKnights: number; buildings: { index: number; spare: number; distance: number }[] } {
+    const target = this.world.buildings.get(targetBuildingIndex);
+    const player = this.world.players[playerIndex];
+    if (target === undefined || player === undefined) {
+      return { maxKnights: 0, buildings: [] };
+    }
+
+    const sources: { index: number; spare: number; distance: number }[] = [];
+    let maxKnights = 0;
+    for (const building of this.world.buildings.values()) {
+      if (
+        building.player !== playerIndex ||
+        !building.isDone ||
+        building.burning ||
+        !isMilitaryBuildingType(building.type)
+      ) {
+        continue;
+      }
+
+      const spare = attackableKnightCount(building, player.knightOccupation);
+      if (spare <= 0) {
+        continue;
+      }
+
+      // The reference's 32-shell reach around the target.
+      const distance = this.#hexDistance(building.position, target.position);
+      if (distance > 32) {
+        continue;
+      }
+
+      sources.push({ index: building.index, spare, distance });
+      maxKnights += spare;
+    }
+
+    sources.sort((a, b) => a.distance - b.distance || a.index - b.index);
+    return { maxKnights, buildings: sources };
+  }
+
+  // StartAttack (SB-39-03): spend up to knightCount spare garrison
+  // knights on the target, nearest building first, each picked by the
+  // player's SendStrongest toggle. Every chosen knight leaves his
+  // post and marches; the target goes under attack. Returns the count
+  // sent.
+  commandAttack(
+    playerIndex: number,
+    targetBuildingIndex: number,
+    knightCount: number,
+    gameTick: number,
+  ): number {
+    const target = this.world.buildings.get(targetBuildingIndex);
+    const player = this.world.players[playerIndex];
+    if (
+      target === undefined ||
+      !target.isDone ||
+      target.player === playerIndex ||
+      player === undefined ||
+      (!isMilitaryBuildingType(target.type) && target.type !== buildingType.castle)
+    ) {
+      return 0;
+    }
+
+    const targetFlag = this.world.flags.get(target.flagIndex);
+    if (targetFlag === undefined) {
+      return 0;
+    }
+
+    const available = this.knightsAvailableForAttack(playerIndex, targetBuildingIndex);
+    let remaining = Math.min(knightCount, available.maxKnights);
+    const sendStrongest = player.economy.sendStrongest;
+    let sent = 0;
+
+    for (const source of available.buildings) {
+      if (remaining <= 0) {
+        break;
+      }
+
+      const post = this.world.buildings.get(source.index);
+      if (post === undefined) {
+        continue;
+      }
+
+      let canSpend = Math.min(remaining, source.spare);
+      while (canSpend > 0) {
+        // The garrison's residents idle at the post; pick by the
+        // SendStrongest toggle (CallAttackerOut by type).
+        let chosen: WorldSerf | null = null;
+        for (const serf of this.serfs.values()) {
+          if (
+            !serf.isKnight ||
+            serf.position !== post.position ||
+            serf.state !== serfState.idleInStock
+          ) {
+            continue;
+          }
+
+          if (
+            chosen === null ||
+            (sendStrongest
+              ? serf.knightRank > chosen.knightRank
+              : serf.knightRank < chosen.knightRank)
+          ) {
+            chosen = serf;
+          }
+        }
+
+        if (chosen === null) {
+          break;
+        }
+
+        chosen.attackTargetIndex = targetBuildingIndex;
+        chosen.workTargetPosition = targetFlag.position;
+        chosen.workPhase = chosen.position;
+        chosen.state = serfState.knightMarching;
+        chosen.tick = gameTick;
+        chosen.counter = 0;
+        this.serfIndexes[chosen.position] = 0;
+        post.knights = Math.max(0, post.knights - 1);
+        canSpend -= 1;
+        remaining -= 1;
+        sent += 1;
+      }
+    }
+
+    if (sent > 0) {
+      target.underAttack = true;
+    }
+
+    return sent;
+  }
+
   launchAttack(
     playerIndex: number,
     targetBuildingIndex: number,

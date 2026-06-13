@@ -28,6 +28,27 @@ function flatWorldWithCastle() {
   return { world, castlePosition };
 }
 
+function flatTwoPlayerWorld() {
+  const landscape = generateClassicMap(3, [1, 2, 3]);
+  const world = new SerfboundGameWorld(
+    {
+      ...landscape,
+      heights: new Uint8Array(landscape.tileCount).fill(4),
+      typesUp: new Uint8Array(landscape.tileCount).fill(mapTerrain.grass1),
+      typesDown: new Uint8Array(landscape.tileCount).fill(mapTerrain.grass1),
+      objects: new Uint8Array(landscape.tileCount),
+      minerals: new Uint8Array(landscape.tileCount),
+      resourceAmounts: new Uint8Array(landscape.tileCount),
+    },
+    2,
+  );
+  const castlePosition = world.geometry.position(15, 20);
+  const enemyCastle = world.geometry.position(35, 20);
+  world.buildCastle(castlePosition, 0);
+  world.buildCastle(enemyCastle, 1);
+  return { world, castlePosition, enemyCastle };
+}
+
 test("walking animations and counters follow the reference formulas", () => {
   assert.equal(walkingAnimation(0, "Right", false), 4);
   assert.equal(walkingAnimation(-4, "Right", false), 0);
@@ -2134,4 +2155,154 @@ test("the garrison breathes: reproduction mints serfs and knights, cycling swaps
     refilled = hut.knights === 3 && !player.cyclingKnights;
   }
   assert.equal(refilled, true, "phase two refills the watch and the cycle clears");
+});
+
+test("the commanded attack marches the border garrisons, the player's choice (SB-39-03)", () => {
+  const { world, castlePosition, enemyCastle } = flatTwoPlayerWorld();
+  world.players[0].hasCastle = true;
+
+  // The enemy target stands on the enemy's own land near its castle;
+  // three player-0 border huts step out from home toward it.
+  const target = world.buildBuilding(world.geometry.positionAdd(enemyCastle, -3, 0), 11, 1);
+  assert.notEqual(target, null, "enemy hut builds");
+  target.isDone = true;
+  target.knights = 1;
+
+  const hutAt = (dc, dr) => {
+    const hut = world.buildBuilding(world.geometry.positionAdd(castlePosition, dc, dr), 11, 0);
+    assert.notEqual(hut, null, `hut at ${dc},${dr} builds`);
+    hut.isDone = true;
+    hut.threatLevel = 0;
+    hut.knights = 3;
+    return hut;
+  };
+  // Distinct rows keep the huts' footprints from colliding; the
+  // column offset orders their distance to the enemy.
+  const near = hutAt(4, -2); // largest column offset = closest to the enemy
+  const mid = hutAt(3, 2);
+  const far = hutAt(1, -3);
+
+  // Mark the near hut's residents: place three knight entities at each
+  // hut, the near one carrying a veteran (rank 3).
+  const engine = new SerfboundSerfEngine(world);
+  let nextIndex = 1;
+  const garrison = (hut, ranks) => {
+    for (const rank of ranks) {
+      const knight = {
+        index: 10000 + nextIndex++,
+        player: 0,
+        state: serfState.idleInStock,
+        position: hut.position,
+        tick: 0,
+        animation: 0,
+        counter: 0,
+        walkingDirection: 0,
+        walkingDestination: 0,
+        walkingWaitCounter: 0,
+        slopeLength: 0,
+        nextState: 0,
+        roadFlagIndex: 0,
+        roadDirection: null,
+        carriedResource: -1,
+        carriedDestination: 0,
+        buildTargetIndex: 0,
+        workBuildingIndex: 0,
+        workPhase: 0,
+        workCounter: 0,
+        workTargetPosition: -1,
+        isKnight: true,
+        garrisonTargetIndex: 0,
+        geoTargetFlagIndex: 0,
+        knightRank: rank,
+        attackTargetIndex: 0,
+        fightOpponentIndex: 0,
+        fightMove: 0,
+        fightWon: false,
+      };
+      engine.serfs.set(knight.index, knight);
+    }
+  };
+  garrison(near, [0, 1, 3]); // a veteran at the near hut
+  garrison(mid, [0, 0, 0]);
+  garrison(far, [0, 0, 0]);
+
+  const huts = [near, mid, far];
+
+  // The scan offers every spare (3 huts × 2 = 6), nearest first.
+  const available = engine.knightsAvailableForAttack(0, target.index);
+  assert.equal(available.maxKnights, 6, "six spare knights are available");
+  for (let i = 1; i < available.buildings.length; i += 1) {
+    assert.equal(
+      available.buildings[i].distance >= available.buildings[i - 1].distance,
+      true,
+      "the buildings are offered nearest first",
+    );
+  }
+
+  // Command four; weakest-first (default) drains the two nearest huts,
+  // each kept to its minimum of one, leaving the farthest untouched.
+  const sent = engine.commandAttack(0, target.index, 4, 0);
+  assert.equal(sent, 4, "four knights marched");
+  assert.equal(target.underAttack, true, "the target is under attack");
+  const removed = huts.reduce((sum, hut) => sum + (3 - hut.knights), 0);
+  assert.equal(removed, 4, "four knights left their posts");
+  for (const hut of huts) {
+    assert.equal(hut.knights >= 1, true, "every hut kept its minimum");
+  }
+  assert.equal(
+    huts.filter((hut) => hut.knights === 3).length,
+    1,
+    "the farthest hut was untouched",
+  );
+
+  const marching = [...engine.serfs.values()].filter(
+    (serf) => serf.state === serfState.knightMarching,
+  );
+  assert.equal(marching.length, 4, "four knights are on the march");
+  // Weakest-first never spends the veteran (rank 3) at the near hut.
+  const veteranHome = [...engine.serfs.values()].some(
+    (serf) => serf.position === near.position && serf.knightRank === 3 && serf.state === serfState.idleInStock,
+  );
+  assert.equal(veteranHome, true, "weakest-first kept the veteran on his post");
+});
+
+test("send-strongest spends the veterans first (SB-39-03)", () => {
+  const { world, castlePosition, enemyCastle } = flatTwoPlayerWorld();
+  world.players[0].hasCastle = true;
+  world.players[0].economy.sendStrongest = true;
+
+  const target = world.buildBuilding(world.geometry.positionAdd(enemyCastle, -3, 0), 11, 1);
+  assert.notEqual(target, null, "enemy hut builds");
+  target.isDone = true;
+  target.knights = 1;
+  const hut = world.buildBuilding(world.geometry.positionAdd(castlePosition, 4, 0), 11, 0);
+  hut.isDone = true;
+  hut.threatLevel = 0;
+  hut.knights = 3;
+
+  const engine = new SerfboundSerfEngine(world);
+  let i = 0;
+  for (const rank of [0, 1, 3]) {
+    engine.serfs.set(20000 + i, {
+      index: 20000 + i, player: 0, state: serfState.idleInStock, position: hut.position,
+      tick: 0, animation: 0, counter: 0, walkingDirection: 0, walkingDestination: 0,
+      walkingWaitCounter: 0, slopeLength: 0, nextState: 0, roadFlagIndex: 0, roadDirection: null,
+      carriedResource: -1, carriedDestination: 0, buildTargetIndex: 0, workBuildingIndex: 0,
+      workPhase: 0, workCounter: 0, workTargetPosition: -1, isKnight: true, garrisonTargetIndex: 0,
+      geoTargetFlagIndex: 0, knightRank: rank, attackTargetIndex: 0, fightOpponentIndex: 0,
+      fightMove: 0, fightWon: false,
+    });
+    i += 1;
+  }
+
+  // Spend two: send-strongest leaves the rookie (rank 0) home.
+  assert.equal(engine.commandAttack(0, target.index, 2, 0), 2);
+  const rookieHome = [...engine.serfs.values()].some(
+    (serf) => serf.position === hut.position && serf.state === serfState.idleInStock,
+  );
+  assert.equal(rookieHome, true, "a knight stayed");
+  const stayedRank = [...engine.serfs.values()].find(
+    (serf) => serf.position === hut.position && serf.state === serfState.idleInStock,
+  ).knightRank;
+  assert.equal(stayedRank, 0, "send-strongest kept the weakest home");
 });

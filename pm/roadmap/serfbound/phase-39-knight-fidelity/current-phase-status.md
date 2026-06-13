@@ -1,13 +1,12 @@
 # Phase 39 — Knight Fidelity
 
-**Last updated:** 2026-06-13 (SB-39-02 done: the castle breathes —
-the reproduction clock spawns serfs, the wrapping serf-to-knight
-accumulator marks who is born to the sword, and cycleKnights runs
-the two-phase garrison swap with the occupant tables' reduced rows.
-Two scaffold corrections recorded: CastleKnightsWanted has NO
-conquest feedback in the reference (UI buttons only — the claim
-below is struck), and sendStrongest rides SB-39-03 where
-garrison-sourced attack selection gives it meaning).
+**Last updated:** 2026-06-13 (SB-39-03 done: the commanded attack —
+knightsAvailableForAttack scans the player's border garrisons for
+their spare knights, and commandAttack marches the player's chosen
+count from the nearest posts first, each kept to its occupation
+minimum, strongest or weakest by the sendStrongest toggle, with the
+target set under attack. Earlier: SB-39-02, the garrison
+disciplines).
 **Status:** in progress.
 
 ## Goal
@@ -59,9 +58,10 @@ nobody.
   clock, the serf-to-knight rate, and the two-phase knight cycling
   swap; castle knights wanted already shipped with Phase 15.
   (SB-39-02 — sendStrongest re-sliced into SB-39-03.)
-- [ ] The player commands attacks: pick a target, see how many
+- [x] The player commands attacks: pick a target, see how many
   knights can come, choose the count, watch them march from the
-  right buildings. (SB-39-03)
+  right buildings. (SB-39-03 — the UI slider rides the device
+  gate; the engine API ships.)
 - [ ] Gold morale in full: MapGoldMoraleFactor on the 256-tick
   cadence, conquest feedback on CastleKnightsWanted. (SB-39-04)
 - [ ] On-device: the maintainer wins and loses a fight he ordered,
@@ -73,7 +73,7 @@ nobody.
 |---|---|---|---|---|
 | SB-39-01 | The full fight | backlog | — | — |
 | SB-39-02 | The garrison disciplines | done | story-02-the-garrison-disciplines.md | evidence-story-02.md |
-| SB-39-03 | The commanded attack | backlog | — | — |
+| SB-39-03 | The commanded attack | done | story-03-the-commanded-attack.md | evidence-story-03.md |
 | SB-39-04 | Gold and morale in full | backlog | — | — |
 | SB-39-05 | The device gate | backlog | — | — |
 

@@ -108,6 +108,28 @@ export function isMilitaryBuildingType(type: BuildingTypeValue): boolean {
   return militaryBuildingTypes.includes(type);
 }
 
+// Player.minLevel* (SB-39-03): the garrison a military building keeps
+// back when it spends knights on an attack, by occupation min-level.
+const attackMinLevelHut: readonly number[] = [1, 1, 2, 2, 3];
+const attackMinLevelTower: readonly number[] = [1, 2, 3, 4, 6];
+const attackMinLevelFortress: readonly number[] = [1, 3, 6, 9, 12];
+
+// The knights a military building can spare for an attack: present
+// minus the minimum its occupation setting holds (0 for non-military).
+export function attackableKnightCount(
+  building: { type: BuildingTypeValue; threatLevel: number; knights: number },
+  knightOccupation: readonly number[],
+): number {
+  let table: readonly number[];
+  if (building.type === buildingType.hut) table = attackMinLevelHut;
+  else if (building.type === buildingType.tower) table = attackMinLevelTower;
+  else if (building.type === buildingType.fortress) table = attackMinLevelFortress;
+  else return 0;
+
+  const minLevel = table[knightOccupation[building.threatLevel]! & 0xf]!;
+  return Math.max(0, building.knights - minLevel);
+}
+
 export type FlagPathState = {
   hasPath: boolean;
   water: boolean;
@@ -169,6 +191,8 @@ export type WorldBuilding = {
   // the reference counter before it leaves the map.
   burning: boolean;
   burningCounter: number;
+  // Building.SetUnderAttack (SB-39-03): a commanded assault is inbound.
+  underAttack: boolean;
 };
 
 // Building.ConstructionInfos material costs: [planks, stones] per type.
@@ -203,6 +227,9 @@ export type PlayerEconomySettings = {
   // Player settings.SerfToKnightRate (SB-39-02): how much of the
   // reproduction clock's output is born to the sword.
   serfToKnightRate: number;
+  // Player settings.SendStrongest (SB-39-03): true sends the
+  // strongest knights to fight, false the weakest.
+  sendStrongest: boolean;
   // The distribution splits Building.Update priorities read.
   distributions: {
     foodStonemine: number;
@@ -236,6 +263,7 @@ export function defaultEconomySettings(): PlayerEconomySettings {
     ],
     toolPriorities: [9825, 65500, 13100, 6550, 13100, 26200, 32750, 45850, 6550],
     serfToKnightRate: 20000,
+    sendStrongest: false,
     distributions: {
       foodStonemine: 13100,
       foodCoalmine: 45850,
@@ -1132,6 +1160,7 @@ export class SerfboundGameWorld {
       threatLevel: 0,
       burning: false,
       burningCounter: 0,
+      underAttack: false,
     };
     this.#nextBuildingIndex += 1;
     this.buildings.set(building.index, building);
@@ -1207,6 +1236,7 @@ export class SerfboundGameWorld {
       threatLevel: 0,
       burning: false,
       burningCounter: 0,
+      underAttack: false,
     };
     this.#nextBuildingIndex += 1;
     this.buildings.set(castle.index, castle);
