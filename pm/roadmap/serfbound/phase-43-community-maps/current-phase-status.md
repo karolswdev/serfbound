@@ -1,12 +1,12 @@
 # Phase 43 — Community Maps (sharing)
 
-**Last updated:** 2026-06-13 (SB-43-03 done: the signed maps client
-(publish/browse/fetch/rate/report/play/delete) drives the service end
-to end, and the sprite-free false-color thumbnail renders a map preview
-with no imported data. The on-screen gallery shell + library store ride
-the device gate. SB-43-02 deploy stays STAGED — the apply is the
-maintainer's. Earlier: SB-43-01 service, SB-43-06 play counts).
-**Status:** in progress — SB-43-02 staged, awaiting the deploy.
+**Last updated:** 2026-06-13 (SB-43-04 done: session protocol v2 — the
+handshake carries `mapContentHash` so peers verify they hold the same
+community map, with a CI proof that a custom map plays divergence-free
+in lockstep. The on-screen lobby wiring rides the device gate. Earlier:
+SB-43-03 client + thumbnail, SB-43-01 service, SB-43-06 play counts).
+**Status:** in progress — SB-43-02 staged (awaiting the deploy);
+SB-43-05 moderation + device gate is the only remaining story.
 
 ## Goal
 
@@ -51,10 +51,12 @@ template) and never puts original game data on the wire.
   sprite-free false-color thumbnails. (SB-43-03 — the signed client and
   the pure thumbnail are CI-held; the on-screen shell, library store,
   and PNG wrapper ride the device gate SB-43-05.)
-- [ ] Custom maps in multiplayer: handshake v2 with `mapContentHash`,
+- [~] Custom maps in multiplayer: handshake v2 with `mapContentHash`,
   a lockstep/correspondence match on a custom map with
-  `firstChecksumDivergence === null` to a dual-attested result.
-  (SB-43-04)
+  `firstChecksumDivergence === null`. (SB-43-04 — the protocol + the
+  CI determinism proof are done; the on-screen lobby wiring of a
+  downloaded map and the dual-attested result ride the device gate
+  SB-43-05.)
 - [ ] Moderation (report → quarantine, name/title filtering, quota) and
   the on-device gate: the maintainer publishes, browses, downloads, and
   plays a community map. (SB-43-05)
@@ -66,7 +68,7 @@ template) and never puts original game data on the wire.
 | SB-43-01 | The maps service | done | story-01-the-maps-service.md | evidence-story-01.md |
 | SB-43-02 | Deploy to the backbone | staged | story-02-deploy-to-the-backbone.md | — (awaiting deploy) |
 | SB-43-03 | The gallery and library shell | done | story-03-the-gallery-and-library-shell.md | evidence-story-03.md |
-| SB-43-04 | Custom maps in multiplayer | backlog | — | — |
+| SB-43-04 | Custom maps in multiplayer | done | story-04-custom-maps-in-multiplayer.md | evidence-story-04.md |
 | SB-43-05 | Moderation and the device gate | backlog | — | — |
 | SB-43-06 | Play counts (opt-in) | done | story-06-play-counts.md | evidence-story-06.md |
 

@@ -10,7 +10,13 @@ import type { LockstepTurnBundle } from "./lockstep.js";
 // and fingerprints only: original game data never crosses it (each
 // player imports their own assets).
 
-export const sessionProtocolVersion = 1;
+// v2 (SB-43-04): the handshake carries `mapContentHash` so peers playing
+// a shared community map verify they hold the *same* map before a tick
+// runs — exactly as they already verify the seed for a generated map. A
+// generated (seeded) session leaves it null; two peers agree iff their
+// hashes agree. Shipped after the lockstep/correspondence parity was
+// proven so it extends the handshake without touching tick execution.
+export const sessionProtocolVersion = 2;
 
 export type SessionGameSettings = {
   readonly seedString: string;
@@ -18,6 +24,10 @@ export type SessionGameSettings = {
   readonly playerCount: number;
   readonly initialSupplies: number;
   readonly playerSupplies: readonly number[] | null;
+  // FNV-1a hash of a community map's canonical bytes; null/absent for a
+  // generated map. The map itself never crosses the session wire — each
+  // peer downloads it from the maps service and verifies this hash.
+  readonly mapContentHash?: number | null;
 };
 
 export type SessionHelloMessage = {
@@ -190,6 +200,16 @@ export function verifySessionHandshake(
     };
   }
 
+  // The community-map check (v2): absent and null mean the same thing —
+  // a generated map — so a seeded session keeps matching unchanged.
+  if ((remote.settings.mapContentHash ?? null) !== (local.settings.mapContentHash ?? null)) {
+    return {
+      ok: false,
+      reason: "map-mismatch",
+      message: "Peers hold different community maps (mapContentHash differs).",
+    };
+  }
+
   return { ok: true };
 }
 
@@ -250,6 +270,25 @@ function decodeHello(message: Record<string, unknown>): SessionHelloMessage {
     );
   }
 
+  // v2 community-map hash: absent (v1 peers) or null is a generated map.
+  const rawMapContentHash = record["mapContentHash"];
+  if (
+    rawMapContentHash !== undefined &&
+    rawMapContentHash !== null &&
+    (typeof rawMapContentHash !== "number" ||
+      !Number.isFinite(rawMapContentHash) ||
+      !Number.isInteger(rawMapContentHash))
+  ) {
+    throw new SessionProtocolError(
+      "malformed-field",
+      "hello.settings.mapContentHash must be null or an integer.",
+    );
+  }
+
+  // Only carry the field when the peer sent it (a v1 hello omits it),
+  // so a generated-map hello round-trips byte-exactly.
+  const mapContentHashProvided = rawMapContentHash !== undefined;
+
   const profile = message["profile"];
   let decodedProfile: { readonly name: string } | undefined;
   if (profile !== undefined) {
@@ -275,6 +314,7 @@ function decodeHello(message: Record<string, unknown>): SessionHelloMessage {
       playerCount,
       initialSupplies,
       playerSupplies: playerSupplies as readonly number[] | null,
+      ...(mapContentHashProvided ? { mapContentHash: rawMapContentHash as number | null } : {}),
     },
     turnTicks,
     inputDelayTurns,
