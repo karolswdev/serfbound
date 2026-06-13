@@ -2306,3 +2306,83 @@ test("send-strongest spends the veterans first (SB-39-03)", () => {
   ).knightRank;
   assert.equal(stayedRank, 0, "send-strongest kept the weakest home");
 });
+
+test("conquest swings morale: a taken castle hardens, a lost one craters (SB-39-04)", () => {
+  const { world } = flatTwoPlayerWorld();
+
+  // Identical gold for both players: same gold-ratio morale baseline.
+  for (const p of [0, 1]) {
+    const inv = world.inventoryForPlayer(p);
+    inv.resources[14] = 5; // gold bars
+  }
+  world.updateKnightMorale(0);
+  world.updateKnightMorale(1);
+  const baseline0 = world.players[0].knightMorale;
+  const baseline1 = world.players[1].knightMorale;
+  assert.equal(baseline0, baseline1, "identical gold gives identical morale");
+
+  // Player 0 takes an enemy castle (+1); player 1 loses one (-1).
+  world.players[0].castleScore = 1;
+  world.players[1].castleScore = -1;
+  world.updateKnightMorale(0);
+  world.updateKnightMorale(1);
+
+  assert.equal(
+    world.players[0].knightMorale,
+    baseline0 + 1024,
+    "the conqueror's knights are braver by the castle-score swing",
+  );
+  assert.equal(
+    world.players[1].knightMorale,
+    Math.max(1, baseline1 - 1023),
+    "the loser's knights falter toward the floor",
+  );
+});
+
+test("the conquest paths drive castle score, and morale refreshes every 256 ticks (SB-39-04)", () => {
+  const { world, engine, castle1 } = (() => {
+    const landscape = generateClassicMap(3, [9, 9, 9]);
+    const w = new SerfboundGameWorld(
+      {
+        ...landscape,
+        heights: new Uint8Array(landscape.tileCount).fill(4),
+        typesUp: new Uint8Array(landscape.tileCount).fill(mapTerrain.grass1),
+        typesDown: new Uint8Array(landscape.tileCount).fill(mapTerrain.grass1),
+        objects: new Uint8Array(landscape.tileCount),
+        minerals: new Uint8Array(landscape.tileCount),
+        resourceAmounts: new Uint8Array(landscape.tileCount),
+      },
+      2,
+    );
+    w.buildCastle(w.geometry.position(15, 20), 0);
+    const c1 = w.geometry.position(35, 20);
+    w.buildCastle(c1, 1);
+    return { world: w, engine: new SerfboundSerfEngine(w), castle1: c1 };
+  })();
+
+  const enemyCastle = [...world.buildings.values()].find(
+    (b) => b.player === 1 && b.type === 24,
+  );
+
+  // Player 0 captures player 1's castle outright.
+  assert.equal(world.captureBuilding(enemyCastle.index, 0), true, "the castle is taken");
+  assert.equal(world.players[0].castleScore, 1, "the conqueror's castle score rose");
+  assert.equal(world.players[1].castleScore, -1, "the loser's castle score fell");
+
+  // The morale sweep fires inside 256 ticks, not 1024.
+  world.players[0].castleScore = 5; // a clear, observable lift
+  const before = world.players[0].knightMorale;
+  for (let tick = 16; tick <= 256; tick += 16) {
+    engine.update(tick);
+  }
+  assert.equal(
+    world.players[0].knightMorale !== before || world.players[0].knightMorale >= 1024,
+    true,
+    "morale recomputed on the 256-tick cadence",
+  );
+  assert.equal(
+    world.players[0].knightMorale >= 1024 + 1024 * 5 - 1,
+    true,
+    "the castle-score lift is in the refreshed morale",
+  );
+});

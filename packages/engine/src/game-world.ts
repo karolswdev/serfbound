@@ -308,6 +308,9 @@ export type WorldPlayer = {
   knightCycleCounter: number;
   cyclingKnights: boolean;
   cyclingReducedLevel: boolean;
+  // Player.CastleScore (SB-39-04): +1 on taking an enemy castle, -1
+  // on losing your own; adjusts knight morale.
+  castleScore: number;
   // Player.EmergencyProgramActive (SB-36-08): planks/stones ran out
   // and construction funnels into the wood-and-stone chain.
   emergencyProgramActive: boolean;
@@ -438,6 +441,7 @@ export class SerfboundGameWorld {
       knightCycleCounter: 0,
       cyclingKnights: false,
       cyclingReducedLevel: false,
+      castleScore: 0,
       emergencyProgramActive: false,
       defeated: false,
     }));
@@ -1507,6 +1511,9 @@ export class SerfboundGameWorld {
       player.hasCastle = false;
       player.castlePosition = null;
       player.defeated = true;
+      // BuildingDemolished: a lost castle lowers its owner's castle
+      // score (SB-39-04).
+      player.castleScore -= 1;
       for (const [index, inventory] of this.inventories) {
         if (inventory.buildingIndex === building.index) {
           this.inventories.delete(index);
@@ -1530,6 +1537,13 @@ export class SerfboundGameWorld {
     if (building.type === buildingType.castle) {
       const position = building.position;
       this.demolishBuildingAt(position);
+      // BuildingCaptured: taking an enemy castle raises the
+      // conqueror's castle score (SB-39-04).
+      const conqueror = this.players[playerIndex];
+      if (conqueror !== undefined) {
+        conqueror.castleScore += 1;
+      }
+
       this.updateLandOwnership(position);
       return true;
     }
@@ -1649,6 +1663,14 @@ export class SerfboundGameWorld {
       player.knightMorale = 1024 + Math.trunc((this.mapGoldMoraleFactor() * depot) / totalGold);
     } else {
       player.knightMorale = 4096;
+    }
+
+    // The conquest swing (SB-39-04): a taken enemy castle hardens
+    // the knights, a lost one craters them toward the floor.
+    if (player.castleScore < 0) {
+      player.knightMorale = Math.max(1, player.knightMorale - 1023);
+    } else if (player.castleScore > 0) {
+      player.knightMorale = Math.min(player.knightMorale + 1024 * player.castleScore, 0xffff);
     }
   }
 

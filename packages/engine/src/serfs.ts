@@ -1225,7 +1225,9 @@ export class SerfboundSerfEngine {
       }
     }
 
-    if (this.#lastMoraleTick < 0 || ((gameTick - this.#lastMoraleTick) & 0xffff) >= 1024) {
+    // KnightMoraleCounter: the reference refreshes morale every 256
+    // ticks (Game.cs 389, SB-39-04).
+    if (this.#lastMoraleTick < 0 || ((gameTick - this.#lastMoraleTick) & 0xffff) >= 256) {
       this.#lastMoraleTick = gameTick;
       for (const player of this.world.players) {
         if (player.hasCastle) {

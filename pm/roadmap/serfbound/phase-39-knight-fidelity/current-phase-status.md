@@ -1,12 +1,13 @@
 # Phase 39 — Knight Fidelity
 
-**Last updated:** 2026-06-13 (SB-39-03 done: the commanded attack —
-knightsAvailableForAttack scans the player's border garrisons for
-their spare knights, and commandAttack marches the player's chosen
-count from the nearest posts first, each kept to its occupation
-minimum, strongest or weakest by the sendStrongest toggle, with the
-target set under attack. Earlier: SB-39-02, the garrison
-disciplines).
+**Last updated:** 2026-06-13 (SB-39-04 done: gold morale in full —
+the castle-score conquest swing (a taken enemy castle hardens the
+knights, a lost one craters them) now rides on top of the gold
+ratio, and the whole morale update runs on the reference 256-tick
+cadence. This is the "conquest feedback" the SB-39-02 scaffold note
+misplaced onto CastleKnightsWanted, now in its real home. Earlier:
+SB-39-02 garrison disciplines, SB-39-03 the commanded attack. Only
+SB-39-01, the full fight, and the device gate remain).
 **Status:** in progress.
 
 ## Goal
@@ -62,8 +63,11 @@ nobody.
   knights can come, choose the count, watch them march from the
   right buildings. (SB-39-03 — the UI slider rides the device
   gate; the engine API ships.)
-- [ ] Gold morale in full: MapGoldMoraleFactor on the 256-tick
-  cadence, conquest feedback on CastleKnightsWanted. (SB-39-04)
+- [x] Gold morale in full: the gold ratio plus the CastleScore
+  conquest swing, on the 256-tick cadence. (SB-39-04 — the scaffold's
+  "conquest feedback on CastleKnightsWanted" was wrong; the reference
+  feeds conquest into morale via CastleScore, ported here. The
+  military-score score tail is Phase 41 ledger.)
 - [ ] On-device: the maintainer wins and loses a fight he ordered,
   and calls the war game right. (SB-39-05, the device gate)
 
@@ -74,7 +78,7 @@ nobody.
 | SB-39-01 | The full fight | backlog | — | — |
 | SB-39-02 | The garrison disciplines | done | story-02-the-garrison-disciplines.md | evidence-story-02.md |
 | SB-39-03 | The commanded attack | done | story-03-the-commanded-attack.md | evidence-story-03.md |
-| SB-39-04 | Gold and morale in full | backlog | — | — |
+| SB-39-04 | Gold and morale in full | done | story-04-gold-and-morale-in-full.md | evidence-story-04.md |
 | SB-39-05 | The device gate | backlog | — | — |
 
 ## Boundaries
