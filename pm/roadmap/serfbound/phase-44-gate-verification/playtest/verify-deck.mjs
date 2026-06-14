@@ -79,6 +79,39 @@ const browser = await chromium.launch();
   await page.close();
 }
 
+// Pass 3: capture layer (SB-44-02) — persistence across reload + report.
+{
+  const page = await browser.newPage({ viewport: { width: 414, height: 896 } });
+  await page.goto(url, { waitUntil: "networkidle" });
+  await page.evaluate(() => localStorage.removeItem("serfbound-gate-playtest-v1"));
+
+  await page.$eval('.controls[data-id="35.1"] button[data-v="pass"]', b => b.click());
+  await page.$eval('.notes[data-id="35.1"]', t => {
+    t.value = "clean walk"; t.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  await page.reload({ waitUntil: "networkidle" });   // the app-switch-back scenario
+  const persisted = await page.$eval('.controls[data-id="35.1"] button[data-v="pass"]', b => b.classList.contains("active"));
+  ok(persisted, "verdict persists across reload (localStorage)");
+  const note = await page.$eval('.notes[data-id="35.1"]', t => t.value);
+  ok(note === "clean walk", `note persists across reload: "${note}"`);
+  const resumeShown = await page.$eval("#resume", e => e.style.display !== "none");
+  ok(resumeShown, "resume banner shows after a restore");
+
+  const report = await page.$eval("#report", e => e.textContent);
+  ok(/\[35\.1\] ✓ pass/.test(report), "report records the verdict");
+  ok(/note: clean walk/.test(report), "report carries the note");
+  ok(/Phase 35 — Locomotion fidelity/.test(report) && /Verdict:/.test(report), "report groups by phase with a roll-up verdict");
+
+  await page.evaluate(() => { window.confirm = () => true; });
+  await page.$eval("#reset-report", b => b.click());
+  const afterReset = await page.$eval("#progress", e => e.textContent);
+  ok(/0\/36/.test(afterReset), "reset clears all verdicts");
+  const cleared = await page.evaluate(() => localStorage.getItem("serfbound-gate-playtest-v1"));
+  ok(!cleared, "reset clears persisted storage");
+  await page.close();
+}
+
 await browser.close();
 console.log(failures === 0 ? "\nALL DECK ASSERTIONS PASS" : `\n${failures} ASSERTION(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

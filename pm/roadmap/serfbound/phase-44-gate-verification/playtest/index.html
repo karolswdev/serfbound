@@ -92,6 +92,9 @@
       <p style="font-size:0.7em">✓ 323/323 unit tests · ✓ boundaries · ✓ design tokens · ✓ zero-.NET independence</p>
       <p class="fallback-note warn">Offline mode — reveal.js didn't load. The
          protocol is stacked below; scroll to run it. Your verdicts still record.</p>
+      <p id="resume" class="warn" style="display:none">Resumed a run in progress —
+         <b id="resume-count">0</b> verdicts restored. Jump to <b>Results</b> (last slide)
+         to export, or <button id="reset-top" style="font-size:0.6em;padding:2px 10px">start over</button>.</p>
       <p style="font-size:0.62em;color:var(--dim)">Arrow keys / swipe to advance · down for each check within a phase.</p>
     </section>
 
@@ -225,7 +228,23 @@ function phaseStack(p) {
   return `<section>${intro}${p.checks.map(checkSlide).join("")}</section>`;
 }
 
-document.getElementById("protocol-mount").outerHTML = PROTOCOL.map(phaseStack).join("");
+// Results / export slide (SB-44-02) appended after the protocol.
+function resultsSlide() {
+  return `
+    <section data-phase="results">
+      <p class="phase-num">Hand-back</p>
+      <h2>Results</h2>
+      <p class="watch" style="font-size:0.72em">When a phase is all-pass, paste this report back
+         and that gate gets its story + evidence and flips to complete. Any Fail loops the phase.</p>
+      <div style="display:flex;gap:0.5em;margin:0.5em 0">
+        <button id="copy-report" style="flex:1;font-size:0.7em;padding:0.5em;border-radius:10px;border:2px solid var(--ok);background:var(--card);color:var(--ink)">⧉ Copy report</button>
+        <button id="dl-report" style="flex:1;font-size:0.7em;padding:0.5em;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink)">⤓ Download</button>
+        <button id="reset-report" style="flex:1;font-size:0.7em;padding:0.5em;border-radius:10px;border:2px solid var(--no);background:var(--card);color:var(--ink)">↺ Reset</button>
+      </div>
+      <pre id="report" style="font-size:0.5em;background:#0f0f0f;border:1px solid var(--line);border-radius:8px;padding:0.7em;max-height:9em;overflow:auto;white-space:pre-wrap"></pre>
+    </section>`;
+}
+document.getElementById("protocol-mount").outerHTML = PROTOCOL.map(phaseStack).join("") + resultsSlide();
 
 // ── Verdict wiring (in-memory for SB-44-01). ─────────────────────────
 function renderProgress() {
@@ -256,8 +275,63 @@ function setNotes(id, notes) {
   cur.notes = notes; state.verdicts[id] = cur;
   onVerdictChange(id);
 }
-// Overridden by the capture layer (SB-44-02). No-op until then.
-let onVerdictChange = () => {};
+// ── Capture layer (SB-44-02): persistence + report export. ───────────
+const STORE_KEY = "serfbound-gate-playtest-v1";
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state.verdicts)); } catch (e) {} }
+let onVerdictChange = () => { save(); renderReport(); };
+
+function restore() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null"); } catch (e) {}
+  if (!saved || typeof saved !== "object") return 0;
+  let n = 0;
+  for (const [id, v] of Object.entries(saved)) {
+    if (!v) continue;
+    state.verdicts[id] = { status: v.status || null, notes: v.notes || "" };
+    applyButtons(id);
+    const ta = document.querySelector(`.notes[data-id="${id}"]`);
+    if (ta) ta.value = v.notes || "";
+    if (v.status || v.notes) n++;
+  }
+  return n;
+}
+function resetAll() {
+  state.verdicts = {};
+  try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+  document.querySelectorAll(".controls[data-id]").forEach(w => {
+    w.querySelectorAll(".verdicts button").forEach(b => b.classList.remove("active"));
+    const ta = w.querySelector(".notes"); if (ta) ta.value = "";
+  });
+  const r = document.getElementById("resume"); if (r) r.style.display = "none";
+  renderProgress(); renderReport();
+}
+
+const ICON = { pass: "✓ pass", fail: "✗ FAIL", skip: "⤼ skip" };
+function buildReport() {
+  const lines = ["# Serfbound device-gate playtest — results", ""];
+  for (const p of PROTOCOL) {
+    const verdicts = p.checks.map(c => state.verdicts[c.id]?.status || null);
+    const decided = verdicts.filter(Boolean).length;
+    const failed = verdicts.filter(s => s === "fail").length;
+    const skipped = verdicts.filter(s => s === "skip").length;
+    const roll = decided < p.checks.length ? `incomplete (${decided}/${p.checks.length})`
+               : failed ? `${failed} FAILED — loops`
+               : skipped ? `passes with ${skipped} skipped`
+               : "ALL PASS — ready to close";
+    lines.push(`## Phase ${p.phase} — ${p.title} (${p.gate})`, `Verdict: ${roll}`, "");
+    for (const c of p.checks) {
+      const v = state.verdicts[c.id] || {};
+      const status = v.status ? ICON[v.status] : "— not run";
+      lines.push(`- [${c.id}] ${status} — ${c.pass}${v.notes ? `\n      note: ${v.notes}` : ""}`);
+    }
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+function renderReport() {
+  const pre = document.getElementById("report");
+  if (pre) pre.textContent = buildReport();
+}
 
 document.addEventListener("click", e => {
   const b = e.target.closest(".verdicts button"); if (!b) return;
@@ -267,7 +341,31 @@ document.addEventListener("input", e => {
   if (e.target.classList.contains("notes")) setNotes(e.target.dataset.id, e.target.value);
 });
 
+// Restore any in-progress run before first paint.
+const restored = restore();
+if (restored > 0) {
+  const r = document.getElementById("resume");
+  if (r) { r.style.display = "block"; document.getElementById("resume-count").textContent = restored; }
+}
 renderProgress();
+renderReport();
+
+// Export / reset controls.
+document.addEventListener("click", e => {
+  if (e.target.id === "reset-report" || e.target.id === "reset-top") {
+    if (confirm("Clear all recorded verdicts and start over?")) resetAll();
+  } else if (e.target.id === "copy-report") {
+    const txt = buildReport();
+    (navigator.clipboard?.writeText(txt) || Promise.reject()).then(
+      () => { e.target.textContent = "⧉ Copied!"; setTimeout(() => e.target.textContent = "⧉ Copy report", 1500); },
+      () => { e.target.textContent = "select & copy ↓"; document.getElementById("report").focus(); });
+  } else if (e.target.id === "dl-report") {
+    const blob = new Blob([buildReport()], { type: "text/markdown" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "gate-playtest-results.md";
+    a.click(); URL.revokeObjectURL(a.href);
+  }
+});
 
 // ── reveal.js init with graceful offline fallback. ───────────────────
 if (typeof Reveal !== "undefined") {

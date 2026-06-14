@@ -2,7 +2,7 @@
 
 - **Project:** serfbound
 - **Phase:** 44
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-44-01
 - **Unblocks:** the Bucket-A gate closures (the hand-back report is what I author the gate evidence from)
 - **Owner:** unassigned
@@ -14,7 +14,7 @@ switches constantly between the game and the deck — every switch can
 discard the tab and lose the run. And once the run is done, there's no
 way to get the verdicts back to the PMO flow except retyping them.
 
-## What ships (planned)
+## What ships
 
 - **Persistence.** Every verdict and note writes to `localStorage` and
   reloads on open, so an app-switch or refresh never loses a run. A
@@ -34,13 +34,14 @@ in place, so it's additive.
 None — verification tooling, no product runtime, not a player-facing
 path.
 
-## Acceptance criteria (planned)
+## Acceptance criteria
 
-- [ ] A verdict survives a reload (localStorage round-trip), proven
-  headless.
-- [ ] The results slide emits a correct markdown report (every check,
-  per-phase roll-up) and copies/downloads it.
-- [ ] Reset clears persisted state.
+- [x] A verdict and its note survive a reload (localStorage round-trip),
+  with a resume banner on restore — proven headless (verify-deck.mjs
+  pass 3).
+- [x] The results slide emits a correct markdown report (every check,
+  per-phase roll-up verdict, notes) with Copy and Download.
+- [x] Reset clears both in-memory and persisted state.
 
 ## Notes
 

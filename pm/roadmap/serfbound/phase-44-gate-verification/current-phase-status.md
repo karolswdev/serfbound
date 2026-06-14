@@ -1,11 +1,16 @@
 # Phase 44 — Gate Verification
 
-**Last updated:** 2026-06-14 (SB-44-01 done: the device-gate playtest
-deck exists — all seven Bucket-A gates as ordered, executable check
-slides with Pass/Fail/Skip + notes, offline-resilient, headless-verified
-in real Chromium at a phone viewport).
-**Status:** in progress — SB-44-01 done; SB-44-02 (verdicts persist
-across app-switches + export a hand-back report) is the next slice.
+**Last updated:** 2026-06-14 (SB-44-02 done: verdicts persist across
+reload/app-switch with a resume banner, and a Results slide exports a
+per-phase markdown report with Copy/Download. The deck is complete; both
+stories ship. Earlier: SB-44-01 stood up the deck — all seven Bucket-A
+gates as ordered, executable check slides, offline-resilient,
+headless-verified).
+**Status:** complete — the deck ships and is headless-verified. The
+phase's *goal* (closing the Bucket-A gates 35–39, 42, 43) is now
+unblocked: the maintainer runs the protocol on a device, hands back the
+report, and each all-pass gate closes via its own commit; any fail loops
+that phase.
 
 ## Goal
 
@@ -40,7 +45,7 @@ and the phase flips to complete; any fail loops that phase.
   ordered, executable check slides (Pass/Fail/Skip + notes), an
   always-visible progress chip, offline fallback, headless-verified in
   Chromium at a phone viewport. (SB-44-01)
-- [ ] Verdicts persist across reload/app-switch (a phone juggling the
+- [x] Verdicts persist across reload/app-switch (a phone juggling the
   game and the deck must not lose state) and export to a markdown report
   the maintainer hands back to close the gates. (SB-44-02)
 
@@ -49,11 +54,11 @@ and the phase flips to complete; any fail loops that phase.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-44-01 | The protocol deck | done | story-01-the-protocol-deck.md | evidence-story-01.md |
-| SB-44-02 | Feedback capture and export | backlog | — | — |
+| SB-44-02 | Feedback capture and export | done | story-02-feedback-capture.md | evidence-story-02.md |
 
 ## Active risks
 
 | Risk | Likelihood | Mitigation | Stop signal |
 |---|---|---|---|
-| In-memory verdicts lost when the phone switches to the game and back | high | SB-44-02 persists to localStorage and adds a resume banner | Maintainer loses a run mid-protocol |
+| In-memory verdicts lost when the phone switches to the game and back | ~~high~~ resolved | SB-44-02 persists to localStorage with a resume banner (verified) | Maintainer loses a run mid-protocol |
 | CDN unreachable on the device | low | Progressive enhancement: offline fallback renders the full protocol as a scrollable stack, headless-verified with the CDN blocked | Deck blank with no network |
