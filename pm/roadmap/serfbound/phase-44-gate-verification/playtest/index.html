@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Serfbound — Device-Gate Playtest Protocol</title>
+
+<!-- reveal.js is a progressive enhancement. If the CDN is unreachable
+     (offline phone), the body gets class "no-reveal" and every slide
+     stacks into a single scrollable column — the protocol still works. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" id="theme">
+
+<style>
+  :root {
+    --ok: #4caf50; --no: #e2574c; --skip: #b58a3a;
+    --ink: #f2efe6; --dim: #b9b4a6; --line: #3a3a3a;
+    --card: #1c1c1c; --gate: #c9a227;
+  }
+  .reveal { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            font-size: 30px; color: var(--ink); }
+  .reveal h1 { font-size: 1.5em; }
+  .reveal h2 { font-size: 1.15em; color: var(--gate); text-transform: none; letter-spacing: 0; }
+  .reveal h3 { font-size: 0.95em; color: var(--dim); text-transform: none; }
+  .reveal section { text-align: left; }
+  .reveal .center { text-align: center; }
+  .gate-chip { display:inline-block; font-size:0.55em; padding:2px 10px; border:1px solid var(--gate);
+               border-radius: 999px; color: var(--gate); margin-left: 0.4em; vertical-align: middle; }
+  .phase-num { color: var(--dim); font-size: 0.6em; letter-spacing: 0.2em; text-transform: uppercase; }
+  .do   { margin: 0.2em 0; }
+  .label { color: var(--gate); font-size: 0.62em; letter-spacing: 0.12em; text-transform: uppercase; display:block; margin-top:0.6em; }
+  .watch { color: var(--dim); }
+  .pass  { color: var(--ink); }
+  .warn  { background: #2a1f12; border-left: 4px solid var(--skip); padding: 0.5em 0.8em; font-size: 0.8em; color:#e8d9bf; }
+  .rolls { color: var(--dim); font-size: 0.7em; font-style: italic; }
+
+  /* Verdict controls — large tap targets for a real phone. */
+  .controls { margin-top: 0.7em; }
+  .verdicts { display: flex; gap: 0.5em; }
+  .verdicts button {
+    flex: 1; font-size: 0.7em; padding: 0.55em 0; border-radius: 10px;
+    border: 2px solid var(--line); background: var(--card); color: var(--ink);
+    cursor: pointer; -webkit-tap-highlight-color: transparent; transition: all .12s;
+  }
+  .verdicts button[data-v="pass"].active { background: var(--ok); border-color: var(--ok); color:#0b1f0c; font-weight:700; }
+  .verdicts button[data-v="fail"].active { background: var(--no); border-color: var(--no); color:#fff; font-weight:700; }
+  .verdicts button[data-v="skip"].active { background: var(--skip); border-color: var(--skip); color:#1c1206; font-weight:700; }
+  .notes {
+    margin-top: 0.5em; width: 100%; box-sizing: border-box; min-height: 2.4em;
+    font-size: 0.62em; padding: 0.5em; border-radius: 8px; border: 1px solid var(--line);
+    background: #141414; color: var(--ink); font-family: inherit; resize: vertical;
+  }
+  .notes::placeholder { color: #6c6960; }
+
+  /* Fixed progress chip — always visible while stepping. */
+  #progress {
+    position: fixed; top: 8px; right: 10px; z-index: 60;
+    font-size: 13px; font-family: ui-monospace, monospace; color: var(--dim);
+    background: rgba(10,10,10,.78); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 12px; pointer-events: none;
+  }
+  #progress b.ok { color: var(--ok); } #progress b.no { color: var(--no); } #progress b.skip { color: var(--skip); }
+
+  /* No-reveal fallback: stack everything, make it scroll. */
+  body.no-reveal .reveal .slides { position: static; transform: none !important; width: auto; height: auto; left:0; top:0; }
+  body.no-reveal .reveal .slides > section,
+  body.no-reveal .reveal .slides > section > section {
+    display: block !important; position: static !important; transform: none !important;
+    opacity: 1 !important; visibility: visible !important;
+    max-width: 760px; margin: 0 auto 1.6em; padding: 1.2em 1.2em; border-bottom: 1px solid var(--line);
+    height: auto; min-height: 0;
+  }
+  body.no-reveal .reveal { position: static; height: auto; overflow: visible; }
+  body.no-reveal html, body.no-reveal body { overflow: auto; height: auto; }
+  .fallback-note { display:none; }
+  body.no-reveal .fallback-note { display:block; }
+</style>
+</head>
+<body>
+<div id="progress" aria-live="polite">—</div>
+
+<div class="reveal">
+  <div class="slides">
+
+    <!-- TITLE -->
+    <section data-phase="intro">
+      <p class="phase-num">Serfbound · PMO Phase 44</p>
+      <h1>Device-Gate Playtest Protocol</h1>
+      <p class="watch">The Bucket-A gates whose engineering is done — they close
+         only when you play on a real device and sign off.</p>
+      <p class="label">Pre-flight (automated, verified 2026-06-14)</p>
+      <p style="font-size:0.7em">✓ 323/323 unit tests · ✓ boundaries · ✓ design tokens · ✓ zero-.NET independence</p>
+      <p class="fallback-note warn">Offline mode — reveal.js didn't load. The
+         protocol is stacked below; scroll to run it. Your verdicts still record.</p>
+      <p style="font-size:0.62em;color:var(--dim)">Arrow keys / swipe to advance · down for each check within a phase.</p>
+    </section>
+
+    <!-- PRE-FLIGHT -->
+    <section data-phase="setup">
+      <h2>Before you start</h2>
+      <ol style="font-size:0.78em">
+        <li>A <b>real phone</b> (not a desktop emulator — that's what missed these bugs).</li>
+        <li>Open <b>serfbound.com</b> (or a LAN <code>npm run build:web</code> URL).</li>
+        <li>Import your local <code>SPAU.PA</code> once — the map builder and
+            community maps are import-gated like play.</li>
+        <li>Keep this deck open in a second tab; switch back to record each verdict.</li>
+      </ol>
+      <p class="watch" style="font-size:0.7em">Mark every check <b style="color:var(--ok)">Pass</b>,
+         <b style="color:var(--no)">Fail</b>, or <b style="color:var(--skip)">Skip</b>.
+         A phase closes only when all its checks pass; any Fail loops it (the Phase-34 pattern).</p>
+    </section>
+
+    <!-- PROTOCOL slides are generated here from PROTOCOL[] -->
+    <div id="protocol-mount" style="display:contents"></div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+// ── The protocol. Each phase's checks come straight from the gate exit
+//    criteria in the phase-NN current-phase-status.md docs. ────────────
+const PROTOCOL = [
+  { phase: 35, title: "Locomotion fidelity", gate: "SB-35-04",
+    intro: "Build a lumberjack hut on a road. Watch one full cycle.",
+    checks: [
+      { id:"35.1", do:"Watch the lumberjack leave the hut/castle.", watch:"Does he walk out, or appear at the tree?", pass:"He WALKS — no teleport." },
+      { id:"35.2", do:"Time his walk across tiles.", watch:"Pace vs the original.", pass:"Slow, deliberate (~247 ticks/tile), not milliseconds." },
+      { id:"35.3", do:"Watch him enter/leave a building.", watch:"Entry transition.", pass:"A door SLIDE, not a pop." },
+      { id:"35.4", do:"Watch a tree get felled.", watch:"Felling animation + aftermath.", pass:"Five visible stages; a felled-tree object is left on the ground." },
+    ]},
+  { phase: 36, title: "Transport economy", gate: "SB-36-06",
+    intro: "The maintainer's round-8 bug. Lay a road, then plant a flag in the MIDDLE to split it.",
+    checks: [
+      { id:"36.1", do:"Split a live road with a mid-road flag.", watch:"Who staffs the two halves?", pass:"BOTH halves staff themselves — two distinct serfs, one per half (old bug: new half unstaffed)." },
+      { id:"36.2", do:"Watch a resource leave the castle.", watch:"How does it reach a flag?", pass:"A serf CARRIES it out the door — it does not materialize on a flag." },
+      { id:"36.3", do:"Follow a resource along a multi-flag road.", watch:"Flag-to-flag movement.", pass:"Visible hand-off flag to flag — not a teleport to the destination." },
+    ]},
+  { phase: 37, title: "Living map", gate: "(visual confirmation — no gate story yet)",
+    intro: "Leave a settlement running and watch the map itself over time.",
+    checks: [
+      { id:"37.1", do:"Watch tree tiles over time.", watch:"Growth without you acting.", pass:"Saplings GROW into trees on the map clock." },
+      { id:"37.2", do:"Watch a felled trunk.", watch:"Decay.", pass:"It rots to a stub and vanishes." },
+      { id:"37.3", do:"Have a forester plant a sapling.", watch:"Maturation time.", pass:"It takes map-time to become a tree — not instant." },
+      { id:"37.4", do:"Watch fields and water.", watch:"Field cycle + fish.", pass:"Fields advance through stages; fish are present in water." },
+    ]},
+  { phase: 38, title: "Professions, tools, fire", gate: "SB-38-06 · ALPHA GATE",
+    intro: "The 'is it an alpha yet' bar. Play the full loop, then exercise each profession.",
+    rolls: "Rolls up the Phase 35/36/37 checks into one end-to-end play.",
+    checks: [
+      { id:"38.1", do:"Found a castle, lay self-staffing roads, watch serfs move.", watch:"The whole loop.", pass:"Serfs walk at pace through real doors on roads that staff themselves." },
+      { id:"38.2", do:"Watch resources reach a construction site.", watch:"Delivery.", pass:"Every gathered resource is carried by hand, castle door to site." },
+      { id:"38.3", do:"Watch the forest over a build.", watch:"Trees + regrowth.", pass:"Trees fall in stages and saplings regrow." },
+      { id:"38.4", do:"Build a fisher's hut by water.", watch:"Where he works.", pass:"Fisher works at the shore in the open (visible standing pose)." },
+      { id:"38.5", do:"Build a farm.", watch:"Farmer's positions.", pass:"Farmer sows and harvests at visible field positions." },
+      { id:"38.6", do:"Build a forester's hut.", watch:"Planting.", pass:"Forester plants saplings outdoors." },
+      { id:"38.7", do:"Get a geologist onto hills.", watch:"Prospecting.", pass:"Geologist exists and plants prospecting signs." },
+      { id:"38.8", do:"Run a building dry of tools.", watch:"Profession gating.", pass:"No tool → no professional; the toolmaker's output unblocks it." },
+      { id:"38.9", do:"Burn a building down.", watch:"Demolition.", pass:"Fire countdown plays and serfs escape." },
+    ]},
+  { phase: 39, title: "Knight fidelity", gate: "SB-39-05",
+    intro: "You need a border with an enemy. Order a fight and read the outcome.",
+    checks: [
+      { id:"39.1", do:"Command an attack.", watch:"The order UI.", pass:"You pick an enemy building and choose a knight count." },
+      { id:"39.2", do:"Watch the knights leave.", watch:"Where from.", pass:"They march from border buildings; each garrison keeps its minimum." },
+      { id:"39.3", do:"Watch the clash.", watch:"Free fight on open ground.", pass:"Enemy knights clash on contested ground; the outcome is decisive." },
+      { id:"39.4", do:"Order more fights.", watch:"Both outcomes.", pass:"You can WIN and LOSE a fight you ordered." },
+      { id:"39.5", do:"Toggle garrison settings.", watch:"Discipline response.", pass:"Send-strongest/weakest and knight cycling visibly respond." },
+    ]},
+  { phase: 42, title: "Map builder (local)", gate: "on-device maintainer gate",
+    intro: "From the title screen, build and play a custom map — all on the phone.",
+    checks: [
+      { id:"42.1", do:"Open the editor.", watch:"Reachability.", pass:"'Build a map' opens it from the title screen." },
+      { id:"42.2", do:"Look at the canvas.", watch:"The render.", pass:"Authentic tiles — it looks like the game, not placeholders." },
+      { id:"42.3", do:"Paint and place.", watch:"Tools.", pass:"Terrain/heights paint; objects, minerals, per-player starts place." },
+      { id:"42.4", do:"Use flatten, brush size, copy/paste.", watch:"Touch behaviour.", pass:"All three work under finger touch." },
+      { id:"42.5", do:"Run validate.", watch:"The verdict.", pass:"A real verdict — castle-placeable, buildable ratio, named errors." },
+      { id:"42.6", do:"Play this map.", watch:"Launch.", pass:"A local game starts on the authored map, no network." },
+    ]},
+  { phase: 43, title: "Community maps", gate: "SB-43-05 · moderation + device gate",
+    intro: "Publish, browse, and play shared maps. ⚠ This gate still has un-written engineering.",
+    warn: "Unlike the others, SB-43-05 (moderation filters + on-screen lobby wiring) is backlog, not just a verification pass. The service is deployed and stories 01–04/06 are done. If a check below has no UI yet, mark it Skip — that's the signal the moderation slice needs code before this gate can close.",
+    checks: [
+      { id:"43.1", do:"Publish an authored map.", watch:"Accept + limits.", pass:"It publishes; size cap and per-key quota are enforced." },
+      { id:"43.2", do:"Browse the gallery.", watch:"Thumbnails.", pass:"Sprite-free false-color thumbnails; no original art on the wire." },
+      { id:"43.3", do:"Rate a map.", watch:"One per key.", pass:"You can rate once per device key." },
+      { id:"43.4", do:"Report a map.", watch:"Moderation.", pass:"Report quarantines / hides it from the gallery." },
+      { id:"43.5", do:"Download and play one.", watch:"Local + multiplayer.", pass:"It plays locally and in multiplayer (mapContentHash handshake)." },
+    ]},
+];
+
+// ── Render slides from the protocol. ─────────────────────────────────
+const esc = s => String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const TOTAL = PROTOCOL.reduce((n,p)=>n+p.checks.length,0);
+const state = { verdicts: {} };           // { "35.1": {status, notes} } — in-memory (SB-44-01)
+
+function checkSlide(c) {
+  return `
+    <section data-check="${c.id}">
+      <p class="phase-num">Check ${esc(c.id)}</p>
+      <p class="do">${esc(c.do)}</p>
+      <span class="label">Watch</span><p class="watch">${esc(c.watch)}</p>
+      <span class="label">Pass when</span><p class="pass">${esc(c.pass)}</p>
+      <div class="controls" data-id="${c.id}">
+        <div class="verdicts">
+          <button data-v="pass">✓ Pass</button>
+          <button data-v="fail">✗ Fail</button>
+          <button data-v="skip">⤼ Skip</button>
+        </div>
+        <textarea class="notes" data-id="${c.id}" placeholder="Notes / what you saw (optional)…"></textarea>
+      </div>
+    </section>`;
+}
+
+function phaseStack(p) {
+  const intro = `
+    <section data-phase="${p.phase}">
+      <p class="phase-num">Phase ${p.phase}</p>
+      <h2>${esc(p.title)} <span class="gate-chip">${esc(p.gate)}</span></h2>
+      <p>${esc(p.intro)}</p>
+      ${p.rolls ? `<p class="rolls">${esc(p.rolls)}</p>` : ""}
+      ${p.warn ? `<p class="warn">${esc(p.warn)}</p>` : ""}
+      <p class="watch" style="font-size:0.66em">↓ ${p.checks.length} check${p.checks.length>1?"s":""} below.</p>
+    </section>`;
+  return `<section>${intro}${p.checks.map(checkSlide).join("")}</section>`;
+}
+
+document.getElementById("protocol-mount").outerHTML = PROTOCOL.map(phaseStack).join("");
+
+// ── Verdict wiring (in-memory for SB-44-01). ─────────────────────────
+function renderProgress() {
+  let ok=0,no=0,skip=0;
+  for (const v of Object.values(state.verdicts)) {
+    if (v.status==="pass") ok++; else if (v.status==="fail") no++; else if (v.status==="skip") skip++;
+  }
+  const decided = ok+no+skip;
+  document.getElementById("progress").innerHTML =
+    `${decided}/${TOTAL} · <b class="ok">✓${ok}</b> <b class="no">✗${no}</b> <b class="skip">⤼${skip}</b>`;
+}
+function applyButtons(id) {
+  const wrap = document.querySelector(`.controls[data-id="${id}"]`);
+  if (!wrap) return;
+  const status = state.verdicts[id] && state.verdicts[id].status;
+  wrap.querySelectorAll(".verdicts button").forEach(b =>
+    b.classList.toggle("active", b.dataset.v === status));
+}
+function setVerdict(id, status) {
+  const cur = state.verdicts[id] || { status:null, notes:"" };
+  cur.status = (cur.status === status) ? null : status;   // tap again to clear
+  state.verdicts[id] = cur;
+  onVerdictChange(id);                                     // hook for SB-44-02 persistence
+  applyButtons(id); renderProgress();
+}
+function setNotes(id, notes) {
+  const cur = state.verdicts[id] || { status:null, notes:"" };
+  cur.notes = notes; state.verdicts[id] = cur;
+  onVerdictChange(id);
+}
+// Overridden by the capture layer (SB-44-02). No-op until then.
+let onVerdictChange = () => {};
+
+document.addEventListener("click", e => {
+  const b = e.target.closest(".verdicts button"); if (!b) return;
+  setVerdict(b.closest(".controls").dataset.id, b.dataset.v);
+});
+document.addEventListener("input", e => {
+  if (e.target.classList.contains("notes")) setNotes(e.target.dataset.id, e.target.value);
+});
+
+renderProgress();
+
+// ── reveal.js init with graceful offline fallback. ───────────────────
+if (typeof Reveal !== "undefined") {
+  Reveal.initialize({ hash:true, slideNumber:"c/t", controls:true, progress:true,
+                      touch:true, width:1100, height:760, margin:0.06,
+                      transition:"slide", navigationMode:"linear" });
+} else {
+  document.body.classList.add("no-reveal");   // CDN blocked → scrollable stack
+}
+</script>
+</body>
+</html>
