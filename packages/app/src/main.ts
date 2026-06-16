@@ -3586,6 +3586,14 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         return true;
       }
     })();
+    if (embedded) {
+      // Rig/debug chrome: open the under-the-hood ledger (the debug tools —
+      // build controls + the state readout) and flag the shell so the
+      // player-facing panels declutter. We're rigging, not onboarding.
+      root.dataset.serfboundRig = "1";
+      root.dataset.serfboundDev = "1";
+      root.querySelector<HTMLDetailsElement>("[data-testid='dev-ledger']")?.setAttribute("open", "");
+    }
     if (!embedded) {
       mountRigHud({
         root,

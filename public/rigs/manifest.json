@@ -28,8 +28,8 @@
       ],
       "kind": "local-game",
       "title": "Split a live road",
-      "instruction": "A road runs from your castle flag to a lone flag. Plant a new flag on a tile in the MIDDLE of that road to split it in two.",
-      "result": "BOTH halves staff themselves — a distinct carrier appears on each half (the round-8 bug left the new half unstaffed).",
+      "instruction": "A long road runs from your castle to a lumberjack's hut, with a carrier already serving it (materials flow to the build). Wait for the carrier, then plant a new flag on a tile in the MIDDLE of that road to split it.",
+      "result": "BOTH halves staff themselves — a distinct carrier on each half (the round-8 bug left the new half unstaffed).",
       "deepLink": "?rig=phase-36-road-split"
     },
     {

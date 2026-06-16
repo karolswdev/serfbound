@@ -46,21 +46,31 @@ const browser = await chromium.launch();
   const checks = await page.$$("section[data-check]");
   ok(checks.length === EXPECTED_CHECKS, `${checks.length} check slides rendered (expected ${EXPECTED_CHECKS})`);
 
-  const controlGroups = await page.$$(".controls[data-id]");
+  const controlGroups = await page.$$(".verdict-set[data-id]");
   ok(controlGroups.length === EXPECTED_CHECKS, `${controlGroups.length} verdict control groups (one per check)`);
 
-  const firstHasThree = await page.$$eval(".controls[data-id] .verdicts button",
+  const firstHasThree = await page.$$eval(".verdict-set[data-id] .verdicts button",
     bs => bs.length >= 3 * 36);
   ok(firstHasThree, "every check has Pass/Fail/Skip buttons");
+
+  // Guard the .controls→.verdict-set rename: reveal's own `.controls` rule
+  // (display:none + position:absolute + visibility:hidden on its buttons) used
+  // to hijack the verdict box, making Pass/Fail unreachable. The verdict
+  // buttons must NOT be absolutely positioned by reveal.
+  const notHijacked = await page.$eval(
+    '.verdict-set[data-id="35.1"] button[data-v="pass"]',
+    (b) => getComputedStyle(b).position !== "absolute",
+  );
+  ok(notHijacked, "verdict buttons aren't hijacked by reveal's .controls rule");
 
   ok(errors.length === 0, `no console/page errors (${errors.length})`);
 
   // Drive a verdict via the element itself (reveal hides non-active slides,
   // so a visibility-gated click won't reach it; el.click() still fires the
   // delegated handler the real UI uses).
-  const tapPass = () => page.$eval('.controls[data-id="35.1"] button[data-v="pass"]', b => b.click());
+  const tapPass = () => page.$eval('.verdict-set[data-id="35.1"] button[data-v="pass"]', b => b.click());
   await tapPass();
-  const active = await page.$eval('.controls[data-id="35.1"] button[data-v="pass"]',
+  const active = await page.$eval('.verdict-set[data-id="35.1"] button[data-v="pass"]',
     b => b.classList.contains("active"));
   ok(active, "clicking Pass activates the verdict");
   const prog = await page.$eval("#progress", e => e.textContent);
@@ -95,13 +105,13 @@ const browser = await chromium.launch();
   await page.goto(url, { waitUntil: "networkidle" });
   await page.evaluate(() => localStorage.removeItem("serfbound-gate-playtest-v1"));
 
-  await page.$eval('.controls[data-id="35.1"] button[data-v="pass"]', b => b.click());
+  await page.$eval('.verdict-set[data-id="35.1"] button[data-v="pass"]', b => b.click());
   await page.$eval('.notes[data-id="35.1"]', t => {
     t.value = "clean walk"; t.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
   await page.reload({ waitUntil: "networkidle" });   // the app-switch-back scenario
-  const persisted = await page.$eval('.controls[data-id="35.1"] button[data-v="pass"]', b => b.classList.contains("active"));
+  const persisted = await page.$eval('.verdict-set[data-id="35.1"] button[data-v="pass"]', b => b.classList.contains("active"));
   ok(persisted, "verdict persists across reload (localStorage)");
   const note = await page.$eval('.notes[data-id="35.1"]', t => t.value);
   ok(note === "clean walk", `note persists across reload: "${note}"`);
@@ -188,7 +198,7 @@ const browser = await chromium.launch();
     window.dispatchEvent(new Event("focus"));
   });
   const reflected = await page.$eval(
-    '.controls[data-id="36.1"] button[data-v="pass"]',
+    '.verdict-set[data-id="36.1"] button[data-v="pass"]',
     (b) => b.classList.contains("active"),
   );
   ok(reflected, "a verdict in the shared store reflects in the deck on focus");

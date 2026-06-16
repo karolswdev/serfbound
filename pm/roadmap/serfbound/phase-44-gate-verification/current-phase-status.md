@@ -70,6 +70,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-09 | The protocol deck, in style | done | story-09-deck-in-style.md | evidence-story-09.md |
 | SB-44-10 | One source of truth: deck guides, game is the rig | done | story-10-one-source-of-truth.md | evidence-story-10.md |
 | SB-44-11 | Auto-advance: the deck walks you through | done | story-11-auto-advance.md | evidence-story-11.md |
+| SB-44-12 | Playtest fixes: verdicts, a road that staffs, a debug rig view | done | story-12-playtest-fixes.md | evidence-story-12.md |
 
 ## Active risks
 

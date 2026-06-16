@@ -129,6 +129,24 @@ export class RigBuilder {
     throw new Error(`flagNear: no flag spot within territory near ${anchor}`);
   }
 
+  // Plant a flag in a straight line `distance` tiles in a direction — so the
+  // road between is long and straight, with a clear middle to split. Falls
+  // back toward the anchor if the far tile isn't flag-buildable.
+  flagInLine(fromFlag: number, direction: Direction, distance: number, player = this.player): number {
+    const line: number[] = [];
+    let pos = fromFlag;
+    for (let i = 0; i < distance; i += 1) {
+      pos = this.world.move(pos, direction);
+      line.push(pos);
+    }
+    for (let i = line.length - 1; i >= 2; i -= 1) {
+      if (this.world.canBuildFlag(line[i]!, player)) {
+        return this.flag(line[i]!, player);
+      }
+    }
+    throw new Error(`flagInLine: no flag spot in a ${distance}-tile ${direction} line from ${fromFlag}`);
+  }
+
   // Connect two existing flags with the shortest valid road; returns the plan
   // (start + directions) so callers can locate the road's midpoint.
   road(fromFlag: number, toFlag: number, player = this.player): RoadPlan {

@@ -51,19 +51,28 @@ export function rigScenarios(): readonly RigScenario[] {
       kind: "local-game",
       title: "Split a live road",
       instruction:
-        "A road runs from your castle flag to a lone flag. Plant a new flag on a tile in the MIDDLE of that road to split it in two.",
+        "A long road runs from your castle to a lumberjack's hut, with a carrier already serving it (materials flow to the build). Wait for the carrier, then plant a new flag on a tile in the MIDDLE of that road to split it.",
       result:
-        "BOTH halves staff themselves — a distinct carrier appears on each half (the round-8 bug left the new half unstaffed).",
-      map: flatPlainsMap(),
-      initialSupplies: 30,
+        "BOTH halves staff themselves — a distinct carrier on each half (the round-8 bug left the new half unstaffed).",
+      map: flatPlainsMap(6),
+      initialSupplies: 40,
       expected: [
         { kind: "castle-built", player: 0 },
         { kind: "flag-count", atLeast: 2 },
+        { kind: "building-of-type", building: buildingType.lumberjack },
       ],
       build: (rig) => {
         const { flag } = rig.foundCastle(0);
-        const far = rig.flagNear(flag, 9);
+        // A long, straight road the carrier serves and the maintainer splits.
+        const far = rig.flagInLine(flag, "Right", 8);
         rig.road(flag, far);
+        // A hut at the far end demands construction materials, so the long
+        // road actually staffs (this engine carries roads on demand).
+        const hut = rig.buildingNear(far, buildingType.lumberjack, 2);
+        const hutFlag = rig.step(hut, "DownRight");
+        if (hutFlag !== far) {
+          rig.road(far, hutFlag);
+        }
       },
     },
     {

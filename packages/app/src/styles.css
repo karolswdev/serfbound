@@ -1189,3 +1189,15 @@ input.secondary-action {
   padding: var(--sb-space-2);
   color: var(--sb-parchment);
 }
+
+/* Rig/debug chrome (SB-44-12): when the game runs embedded in the protocol
+   deck (`?rig=` inside the split-screen iframe), declutter the player-facing
+   panels so the rig and the under-the-hood ledger lead. Onboarding, identity,
+   and network groups are not part of a rigging session. */
+[data-serfbound-rig="1"] .panel-group--data,
+[data-serfbound-rig="1"] .panel-group--realm,
+[data-serfbound-rig="1"] .panel-group--online,
+[data-serfbound-rig="1"] .panel-group--company,
+[data-serfbound-rig="1"] .panel-group--service {
+  display: none;
+}

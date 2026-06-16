@@ -49,7 +49,7 @@
   .rolls { color: var(--dim); font-size: 0.7em; font-style: italic; }
 
   /* Verdict controls — forged buttons (the button gump), large tap targets. */
-  .controls { margin-top: 0.7em; }
+  .verdict-set { margin-top: 0.7em; }
   .verdicts { display: flex; gap: 0.5em; }
   .verdicts button, .gump-btn {
     flex: 1; font-size: 0.66em; min-height: 2.1em; padding: 0.2em 0.5em;
@@ -95,11 +95,30 @@
   #game-bar a, #game-bar button { color: var(--ink); background: transparent; border: 1px solid var(--line);
               border-radius: 6px; padding: 3px 9px; font-size: 12px; text-decoration: none; cursor: pointer; }
   /* Vertical split: the deck and the game sit side by side, two columns. */
-  body.split #deck-pane { position: fixed; top: 0; bottom: 0; left: 0; width: 50vw; overflow: hidden; }
-  body.split.no-reveal #deck-pane { overflow: auto; }
+  body.split #deck-pane { position: fixed; top: 0; bottom: 0; left: 0; width: 50vw; overflow: auto; }
   body.split #game-pane { display: flex; flex-direction: column; position: fixed;
               top: 0; bottom: 0; right: 0; width: 50vw; z-index: 50; box-shadow: -8px 0 24px rgba(0,0,0,0.5); }
   body.split #progress { right: auto; left: 10px; }
+
+  /* In split mode, render the CURRENT slide as a normal scrollable column —
+     reveal's scaled, absolutely-positioned layout collapses inside the narrow
+     pane. Reveal still drives navigation (the .present class); we lay it out
+     as flow so the check and its verdict controls are always reachable. */
+  body.split #deck-pane .reveal,
+  body.split #deck-pane .reveal .slides {
+    position: static !important; transform: none !important;
+    left: 0 !important; top: 0 !important; width: auto !important; height: auto !important;
+    perspective: none !important;
+  }
+  body.split #deck-pane .reveal .slides > section { display: none !important; }
+  body.split #deck-pane .reveal .slides > section.present { display: block !important; }
+  body.split #deck-pane .reveal .slides > section.present > section { display: none !important; }
+  body.split #deck-pane .reveal .slides > section.present > section.present { display: block !important; }
+  body.split #deck-pane .reveal .slides section.present {
+    position: static !important; transform: none !important; opacity: 1 !important;
+    visibility: visible !important; height: auto !important; min-height: 0 !important;
+    width: auto !important; left: 0 !important; top: 0 !important; padding: 0.6em 1em 2em;
+  }
 
   /* Fixed progress chip — always visible while stepping. */
   #progress {
@@ -281,7 +300,7 @@ function checkSlide(c) {
       <p class="do">${esc(c.do)}</p>
       <span class="label">Watch</span><p class="watch">${esc(c.watch)}</p>
       <span class="label">Pass when</span><p class="pass">${esc(c.pass)}</p>
-      <div class="controls" data-id="${c.id}">
+      <div class="verdict-set" data-id="${c.id}">
         <div class="verdicts">
           <button data-v="pass">✓ Pass</button>
           <button data-v="fail">✗ Fail</button>
@@ -343,7 +362,7 @@ function renderProgress() {
     `${decided}/${TOTAL} · <b class="ok">✓${ok}</b> <b class="no">✗${no}</b> <b class="skip">⤼${skip}</b>`;
 }
 function applyButtons(id) {
-  const wrap = document.querySelector(`.controls[data-id="${id}"]`);
+  const wrap = document.querySelector(`.verdict-set[data-id="${id}"]`);
   if (!wrap) return;
   const status = state.verdicts[id] && state.verdicts[id].status;
   wrap.querySelectorAll(".verdicts button").forEach(b =>
@@ -395,7 +414,7 @@ function restore() {
 function resetAll() {
   state.verdicts = {};
   try { localStorage.removeItem(STORE_KEY); } catch (e) {}
-  document.querySelectorAll(".controls[data-id]").forEach(w => {
+  document.querySelectorAll(".verdict-set[data-id]").forEach(w => {
     w.querySelectorAll(".verdicts button").forEach(b => b.classList.remove("active"));
     const ta = w.querySelector(".notes"); if (ta) ta.value = "";
   });
@@ -432,7 +451,7 @@ function renderReport() {
 
 document.addEventListener("click", e => {
   const b = e.target.closest(".verdicts button"); if (!b) return;
-  setVerdict(b.closest(".controls").dataset.id, b.dataset.v);
+  setVerdict(b.closest(".verdict-set").dataset.id, b.dataset.v);
 });
 document.addEventListener("input", e => {
   if (e.target.classList.contains("notes")) setNotes(e.target.dataset.id, e.target.value);
@@ -511,7 +530,7 @@ let rigByCheck = {};
 function injectRig(checkId, rigId, entry) {
   const slide = document.querySelector(`section[data-check="${checkId}"]`);
   if (!slide || slide.querySelector(".rig-launch")) return;
-  const controls = slide.querySelector(".controls");
+  const controls = slide.querySelector(".verdict-set");
   const box = document.createElement("div");
   box.className = "rig-launch";
   const open = document.createElement("button");
