@@ -72,6 +72,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-11 | Auto-advance: the deck walks you through | done | story-11-auto-advance.md | evidence-story-11.md |
 | SB-44-12 | Playtest fixes: verdicts, a road that staffs, a debug rig view | done | story-12-playtest-fixes.md | evidence-story-12.md |
 | SB-44-13 | Tappable verdicts: finger-sized buttons + no stale deck | done | story-13-tappable-verdicts.md | evidence-story-13.md |
+| SB-44-14 | A PixelLab asset library + designed protocol | done | story-14-asset-library.md | evidence-story-14.md |
 
 ## Active risks
 
