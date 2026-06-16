@@ -1092,3 +1092,100 @@ input.secondary-action {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ── The gate-verification rig HUD (SB-44-08) ──────────────────────────
+   The protocol's results window, dressed in the shell's own materials:
+   the carved frame over wood-under-ink (§7.5), parchment voice, and a
+   forged button gump. Mounted only under ?rig= — dev tooling that still
+   answers to the design standard. */
+.rig-hud {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 2147483000;
+  width: min(560px, calc(100vw - 24px));
+  max-height: 46vh;
+  overflow: auto;
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--sb-space-2);
+  font-family: var(--sb-font);
+  color: var(--sb-parchment);
+  border: 14px solid transparent;
+  border-image: url("./gumps/frame.png") 16 / 12px round;
+  border-radius: var(--sb-radius-md);
+  padding: var(--sb-space-3);
+  background:
+    linear-gradient(var(--sb-ink-veil), var(--sb-ink-veil)),
+    url("./gumps/wood.png") var(--sb-surface);
+  background-size: auto, 128px 128px;
+  background-clip: padding-box;
+  box-shadow: var(--sb-shadow-card);
+  image-rendering: pixelated;
+}
+
+.rig-hud__head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sb-space-2); }
+.rig-hud__title { margin: 0; color: var(--sb-parchment-bright); font-size: var(--sb-text-lg); font-weight: var(--sb-weight-black); }
+.rig-hud__gate { color: var(--sb-moss); font-size: var(--sb-text-xs); font-weight: var(--sb-weight-bold); letter-spacing: var(--sb-track-wide); white-space: nowrap; }
+.rig-hud__instruction { margin: 0; color: var(--sb-parchment); font-size: var(--sb-text-sm); font-weight: var(--sb-weight-bold); }
+.rig-hud__result { margin: 0; color: var(--sb-moss); font-size: var(--sb-text-xs); }
+.rig-hud__row { display: grid; gap: var(--sb-space-1); padding-top: var(--sb-space-2); border-top: 1px solid var(--sb-line-soft); }
+.rig-hud__check { color: var(--sb-moss); font-size: var(--sb-text-xs); font-weight: var(--sb-weight-bold); letter-spacing: var(--sb-track-wide); text-transform: uppercase; }
+.rig-hud__verdicts { display: flex; gap: var(--sb-space-2); }
+
+/* The forged button: the brass-cornered plate gump, 9-sliced so it
+   stretches; text on the solid face; pressed sinks 1px. */
+.rig-hud__btn {
+  flex: 1;
+  min-height: 42px;
+  border: 10px solid transparent;
+  border-image: url("./gumps/button.png") 18 fill / 10px stretch;
+  color: var(--sb-on-gold);
+  background: transparent;
+  font-family: var(--sb-font);
+  font-weight: var(--sb-weight-black);
+  font-size: var(--sb-text-sm);
+  cursor: pointer;
+  image-rendering: pixelated;
+  transition: transform var(--sb-dur-fast) var(--sb-ease), filter var(--sb-dur-fast) var(--sb-ease);
+}
+.rig-hud__btn:hover:not(:disabled) { filter: brightness(1.06); }
+.rig-hud__btn:active:not(:disabled) { transform: translateY(1px); }
+.rig-hud__btn:disabled { opacity: 0.45; cursor: default; }
+
+/* Verdict accents ride the text + an inset ring; the plate face stays
+   parchment, the accent names the verdict. */
+.rig-hud__btn[data-verdict].is-active { box-shadow: inset 0 0 0 3px currentColor; }
+.rig-hud__btn[data-verdict="pass"].is-active { color: var(--sb-meadow); }
+.rig-hud__btn[data-verdict="fail"].is-active { color: var(--sb-banner-red); }
+.rig-hud__btn[data-verdict="skip"].is-active { color: var(--sb-gold-deep); }
+
+.rig-hud__notes {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 34px;
+  padding: var(--sb-space-2);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-sm);
+  background: var(--sb-ink);
+  color: var(--sb-parchment);
+  font-family: var(--sb-font);
+  font-size: var(--sb-text-sm);
+  resize: vertical;
+}
+
+.rig-hud__nav { display: flex; gap: var(--sb-space-2); margin-top: var(--sb-space-1); }
+.rig-hud__report { margin-top: var(--sb-space-2); }
+.rig-hud__report pre {
+  max-height: 18vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: ui-monospace, monospace;
+  font-size: var(--sb-text-xs);
+  background: var(--sb-ink);
+  border: 1px solid var(--sb-line-soft);
+  border-radius: var(--sb-radius-sm);
+  padding: var(--sb-space-2);
+  color: var(--sb-parchment);
+}

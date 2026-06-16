@@ -66,6 +66,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-05 | Host the protocol deck | done | story-05-host-the-deck.md | evidence-story-05.md |
 | SB-44-06 | The report server | done | story-06-report-server.md | evidence-story-06.md |
 | SB-44-07 | Split-screen protocol + lumberjack trees | done | story-07-split-screen-and-trees.md | evidence-story-07.md |
+| SB-44-08 | Vertical split + forged results window | done | story-08-forged-results-window.md | evidence-story-08.md |
 
 ## Active risks
 

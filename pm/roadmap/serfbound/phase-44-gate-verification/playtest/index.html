@@ -77,10 +77,12 @@
   #game-bar #game-title { color: var(--ink); font-weight: 600; }
   #game-bar a, #game-bar button { color: var(--ink); background: transparent; border: 1px solid var(--line);
               border-radius: 7px; padding: 3px 9px; font-size: 12px; text-decoration: none; cursor: pointer; }
-  body.split #deck-pane { position: fixed; top: 0; left: 0; right: 0; height: 56vh; overflow: hidden; }
+  /* Vertical split: the deck and the game sit side by side, two columns. */
+  body.split #deck-pane { position: fixed; top: 0; bottom: 0; left: 0; width: 50vw; overflow: hidden; }
   body.split.no-reveal #deck-pane { overflow: auto; }
   body.split #game-pane { display: flex; flex-direction: column; position: fixed;
-              bottom: 0; left: 0; right: 0; height: 44vh; z-index: 50; box-shadow: 0 -8px 24px rgba(0,0,0,0.5); }
+              top: 0; bottom: 0; right: 0; width: 50vw; z-index: 50; box-shadow: -8px 0 24px rgba(0,0,0,0.5); }
+  body.split #progress { right: auto; left: 10px; }
 
   /* Fixed progress chip — always visible while stepping. */
   #progress {

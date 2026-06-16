@@ -91,182 +91,123 @@ function navigateToRig(id: string): void {
   globalThis.location.search = params.toString();
 }
 
-const VERDICTS: readonly { status: RigVerdictStatus; glyph: string; label: string; color: string }[] = [
-  { status: "pass", glyph: "✓", label: "Pass", color: "#4caf50" },
-  { status: "fail", glyph: "✗", label: "Fail", color: "#e5534b" },
-  { status: "skip", glyph: "⤼", label: "Skip", color: "#b0883a" },
+const VERDICTS: readonly { status: RigVerdictStatus; glyph: string; label: string }[] = [
+  { status: "pass", glyph: "✓", label: "Pass" },
+  { status: "fail", glyph: "✗", label: "Fail" },
+  { status: "skip", glyph: "⤼", label: "Skip" },
 ];
 
-// Mount the overlay. Returns a disposer that removes it.
+// A forged button, dressed in the shell's button gump (styles.css .rig-hud__btn).
+function hudButton(text: string, enabled: boolean, onClick: () => void): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "rig-hud__btn";
+  button.textContent = text;
+  button.disabled = !enabled;
+  if (enabled) {
+    button.addEventListener("click", onClick);
+  }
+  return button;
+}
+
+// Mount the overlay. Returns a disposer that removes it. The styling lives in
+// styles.css (.rig-hud*) so the results window wears the same gumps, font, and
+// palette as the game (design standard §7.5).
 export function mountRigHud(options: RigHudOptions): () => void {
   const { root, rig, sequence } = options;
   const store = readStore();
 
   const panel = document.createElement("aside");
+  panel.className = "rig-hud";
   panel.dataset.testid = "rig-hud";
   panel.dataset.rigId = rig.id;
-  panel.setAttribute(
-    "style",
-    [
-      "position:fixed",
-      "left:50%",
-      "transform:translateX(-50%)",
-      "bottom:12px",
-      "z-index:2147483000",
-      "width:min(560px, calc(100vw - 24px))",
-      "max-height:46vh",
-      "overflow:auto",
-      "box-sizing:border-box",
-      "padding:12px 14px",
-      "border-radius:14px",
-      "border:2px solid #3a4654",
-      "background:rgba(18,22,26,0.96)",
-      "color:#e8edf2",
-      "font:13px/1.4 system-ui,sans-serif",
-      "box-shadow:0 8px 28px rgba(0,0,0,0.5)",
-    ].join(";"),
-  );
 
   const index = sequence.findIndex((entry) => entry.id === rig.id);
   const position = index < 0 ? "" : ` · ${index + 1}/${sequence.length}`;
 
   const header = document.createElement("div");
-  header.setAttribute("style", "display:flex;justify-content:space-between;align-items:baseline;gap:8px");
+  header.className = "rig-hud__head";
   const heading = document.createElement("strong");
+  heading.className = "rig-hud__title";
   heading.textContent = rig.title;
-  heading.setAttribute("style", "font-size:15px");
   const gate = document.createElement("span");
+  gate.className = "rig-hud__gate";
   gate.textContent = `${rig.gate}${position}`;
-  gate.setAttribute("style", "font-size:11px;color:#8aa0b4;white-space:nowrap");
   header.append(heading, gate);
 
   const instruction = document.createElement("p");
+  instruction.className = "rig-hud__instruction";
   instruction.textContent = rig.instruction;
-  instruction.setAttribute("style", "margin:8px 0 4px;font-weight:600");
   const result = document.createElement("p");
+  result.className = "rig-hud__result";
   result.textContent = `Pass when: ${rig.result}`;
-  result.setAttribute("style", "margin:0 0 8px;color:#9fb3c4;font-size:12px");
 
   panel.append(header, instruction, result);
 
   // One verdict row per check this rig serves.
   for (const checkId of rig.covers) {
     const row = document.createElement("div");
+    row.className = "rig-hud__row";
     row.dataset.check = checkId;
-    row.setAttribute("style", "margin:8px 0;padding-top:8px;border-top:1px solid #2a323c");
 
     const label = document.createElement("div");
+    label.className = "rig-hud__check";
     label.textContent = `Check ${checkId}`;
-    label.setAttribute("style", "font-size:11px;color:#8aa0b4;margin-bottom:4px");
     row.append(label);
 
     const buttons = document.createElement("div");
-    buttons.setAttribute("style", "display:flex;gap:6px;flex-wrap:wrap");
-    const stored = store[checkId]?.status ?? null;
+    buttons.className = "rig-hud__verdicts";
+    let selected = store[checkId]?.status ?? null;
     const buttonEls = new Map<RigVerdictStatus, HTMLButtonElement>();
+    const paint = () => {
+      for (const verdict of VERDICTS) {
+        buttonEls.get(verdict.status)!.classList.toggle("is-active", selected === verdict.status);
+      }
+    };
     for (const verdict of VERDICTS) {
       const button = document.createElement("button");
       button.type = "button";
+      button.className = "rig-hud__btn";
       button.dataset.verdict = verdict.status;
       button.textContent = `${verdict.glyph} ${verdict.label}`;
-      const active = stored === verdict.status;
-      button.setAttribute(
-        "style",
-        [
-          "flex:1",
-          "min-width:84px",
-          "padding:7px 6px",
-          "border-radius:9px",
-          "cursor:pointer",
-          "font:600 12px system-ui,sans-serif",
-          `border:2px solid ${active ? verdict.color : "#3a4654"}`,
-          `background:${active ? verdict.color : "transparent"}`,
-          `color:${active ? "#0b0e11" : "#cdd8e2"}`,
-        ].join(";"),
-      );
-      buttonEls.set(verdict.status, button);
-      buttons.append(button);
-    }
-
-    const notes = document.createElement("textarea");
-    notes.placeholder = "Notes / what you saw (optional)…";
-    notes.value = store[checkId]?.notes ?? "";
-    notes.dataset.check = checkId;
-    notes.setAttribute(
-      "style",
-      "width:100%;box-sizing:border-box;margin-top:6px;min-height:34px;padding:6px;border-radius:8px;border:1px solid #2a323c;background:#0f1318;color:#e8edf2;font:12px system-ui,sans-serif;resize:vertical",
-    );
-    notes.addEventListener("input", () => writeVerdict(checkId, { notes: notes.value }));
-
-    let selected = stored;
-    for (const verdict of VERDICTS) {
-      const button = buttonEls.get(verdict.status)!;
       button.addEventListener("click", () => {
         selected = selected === verdict.status ? null : verdict.status;
         writeVerdict(checkId, { status: selected });
-        for (const other of VERDICTS) {
-          const el = buttonEls.get(other.status)!;
-          const active = selected === other.status;
-          el.style.border = `2px solid ${active ? other.color : "#3a4654"}`;
-          el.style.background = active ? other.color : "transparent";
-          el.style.color = active ? "#0b0e11" : "#cdd8e2";
-        }
+        paint();
       });
+      buttonEls.set(verdict.status, button);
+      buttons.append(button);
     }
+    paint();
+
+    const notes = document.createElement("textarea");
+    notes.className = "rig-hud__notes";
+    notes.placeholder = "Notes / what you saw (optional)…";
+    notes.value = store[checkId]?.notes ?? "";
+    notes.dataset.check = checkId;
+    notes.addEventListener("input", () => writeVerdict(checkId, { notes: notes.value }));
 
     row.append(buttons, notes);
     panel.append(row);
   }
 
-  // Navigation: walk the rig sequence, or jump back to the deck.
-  const nav = document.createElement("div");
-  nav.setAttribute("style", "display:flex;gap:6px;margin-top:10px");
-  const navButton = (text: string, enabled: boolean, onClick: () => void): HTMLButtonElement => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = text;
-    button.disabled = !enabled;
-    button.setAttribute(
-      "style",
-      [
-        "flex:1",
-        "padding:8px",
-        "border-radius:9px",
-        "border:2px solid #3a4654",
-        "background:transparent",
-        `color:${enabled ? "#cdd8e2" : "#566472"}`,
-        `cursor:${enabled ? "pointer" : "default"}`,
-        "font:600 12px system-ui,sans-serif",
-      ].join(";"),
-    );
-    if (enabled) {
-      button.addEventListener("click", onClick);
-    }
-    return button;
-  };
-
   // The hand-back report, exportable from inside the game (collapsed by
-  // default). This makes the in-game HUD a complete capture surface: walk the
-  // rigs, record, export — no separate deck required.
+  // default) — the in-game HUD is a complete capture surface.
   const reportBox = document.createElement("div");
+  reportBox.className = "rig-hud__report";
   reportBox.hidden = true;
-  reportBox.setAttribute("style", "margin-top:8px");
   const reportPre = document.createElement("pre");
   reportPre.dataset.testid = "rig-report";
-  reportPre.setAttribute(
-    "style",
-    "max-height:18vh;overflow:auto;white-space:pre-wrap;font:11px ui-monospace,monospace;background:#0f1318;border:1px solid #2a323c;border-radius:8px;padding:8px;color:#cdd8e2",
-  );
   const reportActions = document.createElement("div");
-  reportActions.setAttribute("style", "display:flex;gap:6px;margin-top:6px");
-  const copyButton = navButton("⧉ Copy", true, () => {
+  reportActions.className = "rig-hud__nav";
+  const copyButton = hudButton("⧉ Copy", true, () => {
     const text = reportPre.textContent ?? "";
     void (globalThis.navigator?.clipboard?.writeText(text) ?? Promise.reject()).then(
       () => { copyButton.textContent = "⧉ Copied!"; setTimeout(() => (copyButton.textContent = "⧉ Copy"), 1500); },
       () => { /* clipboard blocked — the text is selectable in the panel */ },
     );
   });
-  const downloadButton = navButton("⤓ Download", true, () => {
+  const downloadButton = hudButton("⤓ Download", true, () => {
     const blob = new Blob([reportPre.textContent ?? ""], { type: "text/markdown" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -277,14 +218,15 @@ export function mountRigHud(options: RigHudOptions): () => void {
   reportActions.append(copyButton, downloadButton);
   reportBox.append(reportPre, reportActions);
 
+  const nav = document.createElement("div");
+  nav.className = "rig-hud__nav";
   const prev = sequence[index - 1];
   const next = sequence[index + 1];
   nav.append(
-    navButton("‹ Prev", prev !== undefined, () => prev && navigateToRig(prev.id)),
-    navButton("Next ›", next !== undefined, () => next && navigateToRig(next.id)),
-    navButton("⤓ Report", true, () => {
-      const showing = !reportBox.hidden;
-      if (showing) {
+    hudButton("‹ Prev", prev !== undefined, () => prev && navigateToRig(prev.id)),
+    hudButton("Next ›", next !== undefined, () => next && navigateToRig(next.id)),
+    hudButton("⤓ Report", true, () => {
+      if (!reportBox.hidden) {
         reportBox.hidden = true;
       } else {
         reportPre.textContent = buildRigReport(sequence);
