@@ -155,14 +155,24 @@ const browser = await chromium.launch();
   await page.evaluate(() => localStorage.removeItem("serfbound-gate-playtest-v1"));
   await page.waitForSelector('section[data-check="36.1"] .rig-launch a', { timeout: 5000 }).catch(() => {});
 
-  const href = await page
-    .$eval('section[data-check="36.1"] .rig-launch a', (a) => a.getAttribute("href"))
-    .catch(() => null);
-  ok(!!href && /\?rig=phase-36-road-split/.test(href), `rig deep-link injected: ${href}`);
+  const hasOpen = await page.$('section[data-check="36.1"] .rig-launch button.rig-open');
+  ok(hasOpen !== null, "rig 'Open rig here' button injected on the check");
   const instr = await page
     .$eval('section[data-check="36.1"] .rig-do', (p) => p.textContent)
     .catch(() => "");
   ok(/middle of the road/.test(instr), "rig instruction shown on the slide");
+
+  // Split-screen: clicking it loads the rig into the game iframe and splits.
+  await page.$eval('section[data-check="36.1"] .rig-launch button.rig-open', (b) => b.click());
+  const split = await page.$eval("body", (b) => b.classList.contains("split"));
+  ok(split, "clicking a rig splits the window (game panel shown)");
+  const frameSrc = await page.$eval("#rig-frame", (f) => f.getAttribute("src"));
+  ok(!!frameSrc && /\?rig=phase-36-road-split/.test(frameSrc), `game iframe loads the rig: ${frameSrc}`);
+  const popout = await page.$eval("#game-popout", (a) => a.getAttribute("href"));
+  ok(!!popout && /\?rig=phase-36-road-split/.test(popout), "pop-out link points at the rig");
+  await page.$eval("#game-close", (b) => b.click());
+  const closed = await page.$eval("body", (b) => !b.classList.contains("split"));
+  ok(closed, "closing the panel un-splits the window");
 
   // A check WITHOUT a manifest entry stays a plain checklist item (no button).
   const unrigged = await page.$('section[data-check="42.4"] .rig-launch');

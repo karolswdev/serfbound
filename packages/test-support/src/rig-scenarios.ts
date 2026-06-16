@@ -34,6 +34,7 @@ export function rigScenarios(): readonly RigScenario[] {
       expected: [
         { kind: "castle-built", player: 0 },
         { kind: "building-of-type", building: buildingType.lumberjack },
+        { kind: "tree-near-building", building: buildingType.lumberjack },
       ],
       build: (rig) => {
         const { flag } = rig.foundCastle(0);
@@ -134,6 +135,7 @@ export function rigScenarios(): readonly RigScenario[] {
       expected: [
         { kind: "castle-built", player: 0 },
         { kind: "building-of-type", building: buildingType.lumberjack },
+        { kind: "tree-near-building", building: buildingType.lumberjack },
       ],
       build: (rig) => {
         const { flag } = rig.foundCastle(0);

@@ -56,13 +56,31 @@
      state. Injected per-slide when the rig manifest loads. */
   .rig-launch { margin: 0.5em 0 0.2em; padding: 0.6em 0.8em; border:1px solid var(--gate);
                 border-radius: 10px; background: #1a1710; }
-  .rig-launch a { display:inline-block; font-size:0.66em; font-weight:700; text-decoration:none;
-                  color:#0b1f0c; background: var(--ok); padding: 0.5em 1em; border-radius: 8px; }
+  .rig-launch a, .rig-launch button.rig-open {
+                  display:inline-block; font-size:0.66em; font-weight:700; text-decoration:none;
+                  color:#0b1f0c; background: var(--ok); padding: 0.5em 1em; border-radius: 8px;
+                  border: 0; cursor: pointer; font-family: inherit; }
   .rig-launch .rig-do { color: var(--ink); font-size:0.64em; margin: 0.45em 0 0; }
   .rig-launch .rig-expect { color: var(--dim); font-size:0.58em; margin: 0.25em 0 0; }
   .rig-base { font-size: 0.64em; color: var(--dim); margin-top: 0.6em; }
   .rig-base input { font-size: 0.9em; padding: 0.3em 0.5em; border-radius: 6px; border:1px solid var(--line);
                     background:#141414; color: var(--ink); width: 16em; max-width: 100%; }
+
+  /* Split-screen game panel (SB-44-07): the deck and the game share the
+     window, cut horizontally. The deck rides the top, the rig the bottom, so
+     a check is read and assessed without leaving the page. */
+  #deck-pane { position: absolute; inset: 0; }
+  #game-pane { display: none; }
+  #rig-frame { width: 100%; flex: 1; border: 0; background: #000; }
+  #game-bar { display: flex; align-items: center; gap: 0.6em; padding: 6px 10px;
+              background: #12161a; border-bottom: 2px solid var(--gate); font-size: 13px; color: var(--dim); }
+  #game-bar #game-title { color: var(--ink); font-weight: 600; }
+  #game-bar a, #game-bar button { color: var(--ink); background: transparent; border: 1px solid var(--line);
+              border-radius: 7px; padding: 3px 9px; font-size: 12px; text-decoration: none; cursor: pointer; }
+  body.split #deck-pane { position: fixed; top: 0; left: 0; right: 0; height: 56vh; overflow: hidden; }
+  body.split.no-reveal #deck-pane { overflow: auto; }
+  body.split #game-pane { display: flex; flex-direction: column; position: fixed;
+              bottom: 0; left: 0; right: 0; height: 44vh; z-index: 50; box-shadow: 0 -8px 24px rgba(0,0,0,0.5); }
 
   /* Fixed progress chip — always visible while stepping. */
   #progress {
@@ -91,6 +109,7 @@
 <body>
 <div id="progress" aria-live="polite">—</div>
 
+<div id="deck-pane">
 <div class="reveal">
   <div class="slides">
 
@@ -118,14 +137,16 @@
         <li>Open <b>serfbound.com</b> (or a LAN <code>npm run build:web</code> URL).</li>
         <li>Import your local <code>SPAU.PA</code> once — the map builder and
             community maps are import-gated like play.</li>
-        <li>Keep this deck open in a second tab; switch back to record each verdict.</li>
+        <li>Tap <b style="color:var(--ok)">▶ Open rig here</b> on a check — the game opens in the
+            <b>bottom half of this screen</b>. Read the check up top, play below, mark the verdict.
+            No second tab.</li>
       </ol>
       <p class="watch" style="font-size:0.7em">Mark every check <b style="color:var(--ok)">Pass</b>,
          <b style="color:var(--no)">Fail</b>, or <b style="color:var(--skip)">Skip</b>.
          A phase closes only when all its checks pass; any Fail loops it (the Phase-34 pattern).</p>
-      <p class="watch" style="font-size:0.7em">Most checks have a <b style="color:var(--ok)">▶ Open rig</b>
-         button: it boots the game straight into that check's exact state, with an in-game Pass/Fail
-         panel that records right here. Tap it, do the one thing it asks, mark the verdict.</p>
+      <p class="watch" style="font-size:0.7em">Most checks have a <b style="color:var(--ok)">▶ Open rig here</b>
+         button: it boots the game into that check's exact state in a split-screen panel below — do the one
+         thing it asks, then mark Pass/Fail/note on the check above. ↻ reloads the rig, ↗ pops it to a tab, ✕ closes.</p>
       <div class="rig-base">
         Game base URL (for the rig buttons):
         <br><input id="rig-base-input" type="url" placeholder="https://serfbound.com" autocomplete="off" spellcheck="false">
@@ -137,6 +158,20 @@
     <div id="protocol-mount" style="display:contents"></div>
 
   </div>
+</div>
+</div>
+
+<!-- The game panel: a rig opens here, split-screen, so the check and the
+     game share one window. SB-44-07. -->
+<div id="game-pane">
+  <div id="game-bar">
+    <span id="game-title">Game</span>
+    <span style="flex:1"></span>
+    <a id="game-popout" href="#" target="_blank" rel="noopener" title="Open in a new tab">↗ tab</a>
+    <button id="game-reload" title="Reload the rig">↻</button>
+    <button id="game-close" title="Close the game panel">✕</button>
+  </div>
+  <iframe id="rig-frame" title="Serfbound rig" allow="fullscreen"></iframe>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
@@ -428,11 +463,12 @@ function injectRig(checkId, rigId, entry) {
   const controls = slide.querySelector(".controls");
   const box = document.createElement("div");
   box.className = "rig-launch";
-  const link = document.createElement("a");
-  link.href = `${RIG_BASE}/?rig=${encodeURIComponent(rigId)}`;
-  link.target = "_blank"; link.rel = "noopener";
-  link.textContent = "▶ Open rig";
-  box.appendChild(link);
+  const open = document.createElement("button");
+  open.type = "button";
+  open.className = "rig-open";
+  open.textContent = "▶ Open rig here";
+  open.addEventListener("click", () => openRigInFrame(rigId, entry));
+  box.appendChild(open);
   if (entry && entry.instruction) {
     const p = document.createElement("p"); p.className = "rig-do";
     p.textContent = entry.instruction; box.appendChild(p);
@@ -457,6 +493,35 @@ async function loadRigManifest() {
   for (const [checkId, rigId] of Object.entries(manifest.byCheck)) injectRig(checkId, rigId, byId[rigId]);
 }
 loadRigManifest();
+
+// ── Split-screen game panel (SB-44-07). ──────────────────────────────
+// "Open rig here" loads the rig into the bottom-half iframe instead of a new
+// tab, so the check (top) and the game (bottom) share one window. The game is
+// same-origin when the deck is served from serfbound.com, so the iframe shares
+// the imported SPAU.PA and the verdict store.
+let activeRigId = null;
+const rigUrl = (id) => `${RIG_BASE}/?rig=${encodeURIComponent(id)}`;
+function openRigInFrame(id, entry) {
+  activeRigId = id;
+  const frame = document.getElementById("rig-frame");
+  const url = rigUrl(id);
+  if (frame.getAttribute("src") !== url) frame.setAttribute("src", url);
+  document.getElementById("game-title").textContent = (entry && entry.title) || id;
+  document.getElementById("game-popout").href = url;
+  document.body.classList.add("split");
+  if (typeof Reveal !== "undefined" && Reveal.layout) Reveal.layout();
+  document.getElementById("game-pane").scrollIntoView({ block: "nearest" });
+}
+function closeGamePane() {
+  document.body.classList.remove("split");
+  document.getElementById("rig-frame").setAttribute("src", "about:blank");
+  activeRigId = null;
+  if (typeof Reveal !== "undefined" && Reveal.layout) Reveal.layout();
+}
+document.getElementById("game-close")?.addEventListener("click", closeGamePane);
+document.getElementById("game-reload")?.addEventListener("click", () => {
+  if (activeRigId) document.getElementById("rig-frame").setAttribute("src", rigUrl(activeRigId));
+});
 
 // In-game captures: re-read the shared store when the deck regains focus or a
 // sibling tab writes it.

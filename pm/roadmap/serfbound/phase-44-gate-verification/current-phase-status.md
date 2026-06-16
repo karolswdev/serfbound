@@ -65,6 +65,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-04 | The in-game results report | done | story-04-in-game-report.md | evidence-story-04.md |
 | SB-44-05 | Host the protocol deck | done | story-05-host-the-deck.md | evidence-story-05.md |
 | SB-44-06 | The report server | done | story-06-report-server.md | evidence-story-06.md |
+| SB-44-07 | Split-screen protocol + lumberjack trees | done | story-07-split-screen-and-trees.md | evidence-story-07.md |
 
 ## Active risks
 

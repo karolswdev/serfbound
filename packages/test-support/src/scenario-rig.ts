@@ -22,6 +22,10 @@ import {
   startSerfboundLocalGame,
 } from "@serfbound/engine";
 
+// Trees, pines, palms — the lumberjack's cuttable objects (mirrors the
+// engine's isTreeObject, which is not re-exported from the package root).
+const isTreeObject = (objectValue: number): boolean => objectValue >= 8 && objectValue <= 27;
+
 // A synthetic catalog descriptor. restoreSerfboundLocalGame only checks the
 // shape (non-negative integers), not that it matches the device's imported
 // SPAU.PA — so a rig renders against whatever catalog the maintainer imported.
@@ -183,7 +187,10 @@ export type RigExpectation =
   | { readonly kind: "flag-count"; readonly atLeast: number }
   | { readonly kind: "building-count"; readonly atLeast: number }
   | { readonly kind: "building-of-type"; readonly building: BuildingTypeValue }
-  | { readonly kind: "road-at"; readonly position: number };
+  | { readonly kind: "road-at"; readonly position: number }
+  // A cuttable tree must stand within the lumberjack's reach (spiral offset
+  // 1..150) of a building of this type — so a felling rig actually has wood.
+  | { readonly kind: "tree-near-building"; readonly building: BuildingTypeValue };
 
 export type RigKind = "local-game" | "editor-draft" | "gallery";
 
@@ -281,6 +288,27 @@ export function checkRigExpectation(
       return world.pathsAt(expectation.position) !== 0
         ? null
         : `no road/path at ${expectation.position}`;
+    }
+    case "tree-near-building": {
+      let target: { position: number } | undefined;
+      for (const building of world.buildings.values()) {
+        if (building.type === expectation.building) {
+          target = building;
+          break;
+        }
+      }
+      if (target === undefined) {
+        return `no building of type ${expectation.building} to check trees near`;
+      }
+      // Mirror the lumberjack's own search bound (serfs.ts #workHarvest).
+      for (let offset = 1; offset < 151; offset += 1) {
+        const candidate = world.positionAddSpirally(target.position, offset);
+        const object = world.objects[candidate];
+        if (object !== undefined && isTreeObject(object)) {
+          return null;
+        }
+      }
+      return `no cuttable tree within reach of the ${expectation.building}`;
     }
   }
 }

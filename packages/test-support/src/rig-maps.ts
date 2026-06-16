@@ -12,6 +12,7 @@ import {
   type SerfboundCustomMap,
   MapEditor,
   MapGeometry,
+  SerfboundGameWorld,
   encodeCustomMap,
   evaluateMapPlayability,
   mapMinerals,
@@ -78,20 +79,21 @@ export function flatPlainsMap(size = 5): SerfboundCustomMap {
   return finishMap(flatLandscape(size), "Rig — flat plains", 1);
 }
 
-// Flat grass with a stand of trees away from the start, so a lumberjack /
-// forester has wood to work and the felling animation has something to fell.
+// Flat grass ringed with woods right around the start, so a lumberjack's hut
+// (built by the castle) actually has trees in reach. The engine's lumberjack
+// searches spiral offset 1..150 from its hut (~7 tiles); these woods sit at
+// spiral rings 3..5 of the castle (offsets 19..60), well inside that, while
+// the inner rings stay clear for the castle, the hut, and the road.
 export function flatTreesMap(size = 5): SerfboundCustomMap {
   const landscape = flatLandscape(size);
+  const spot = castleSpotsFor(landscape, 1)[0]!;
+  // The full spiral lives on the world (the geometry primitive only does the
+  // first ring); a scratch world resolves the ring offsets.
+  const spiral = new SerfboundGameWorld(landscape, 1);
   const editor = new MapEditor(landscape);
-  // A cluster of trees in the lower-right quadrant, clear of the start anchor.
-  const geometry = editor.geometry;
-  const baseColumn = Math.floor(geometry.columns * 0.6);
-  const baseRow = Math.floor(geometry.rows * 0.6);
-  for (let dr = 0; dr < 6; dr += 1) {
-    for (let dc = 0; dc < 6; dc += 1) {
-      const position = geometry.position(baseColumn + dc, baseRow + dr);
-      editor.placeObject(position, mapObject.tree0 + ((dc + dr) % 8));
-    }
+  for (let offset = 19; offset <= 60; offset += 1) {
+    const position = spiral.positionAddSpirally(spot, offset);
+    editor.placeObject(position, mapObject.tree0 + (offset % 8));
   }
   return finishMap(editor.toLandscape(), "Rig — woodland", 1);
 }
