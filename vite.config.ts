@@ -1,5 +1,5 @@
 import { defineConfig, type Plugin } from "vite";
-import { copyFileSync, mkdirSync } from "node:fs";
+import { copyFileSync, cpSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,17 +12,17 @@ const here = dirname(fileURLToPath(import.meta.url));
 // unifying both capture surfaces into one report. The deck stays sourced in
 // pm/ (single source of truth); this copies it into the build output.
 function publishPlaytestDeck(): Plugin {
-  const source = resolve(
-    here,
-    "pm/roadmap/serfbound/phase-44-gate-verification/playtest/index.html",
-  );
+  const deckDir = resolve(here, "pm/roadmap/serfbound/phase-44-gate-verification/playtest");
   return {
     name: "serfbound-publish-playtest-deck",
     apply: "build",
     closeBundle() {
       const destDir = resolve(here, "dist/playtest");
       mkdirSync(destDir, { recursive: true });
-      copyFileSync(source, resolve(destDir, "index.html"));
+      copyFileSync(resolve(deckDir, "index.html"), resolve(destDir, "index.html"));
+      // SB-44-09: the deck wears the shell's gumps too — ship its material
+      // chrome alongside it so the protocol reads as part of the game.
+      cpSync(resolve(deckDir, "gumps"), resolve(destDir, "gumps"), { recursive: true });
     },
   };
 }
