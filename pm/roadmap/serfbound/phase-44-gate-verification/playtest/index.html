@@ -170,6 +170,9 @@
         Game base URL (for the rig buttons):
         <br><input id="rig-base-input" type="url" placeholder="https://serfbound.com" autocomplete="off" spellcheck="false">
         <br><span style="font-size:0.85em">For live verdict sync, open this deck from that same origin.</span>
+        <br><label style="display:inline-flex;align-items:center;gap:0.4em;margin-top:0.5em">
+          <input id="auto-advance" type="checkbox" checked> Auto-advance to the next check after a verdict
+        </label>
       </div>
     </section>
 
@@ -352,6 +355,17 @@ function setVerdict(id, status) {
   state.verdicts[id] = cur;
   onVerdictChange(id);                                     // hook for SB-44-02 persistence
   applyButtons(id); renderProgress();
+  // Walk straight through: recording a verdict (not clearing it) steps the
+  // deck to the next check — which, in split mode, loads its rig on the
+  // right. Clearing it cancels a pending step. Off when auto-advance is off.
+  clearTimeout(setVerdict._t);
+  if (cur.status && autoAdvance && typeof Reveal !== "undefined") {
+    const slide = Reveal.getCurrentSlide();
+    if (slide && slide.getAttribute("data-check") === id) {
+      // Reveal.next() is a safe no-op at the very end.
+      setVerdict._t = setTimeout(() => Reveal.next(), 550);
+    }
+  }
 }
 function setNotes(id, notes) {
   const cur = state.verdicts[id] || { status:null, notes:"" };
@@ -473,6 +487,18 @@ if (baseInput) {
     RIG_BASE = (baseInput.value || "https://serfbound.com").replace(/\/+$/, "");
     try { localStorage.setItem("serfbound-rig-base", RIG_BASE); } catch (e) {}
     loadRigManifest();
+  });
+}
+
+// Auto-advance after a verdict (default on, remembered).
+let autoAdvance = true;
+const advanceBox = document.getElementById("auto-advance");
+if (advanceBox) {
+  try { autoAdvance = localStorage.getItem("serfbound-auto-advance") !== "0"; } catch (e) {}
+  advanceBox.checked = autoAdvance;
+  advanceBox.addEventListener("change", () => {
+    autoAdvance = advanceBox.checked;
+    try { localStorage.setItem("serfbound-auto-advance", autoAdvance ? "1" : "0"); } catch (e) {}
   });
 }
 

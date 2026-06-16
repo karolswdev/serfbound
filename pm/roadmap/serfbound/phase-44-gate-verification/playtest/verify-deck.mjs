@@ -197,6 +197,30 @@ const browser = await chromium.launch();
   await page.close();
 }
 
+// Pass 5: auto-advance (SB-44-11) — recording a verdict on a check slide
+// steps the deck to the next check.
+{
+  const page = await browser.newPage({ viewport: { width: 414, height: 896 } });
+  await page.goto(url, { waitUntil: "networkidle" });
+  await page.evaluate(() => localStorage.removeItem("serfbound-gate-playtest-v1"));
+  // Land on the first check slide via reveal's own indices for that element.
+  await page.evaluate(() => {
+    const el = document.querySelector('section[data-check="35.1"]');
+    const i = Reveal.getIndices(el);
+    Reveal.slide(i.h, i.v);
+  });
+  await page.waitForTimeout(300);
+  const before = await page.evaluate(() => Reveal.getCurrentSlide()?.getAttribute("data-check"));
+  ok(before === "35.1", `navigated to the check slide: ${before}`);
+  if (before) {
+    await page.$eval(`section[data-check="${before}"] button[data-v="pass"]`, (b) => b.click());
+    await page.waitForTimeout(900);
+    const after = await page.evaluate(() => Reveal.getCurrentSlide()?.getAttribute("data-check"));
+    ok(after !== before, `recording a verdict auto-advances off ${before} (now ${after})`);
+  }
+  await page.close();
+}
+
 await browser.close();
 console.log(failures === 0 ? "\nALL DECK ASSERTIONS PASS" : `\n${failures} ASSERTION(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
