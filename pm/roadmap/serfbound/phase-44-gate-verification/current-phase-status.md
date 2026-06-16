@@ -62,6 +62,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-01 | The protocol deck | done | story-01-the-protocol-deck.md | evidence-story-01.md |
 | SB-44-02 | Feedback capture and export | done | story-02-feedback-capture.md | evidence-story-02.md |
 | SB-44-03 | Scenario rigging + in-game HUD | done | story-03-scenario-rigging.md | evidence-story-03.md |
+| SB-44-04 | The in-game results report | done | story-04-in-game-report.md | evidence-story-04.md |
 
 ## Active risks
 

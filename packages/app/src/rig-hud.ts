@@ -38,7 +38,39 @@ function writeVerdict(checkId: string, patch: Partial<StoredVerdict>): void {
   }
 }
 
-export type RigSequenceEntry = { readonly id: string; readonly title: string };
+export type RigSequenceEntry = {
+  readonly id: string;
+  readonly title: string;
+  readonly gate?: string;
+  readonly covers?: readonly string[];
+};
+
+const ICON: Record<RigVerdictStatus, string> = { pass: "✓ pass", fail: "✗ FAIL", skip: "⤼ skip" };
+
+// The hand-back report, built from the shared store + the rig sequence — the
+// same markdown the deck exports, so the whole protocol can be run and handed
+// back from inside the game. Grouped by gate, one line per covered check.
+function buildRigReport(sequence: readonly RigSequenceEntry[]): string {
+  const store = readStore();
+  const lines = ["# Serfbound device-gate playtest — results (in-game capture)", ""];
+  let lastGate = "";
+  for (const entry of sequence) {
+    const gate = entry.gate ?? "(ungated)";
+    if (gate !== lastGate) {
+      lines.push(`## ${gate}`);
+      lastGate = gate;
+    }
+    lines.push(`### ${entry.title}  (?rig=${entry.id})`);
+    for (const checkId of entry.covers ?? []) {
+      const verdict = store[checkId];
+      const status = verdict?.status ? ICON[verdict.status] : "— not run";
+      const note = verdict?.notes ? `\n      note: ${verdict.notes}` : "";
+      lines.push(`- [${checkId}] ${status}${note}`);
+    }
+    lines.push("");
+  }
+  return lines.join("\n");
+}
 
 export type RigHudOptions = {
   readonly root: HTMLElement;
@@ -51,7 +83,6 @@ export type RigHudOptions = {
     readonly covers: readonly string[];
   };
   readonly sequence: readonly RigSequenceEntry[];
-  readonly deckHref?: string;
 };
 
 function navigateToRig(id: string): void {
@@ -214,23 +245,54 @@ export function mountRigHud(options: RigHudOptions): () => void {
     return button;
   };
 
+  // The hand-back report, exportable from inside the game (collapsed by
+  // default). This makes the in-game HUD a complete capture surface: walk the
+  // rigs, record, export — no separate deck required.
+  const reportBox = document.createElement("div");
+  reportBox.hidden = true;
+  reportBox.setAttribute("style", "margin-top:8px");
+  const reportPre = document.createElement("pre");
+  reportPre.dataset.testid = "rig-report";
+  reportPre.setAttribute(
+    "style",
+    "max-height:18vh;overflow:auto;white-space:pre-wrap;font:11px ui-monospace,monospace;background:#0f1318;border:1px solid #2a323c;border-radius:8px;padding:8px;color:#cdd8e2",
+  );
+  const reportActions = document.createElement("div");
+  reportActions.setAttribute("style", "display:flex;gap:6px;margin-top:6px");
+  const copyButton = navButton("⧉ Copy", true, () => {
+    const text = reportPre.textContent ?? "";
+    void (globalThis.navigator?.clipboard?.writeText(text) ?? Promise.reject()).then(
+      () => { copyButton.textContent = "⧉ Copied!"; setTimeout(() => (copyButton.textContent = "⧉ Copy"), 1500); },
+      () => { /* clipboard blocked — the text is selectable in the panel */ },
+    );
+  });
+  const downloadButton = navButton("⤓ Download", true, () => {
+    const blob = new Blob([reportPre.textContent ?? ""], { type: "text/markdown" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "gate-playtest-results.md";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+  reportActions.append(copyButton, downloadButton);
+  reportBox.append(reportPre, reportActions);
+
   const prev = sequence[index - 1];
   const next = sequence[index + 1];
   nav.append(
     navButton("‹ Prev", prev !== undefined, () => prev && navigateToRig(prev.id)),
     navButton("Next ›", next !== undefined, () => next && navigateToRig(next.id)),
+    navButton("⤓ Report", true, () => {
+      const showing = !reportBox.hidden;
+      if (showing) {
+        reportBox.hidden = true;
+      } else {
+        reportPre.textContent = buildRigReport(sequence);
+        reportBox.hidden = false;
+      }
+    }),
   );
-  if (options.deckHref !== undefined) {
-    const deck = document.createElement("a");
-    deck.href = options.deckHref;
-    deck.textContent = "Deck";
-    deck.setAttribute(
-      "style",
-      "flex:1;text-align:center;padding:8px;border-radius:9px;border:2px solid #3a4654;color:#cdd8e2;text-decoration:none;font:600 12px system-ui,sans-serif",
-    );
-    nav.append(deck);
-  }
-  panel.append(nav);
+  panel.append(nav, reportBox);
 
   root.append(panel);
   return () => panel.remove();

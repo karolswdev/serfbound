@@ -3549,7 +3549,12 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       fixture = (await fixtureResponse.json()) as RigFixture;
       if (manifestResponse.ok) {
         const manifest = (await manifestResponse.json()) as { rigs?: RigSequenceEntry[] };
-        sequence = (manifest.rigs ?? []).map((entry) => ({ id: entry.id, title: entry.title }));
+        sequence = (manifest.rigs ?? []).map((entry) => ({
+          id: entry.id,
+          title: entry.title,
+          ...(entry.gate === undefined ? {} : { gate: entry.gate }),
+          ...(entry.covers === undefined ? {} : { covers: entry.covers }),
+        }));
       }
     } catch {
       return;
