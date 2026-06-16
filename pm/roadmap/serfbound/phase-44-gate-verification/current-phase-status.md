@@ -74,6 +74,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-13 | Tappable verdicts: finger-sized buttons + no stale deck | done | story-13-tappable-verdicts.md | evidence-story-13.md |
 | SB-44-14 | A PixelLab asset library + designed protocol | done | story-14-asset-library.md | evidence-story-14.md |
 | SB-44-15 | Fast-forward in the rig debugger | done | story-15-rig-fast-forward.md | evidence-story-15.md |
+| SB-44-16 | The real touch fix + new buttons | done | story-16-touch-and-buttons.md | evidence-story-16.md |
 
 ## Active risks
 

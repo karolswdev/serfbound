@@ -102,17 +102,22 @@
   .verdict-set { margin-top: 0.7em; }
   .verdicts { display: flex; gap: 0.5em; }
   .verdicts button, .gump-btn {
-    flex: 1; font-size: 0.66em; min-height: 2.1em; padding: 0.2em 0.5em;
-    border: 11px solid transparent; border-image: var(--g-button) 18 fill / 10px stretch;
-    background: transparent; color: var(--on-gold); font-weight: 800; font-family: var(--font);
+    flex: 1; font-size: 0.62em; min-height: 2.5em; padding: 0.1em 0.35em;
+    border: 12px solid transparent; border-image: url("./gumps/btn-wood.png") 16 fill / 11px stretch;
+    background: transparent; color: var(--parch-bright); text-shadow: 0 1px 1px rgba(0,0,0,0.7);
+    font-weight: 800; font-family: var(--font);
     cursor: pointer; image-rendering: pixelated; -webkit-tap-highlight-color: transparent;
-    transition: filter .12s, transform .12s;
+    transition: opacity .12s, transform .1s, box-shadow .12s;
   }
+  /* Colored stone buttons per verdict — the option's colour always shows. */
+  .verdicts button[data-v="pass"] { border-image: url("./gumps/btn-pass.png") 16 fill / 11px stretch; }
+  .verdicts button[data-v="fail"] { border-image: url("./gumps/btn-fail.png") 16 fill / 11px stretch; }
+  .verdicts button[data-v="skip"] { border-image: url("./gumps/btn-skip.png") 16 fill / 11px stretch;
+                                     color: var(--on-gold); text-shadow: 0 1px 0 rgba(255,255,255,0.25); }
   .verdicts button:active, .gump-btn:active { transform: translateY(1px); }
-  .verdicts button:hover, .gump-btn:hover { filter: brightness(1.06); }
-  .verdicts button[data-v="pass"].active { color: var(--ok); box-shadow: inset 0 0 0 3px var(--ok); }
-  .verdicts button[data-v="fail"].active { color: var(--no); box-shadow: inset 0 0 0 3px var(--no); }
-  .verdicts button[data-v="skip"].active { color: var(--skip); box-shadow: inset 0 0 0 3px var(--skip); }
+  /* Unselected verdicts dim; the recorded one pops, brass-ringed. */
+  .verdicts button:not(.active) { opacity: 0.66; }
+  .verdicts button.active { opacity: 1; box-shadow: 0 0 0 2px var(--gate), 0 3px 9px rgba(0,0,0,0.5); }
   .notes {
     margin-top: 0.5em; width: 100%; box-sizing: border-box; min-height: 2.4em;
     font-size: 0.62em; padding: 0.5em; border-radius: 6px; border: 1px solid var(--line);
@@ -125,8 +130,9 @@
   .rig-launch { margin: 0.6em 0 0.3em; }
   .rig-launch a, .rig-launch button.rig-open {
                   display:inline-block; font-size:0.6em; font-weight:800; text-decoration:none;
-                  color: var(--on-gold); font-family: var(--font); padding: 0.2em 0.9em; cursor: pointer;
-                  border: 11px solid transparent; border-image: var(--g-button) 18 fill / 10px stretch;
+                  color: var(--parch-bright); text-shadow: 0 1px 1px rgba(0,0,0,0.7);
+                  font-family: var(--font); padding: 0.25em 1em; cursor: pointer;
+                  border: 12px solid transparent; border-image: url("./gumps/btn-wood.png") 16 fill / 11px stretch;
                   background: transparent; image-rendering: pixelated; }
   .rig-base { font-size: 0.64em; color: var(--dim); margin-top: 0.6em; }
   .rig-base input, #report-token {
@@ -416,6 +422,18 @@ function resultsSlide() {
 }
 document.getElementById("protocol-mount").outerHTML = PROTOCOL.map(phaseStack).join("") + resultsSlide();
 
+// THE touch fix: reveal.js captures touch on the slides for swipe-navigation,
+// which on a real phone swallows taps on buttons/inputs (a synthetic desktop
+// click still fires, which is why it "worked" in tests but not on a device).
+// reveal walks up the DOM from the touch target and skips its handling if any
+// ancestor has data-prevent-swipe — so mark every interactive control.
+function markPreventSwipe() {
+  document.querySelectorAll(
+    ".reveal button, .reveal a, .reveal input, .reveal textarea, .reveal select, .reveal label"
+  ).forEach(el => el.setAttribute("data-prevent-swipe", ""));
+}
+markPreventSwipe();
+
 // ── Verdict wiring (in-memory for SB-44-01). ─────────────────────────
 function renderProgress() {
   let ok=0,no=0,skip=0;
@@ -631,6 +649,7 @@ async function loadRigManifest() {
     rigByCheck[checkId] = { rigId, entry: byId[rigId] };
     injectRig(checkId, rigId, byId[rigId]);
   }
+  markPreventSwipe();   // the freshly injected rig buttons need it too
 }
 loadRigManifest();
 
