@@ -73,6 +73,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-12 | Playtest fixes: verdicts, a road that staffs, a debug rig view | done | story-12-playtest-fixes.md | evidence-story-12.md |
 | SB-44-13 | Tappable verdicts: finger-sized buttons + no stale deck | done | story-13-tappable-verdicts.md | evidence-story-13.md |
 | SB-44-14 | A PixelLab asset library + designed protocol | done | story-14-asset-library.md | evidence-story-14.md |
+| SB-44-15 | Fast-forward in the rig debugger | done | story-15-rig-fast-forward.md | evidence-story-15.md |
 
 ## Active risks
 

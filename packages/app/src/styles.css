@@ -1201,3 +1201,25 @@ input.secondary-action {
 [data-serfbound-rig="1"] .panel-group--service {
   display: none;
 }
+
+/* Rig fast-forward bar (SB-44-15): only mounted for an embedded ?rig= debug
+   session — run the sim 2×..20× or pause, so road-staffing/growth/combat
+   show in seconds. */
+.rig-speed {
+  position: fixed; top: 8px; left: 50%; transform: translateX(-50%);
+  z-index: 2147482000; display: flex; align-items: center; gap: var(--sb-space-1);
+  padding: var(--sb-space-1) var(--sb-space-2); border-radius: var(--sb-radius-sm);
+  background: var(--sb-ink-veil); border: 1px solid var(--sb-line);
+  font-family: var(--sb-font); box-shadow: var(--sb-shadow-card);
+}
+.rig-speed__label {
+  color: var(--sb-moss); font-size: var(--sb-text-xs); font-weight: var(--sb-weight-bold);
+  letter-spacing: var(--sb-track-wide); text-transform: uppercase; margin-right: var(--sb-space-1);
+}
+.rig-speed button {
+  min-width: 34px; min-height: 30px; padding: 0 var(--sb-space-2);
+  border: 1px solid var(--sb-line); border-radius: var(--sb-radius-sm);
+  background: var(--sb-surface-raised); color: var(--sb-parchment);
+  font-family: var(--sb-font); font-weight: var(--sb-weight-bold); cursor: pointer;
+}
+.rig-speed button.is-active { background: var(--sb-gold); color: var(--sb-on-gold); border-color: var(--sb-gold); }

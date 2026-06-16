@@ -3593,6 +3593,33 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       root.dataset.serfboundRig = "1";
       root.dataset.serfboundDev = "1";
       root.querySelector<HTMLDetailsElement>("[data-testid='dev-ledger']")?.setAttribute("open", "");
+
+      // Fast-forward controls: a rig staffs roads / grows trees / fights over
+      // many ticks — let the maintainer run the clock 2×..20× (or pause) so
+      // the behaviour shows in seconds, not minutes.
+      const speedBar = document.createElement("div");
+      speedBar.className = "rig-speed";
+      speedBar.dataset.testid = "rig-speed";
+      const speedLabel = document.createElement("span");
+      speedLabel.className = "rig-speed__label";
+      speedLabel.textContent = "Speed";
+      speedBar.append(speedLabel);
+      const speedButtons: HTMLButtonElement[] = [];
+      for (const mult of [0, 1, 2, 4, 8, 20]) {
+        const speedButton = document.createElement("button");
+        speedButton.type = "button";
+        speedButton.textContent = mult === 0 ? "⏸" : `${mult}×`;
+        speedButton.classList.toggle("is-active", mult === 1);
+        speedButton.addEventListener("click", () => {
+          setGameSpeed(mult);
+          for (const other of speedButtons) {
+            other.classList.toggle("is-active", other === speedButton);
+          }
+        });
+        speedButtons.push(speedButton);
+        speedBar.append(speedButton);
+      }
+      root.append(speedBar);
     }
     if (!embedded) {
       mountRigHud({
