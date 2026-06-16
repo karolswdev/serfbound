@@ -1,7 +1,7 @@
 // Serfbound offline app shell. Caches the built shell and assets on
 // demand; never caches or fetches original game data (imports stay in
 // the user's IndexedDB, which works offline by nature).
-const CACHE = "serfbound-shell-v2";
+const CACHE = "serfbound-shell-v3";
 const swVersion = CACHE;
 
 self.addEventListener("install", (event) => {
@@ -50,6 +50,20 @@ self.addEventListener("fetch", (event) => {
 
   // Original data never flows through HTTP, but guard anyway.
   if (url.pathname.toLowerCase().endsWith(".pa")) {
+    return;
+  }
+
+  // The gate-verification deck and the baked rigs are tooling that must never
+  // go stale: always fetch fresh (fall back to cache only when offline, and
+  // never store a copy that could shadow a newer deploy).
+  if (url.pathname.includes("/playtest") || url.pathname.includes("/rigs/")) {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches
+          .match(event.request, { ignoreSearch: true, ignoreVary: true })
+          .then((cached) => cached ?? Response.error()),
+      ),
+    );
     return;
   }
 

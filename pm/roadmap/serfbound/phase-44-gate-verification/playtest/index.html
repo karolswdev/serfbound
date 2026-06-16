@@ -644,8 +644,12 @@ document.addEventListener("click", async (e) => {
 
 // ── reveal.js init with graceful offline fallback. ───────────────────
 if (typeof Reveal !== "undefined") {
+  // A phone-sized slide so reveal barely scales it down on a device — verdict
+  // buttons stay finger-sized (the old 1100px slide shrank to ~0.35x, leaving
+  // 18px buttons you couldn't reliably tap). maxScale caps the desktop zoom.
   Reveal.initialize({ hash:true, slideNumber:"c/t", controls:true, progress:true,
-                      touch:true, width:1100, height:760, margin:0.06,
+                      touch:true, width:480, height:850, margin:0.04,
+                      minScale:0.4, maxScale:1.6,
                       transition:"slide", navigationMode:"linear" });
   // The deck drives the rig: once the split is open, stepping to another
   // check slide swaps the game on the right to that check's rig — so you
