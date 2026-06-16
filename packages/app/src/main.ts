@@ -60,6 +60,7 @@ import {
   type SerfboundCustomMap,
   type SerfboundLocalGameSnapshot,
   type SerfboundLocalGameStartResult,
+  type SerfboundLocalGameStarted,
 } from "@serfbound/engine";
 import {
   BrowserIndexedDbImportedArchiveStore,
@@ -88,6 +89,23 @@ import {
   type MapScroll,
 } from "./landscape-scene.js";
 import { MapEditorScreen } from "./editor-screen.js";
+import { mountRigHud, type RigSequenceEntry } from "./rig-hud.js";
+
+// The baked rig fixture shape written by scripts/build-rigs.mjs to
+// public/rigs/<id>.json. Validated structurally at load; any mismatch makes
+// the rig loader degrade to the normal title screen.
+type RigFixture = {
+  readonly rigKind: "local-game" | "editor-draft" | "gallery";
+  readonly id: string;
+  readonly gate: string;
+  readonly check: string;
+  readonly covers?: readonly string[];
+  readonly title: string;
+  readonly instruction: string;
+  readonly result: string;
+  readonly snapshot?: SerfboundLocalGameSnapshot;
+  readonly map?: SerfboundCustomMap;
+};
 import {
   buildDecodedRenderAssets,
   createFirstRenderLayerScene,
@@ -3422,6 +3440,42 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     );
   });
 
+  // Wire a freshly restored local game into every live surface (renderer,
+  // command router, world, AI, save controls). Shared by the Load button and
+  // the rig loader (SB-44-03) so both paths restore identically. The
+  // landscape-asset guards keep a restore safe before SPAU.PA is imported.
+  const applyRestoredLocalGame = (
+    restored: SerfboundLocalGameStarted,
+    options: { readonly savedRecord?: StoredLocalGameSaveRecord } = {},
+  ): void => {
+    currentLocalGameSnapshot = restored.snapshot;
+    currentBuiltStructures = restored.snapshot.state.builtStructures;
+    selectedInteraction = undefined;
+    startLandscapeRendering(restored.game);
+    commandRouter = new SerfboundCommandRouter(
+      restored.game.state,
+      currentLandscapeAssets === undefined ? undefined : restored.game.world(),
+    );
+    currentWorld = currentLandscapeAssets === undefined ? undefined : restored.game.world();
+    currentSerfEngine =
+      currentLandscapeAssets === undefined ? undefined : restored.game.serfEngine();
+    attachAiPlayers(restored.game);
+    applyRunningLocalGameSnapshot(root, restored.snapshot);
+    syncWorldState(root, currentWorld);
+    renderCurrentScene();
+    syncBuildFlagEnabled(root, selectedInteraction, currentBuiltStructures);
+    if (options.savedRecord !== undefined) {
+      currentSavedLocalGame = options.savedRecord;
+      applyLocalGameLoadedState(root, options.savedRecord);
+    }
+    syncLocalGameSaveControls(
+      root,
+      currentLocalGameSnapshot,
+      currentSavedLocalGame,
+      currentImportedDataSource,
+    );
+  };
+
   const loadButton = getLoadGameButton(root);
   loadButton.addEventListener("click", () => {
     void loadCurrentLocalGame(
@@ -3435,30 +3489,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
           return;
         }
 
-        currentSavedLocalGame = record;
-        currentLocalGameSnapshot = restored.snapshot;
-        currentBuiltStructures = restored.snapshot.state.builtStructures;
-        selectedInteraction = undefined;
-        startLandscapeRendering(restored.game);
-        commandRouter = new SerfboundCommandRouter(
-          restored.game.state,
-          currentLandscapeAssets === undefined ? undefined : restored.game.world(),
-        );
-        currentWorld = currentLandscapeAssets === undefined ? undefined : restored.game.world();
-        currentSerfEngine =
-          currentLandscapeAssets === undefined ? undefined : restored.game.serfEngine();
-        attachAiPlayers(restored.game);
-        applyRunningLocalGameSnapshot(root, restored.snapshot);
-        syncWorldState(root, currentWorld);
-        renderCurrentScene();
-        syncBuildFlagEnabled(root, selectedInteraction, currentBuiltStructures);
-        applyLocalGameLoadedState(root, record);
-        syncLocalGameSaveControls(
-          root,
-          currentLocalGameSnapshot,
-          currentSavedLocalGame,
-          currentImportedDataSource,
-        );
+        applyRestoredLocalGame(restored, { savedRecord: record });
       },
       (record) => {
         currentSavedLocalGame = record;
@@ -3489,6 +3520,69 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     );
   });
 
+  // Scenario rigging (SB-44-03): `?rig=<id>` boots straight into a pre-built
+  // gate-verification state and overlays the in-game capture HUD. A dev-only
+  // seam (like `?dev=1`): inert without the param, and every failure path
+  // (missing fixture, malformed snapshot, no imported catalog) degrades
+  // silently to the normal title screen. It runs AFTER the persisted archive
+  // restore so a local game can render against the device's imported SPAU.PA.
+  const rigId = (() => {
+    try {
+      const value = new URLSearchParams(globalThis.location?.search ?? "").get("rig");
+      return value !== null && /^[a-z0-9-]+$/.test(value) ? value : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+
+  const loadRig = async (id: string): Promise<void> => {
+    let fixture: RigFixture;
+    let sequence: RigSequenceEntry[] = [];
+    try {
+      const [fixtureResponse, manifestResponse] = await Promise.all([
+        fetch(`./rigs/${id}.json`, { cache: "no-store" }),
+        fetch(`./rigs/manifest.json`, { cache: "no-store" }),
+      ]);
+      if (!fixtureResponse.ok) {
+        return;
+      }
+      fixture = (await fixtureResponse.json()) as RigFixture;
+      if (manifestResponse.ok) {
+        const manifest = (await manifestResponse.json()) as { rigs?: RigSequenceEntry[] };
+        sequence = (manifest.rigs ?? []).map((entry) => ({ id: entry.id, title: entry.title }));
+      }
+    } catch {
+      return;
+    }
+
+    if (fixture.rigKind === "local-game" && fixture.snapshot !== undefined) {
+      // Only restore when the catalog is imported, else the world can't render;
+      // the HUD still mounts so the maintainer sees what the rig needs.
+      if (currentDecodedAssets !== undefined) {
+        const restored = restoreSerfboundLocalGame(fixture.snapshot);
+        if (restored.status === "started") {
+          applyRestoredLocalGame(restored);
+        }
+      }
+    } else if (fixture.rigKind === "editor-draft") {
+      root.querySelector<HTMLButtonElement>("[data-testid='open-editor-button']")?.click();
+    }
+    // gallery rigs are service-driven: the HUD guides publish/browse/rate/play.
+
+    mountRigHud({
+      root,
+      rig: {
+        id: fixture.id,
+        gate: fixture.gate,
+        title: fixture.title,
+        instruction: fixture.instruction,
+        result: fixture.result,
+        covers: fixture.covers ?? [fixture.check],
+      },
+      sequence,
+    });
+  };
+
   void (async () => {
     await restorePersistedArchive(
       root,
@@ -3498,6 +3592,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     );
     currentSavedLocalGame = await restorePersistedLocalGameSave(root, localGameSaveStore);
     syncLocalGameSaveControls(root, currentLocalGameSnapshot, currentSavedLocalGame, currentImportedDataSource);
+    if (rigId !== undefined) {
+      await loadRig(rigId);
+    }
   })();
 }
 

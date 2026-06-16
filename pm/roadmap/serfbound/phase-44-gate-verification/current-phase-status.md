@@ -1,11 +1,13 @@
 # Phase 44 — Gate Verification
 
-**Last updated:** 2026-06-14 (SB-44-02 done: verdicts persist across
-reload/app-switch with a resume banner, and a Results slide exports a
-per-phase markdown report with Copy/Download. The deck is complete; both
-stories ship. Earlier: SB-44-01 stood up the deck — all seven Bucket-A
-gates as ordered, executable check slides, offline-resilient,
-headless-verified).
+**Last updated:** 2026-06-15 (SB-44-03 done: a scenario rigging harness +
+in-game verification HUD. `?rig=<id>` boots the game into a check's exact
+deterministic state — castle, splittable road, fisher on a shore, contested
+border — on a purpose-built test map, and an overlay records Pass/Fail/Skip
+in-game to the same store the deck reads. 13 rigs cover 33/36 checks across
+all 7 gates; every local-game rig boots + reaches Running in real Chromium.
+Earlier: SB-44-02 made verdicts durable and exportable; SB-44-01 stood up
+the deck.)
 **Status:** complete — the deck ships and is headless-verified. The
 phase's *goal* (closing the Bucket-A gates 35–39, 42, 43) is now
 unblocked: the maintainer runs the protocol on a device, hands back the
@@ -48,6 +50,10 @@ and the phase flips to complete; any fail loops that phase.
 - [x] Verdicts persist across reload/app-switch (a phone juggling the
   game and the deck must not lose state) and export to a markdown report
   the maintainer hands back to close the gates. (SB-44-02)
+- [x] Each riggable check boots the game into its exact deterministic
+  state via `?rig=<id>` on a purpose-built test map, with an in-game HUD
+  that records the verdict to the shared store; rigs self-verify on bake
+  and in real Chromium so they can't bit-rot. (SB-44-03)
 
 ## Story status
 
@@ -55,6 +61,7 @@ and the phase flips to complete; any fail loops that phase.
 |---|---|---|---|---|
 | SB-44-01 | The protocol deck | done | story-01-the-protocol-deck.md | evidence-story-01.md |
 | SB-44-02 | Feedback capture and export | done | story-02-feedback-capture.md | evidence-story-02.md |
+| SB-44-03 | Scenario rigging + in-game HUD | done | story-03-scenario-rigging.md | evidence-story-03.md |
 
 ## Active risks
 

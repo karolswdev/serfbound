@@ -27,6 +27,16 @@ const browser = await chromium.launch();
   const errors = [];
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
   page.on("pageerror", e => errors.push(String(e)));
+  // Keep the deck hermetic: stub the rig manifest (empty here) so the test
+  // never depends on the live game origin. Empty = no rig buttons, the
+  // graceful-degrade path.
+  await page.route("**/rigs/manifest.json", (route) =>
+    route.fulfill({
+      status: 200,
+      headers: { "content-type": "application/json", "access-control-allow-origin": "*" },
+      body: "{}",
+    }),
+  );
   await page.goto(url, { waitUntil: "networkidle" });
 
   const phases = await page.$$eval("section[data-phase]", els =>
@@ -109,6 +119,69 @@ const browser = await chromium.launch();
   ok(/0\/36/.test(afterReset), "reset clears all verdicts");
   const cleared = await page.evaluate(() => localStorage.getItem("serfbound-gate-playtest-v1"));
   ok(!cleared, "reset clears persisted storage");
+  await page.close();
+}
+
+// Pass 4: rig launch + shared-store reflection (SB-44-03). With a manifest
+// present, each covered check gains a deep-link button; a verdict written to
+// the shared store (as the in-game HUD does) reflects in the deck on focus.
+{
+  const page = await browser.newPage({ viewport: { width: 414, height: 896 } });
+  await page.route("**/rigs/manifest.json", (route) =>
+    route.fulfill({
+      status: 200,
+      headers: { "content-type": "application/json", "access-control-allow-origin": "*" },
+      body: JSON.stringify({
+        schemaVersion: 1,
+        kind: "serfbound.rig-manifest",
+        rigs: [
+          {
+            id: "phase-36-road-split",
+            gate: "SB-36-06",
+            check: "36.1",
+            covers: ["36.1"],
+            kind: "local-game",
+            title: "Split a live road",
+            instruction: "Plant a flag in the middle of the road.",
+            result: "Both halves staff themselves.",
+            deepLink: "?rig=phase-36-road-split",
+          },
+        ],
+        byCheck: { "36.1": "phase-36-road-split" },
+      }),
+    }),
+  );
+  await page.goto(url, { waitUntil: "networkidle" });
+  await page.evaluate(() => localStorage.removeItem("serfbound-gate-playtest-v1"));
+  await page.waitForSelector('section[data-check="36.1"] .rig-launch a', { timeout: 5000 }).catch(() => {});
+
+  const href = await page
+    .$eval('section[data-check="36.1"] .rig-launch a', (a) => a.getAttribute("href"))
+    .catch(() => null);
+  ok(!!href && /\?rig=phase-36-road-split/.test(href), `rig deep-link injected: ${href}`);
+  const instr = await page
+    .$eval('section[data-check="36.1"] .rig-do', (p) => p.textContent)
+    .catch(() => "");
+  ok(/middle of the road/.test(instr), "rig instruction shown on the slide");
+
+  // A check WITHOUT a manifest entry stays a plain checklist item (no button).
+  const unrigged = await page.$('section[data-check="42.4"] .rig-launch');
+  ok(unrigged === null, "a check with no rig stays a plain checklist item");
+
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "serfbound-gate-playtest-v1",
+      JSON.stringify({ "36.1": { status: "pass", notes: "in-game capture" } }),
+    );
+    window.dispatchEvent(new Event("focus"));
+  });
+  const reflected = await page.$eval(
+    '.controls[data-id="36.1"] button[data-v="pass"]',
+    (b) => b.classList.contains("active"),
+  );
+  ok(reflected, "a verdict in the shared store reflects in the deck on focus");
+  const report = await page.$eval("#report", (e) => e.textContent);
+  ok(/\[36\.1\] ✓ pass/.test(report), "in-game verdict flows into the hand-back report");
   await page.close();
 }
 

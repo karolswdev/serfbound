@@ -11,6 +11,8 @@
   "scripts": {
     "build": "tsc -b packages/engine packages/assets packages/test-support packages/app",
     "build:web": "npm run build && vite build",
+    "build:rigs": "npm run build && node scripts/build-rigs.mjs",
+    "verify:rigs": "node pm/roadmap/serfbound/phase-44-gate-verification/playtest/verify-rigs.mjs",
     "capture:local:screenshots": "npm run build:web && node scripts/capture-local-screenshots.mjs",
     "ci:release": "npm test && npm run check:boundaries && npm run check:independence && npm run check:design && npm run check:media && npm run test:release:static && npm run test:docs",
     "clean": "tsc -b --clean packages/engine packages/assets packages/test-support packages/app",

@@ -105,3 +105,6 @@ export function assertOracleFixtureHeader(
 }
 
 export { createDecodableGeneratedPaArchive } from "./decodable-pa-fixture.js";
+export * from "./scenario-rig.js";
+export * from "./rig-maps.js";
+export * from "./rig-scenarios.js";

@@ -52,6 +52,18 @@
   }
   .notes::placeholder { color: #6c6960; }
 
+  /* Rig launch (SB-44-03): one tap boots the game into this check's exact
+     state. Injected per-slide when the rig manifest loads. */
+  .rig-launch { margin: 0.5em 0 0.2em; padding: 0.6em 0.8em; border:1px solid var(--gate);
+                border-radius: 10px; background: #1a1710; }
+  .rig-launch a { display:inline-block; font-size:0.66em; font-weight:700; text-decoration:none;
+                  color:#0b1f0c; background: var(--ok); padding: 0.5em 1em; border-radius: 8px; }
+  .rig-launch .rig-do { color: var(--ink); font-size:0.64em; margin: 0.45em 0 0; }
+  .rig-launch .rig-expect { color: var(--dim); font-size:0.58em; margin: 0.25em 0 0; }
+  .rig-base { font-size: 0.64em; color: var(--dim); margin-top: 0.6em; }
+  .rig-base input { font-size: 0.9em; padding: 0.3em 0.5em; border-radius: 6px; border:1px solid var(--line);
+                    background:#141414; color: var(--ink); width: 16em; max-width: 100%; }
+
   /* Fixed progress chip — always visible while stepping. */
   #progress {
     position: fixed; top: 8px; right: 10px; z-index: 60;
@@ -111,6 +123,14 @@
       <p class="watch" style="font-size:0.7em">Mark every check <b style="color:var(--ok)">Pass</b>,
          <b style="color:var(--no)">Fail</b>, or <b style="color:var(--skip)">Skip</b>.
          A phase closes only when all its checks pass; any Fail loops it (the Phase-34 pattern).</p>
+      <p class="watch" style="font-size:0.7em">Most checks have a <b style="color:var(--ok)">▶ Open rig</b>
+         button: it boots the game straight into that check's exact state, with an in-game Pass/Fail
+         panel that records right here. Tap it, do the one thing it asks, mark the verdict.</p>
+      <div class="rig-base">
+        Game base URL (for the rig buttons):
+        <br><input id="rig-base-input" type="url" placeholder="https://serfbound.com" autocomplete="off" spellcheck="false">
+        <br><span style="font-size:0.85em">For live verdict sync, open this deck from that same origin.</span>
+      </div>
     </section>
 
     <!-- PROTOCOL slides are generated here from PROTOCOL[] -->
@@ -366,6 +386,74 @@ document.addEventListener("click", e => {
     a.click(); URL.revokeObjectURL(a.href);
   }
 });
+
+// ── Rig launch + live verdict reflection (SB-44-03). ─────────────────
+// The deck is a launcher + dashboard: each check links to the game booted into
+// that check's exact state (?rig=<id>), and verdicts captured by the in-game
+// HUD land in the SAME localStorage key this deck reads — so the report
+// reflects them when the deck is served from the game's origin.
+function resolveRigBase() {
+  try {
+    const fromUrl = new URLSearchParams(location.search).get("base");
+    if (fromUrl) return fromUrl.replace(/\/+$/, "");
+    const saved = localStorage.getItem("serfbound-rig-base");
+    if (saved) return saved.replace(/\/+$/, "");
+  } catch (e) {}
+  return "https://serfbound.com";   // user default; override per device
+}
+let RIG_BASE = resolveRigBase();
+
+const baseInput = document.getElementById("rig-base-input");
+if (baseInput) {
+  baseInput.value = RIG_BASE;
+  baseInput.addEventListener("change", () => {
+    RIG_BASE = (baseInput.value || "https://serfbound.com").replace(/\/+$/, "");
+    try { localStorage.setItem("serfbound-rig-base", RIG_BASE); } catch (e) {}
+    loadRigManifest();
+  });
+}
+
+function injectRig(checkId, rigId, entry) {
+  const slide = document.querySelector(`section[data-check="${checkId}"]`);
+  if (!slide || slide.querySelector(".rig-launch")) return;
+  const controls = slide.querySelector(".controls");
+  const box = document.createElement("div");
+  box.className = "rig-launch";
+  const link = document.createElement("a");
+  link.href = `${RIG_BASE}/?rig=${encodeURIComponent(rigId)}`;
+  link.target = "_blank"; link.rel = "noopener";
+  link.textContent = "▶ Open rig";
+  box.appendChild(link);
+  if (entry && entry.instruction) {
+    const p = document.createElement("p"); p.className = "rig-do";
+    p.textContent = entry.instruction; box.appendChild(p);
+  }
+  if (entry && entry.result) {
+    const p = document.createElement("p"); p.className = "rig-expect";
+    p.textContent = "Pass when: " + entry.result; box.appendChild(p);
+  }
+  if (controls) slide.insertBefore(box, controls); else slide.appendChild(box);
+}
+
+async function loadRigManifest() {
+  document.querySelectorAll(".rig-launch").forEach(el => el.remove());
+  let manifest = null;
+  try {
+    const res = await fetch(`${RIG_BASE}/rigs/manifest.json`, { cache: "no-store" });
+    if (res.ok) manifest = await res.json();
+  } catch (e) { /* offline / CORS / not deployed — degrade to plain checklist */ }
+  if (!manifest || !manifest.byCheck) return;
+  const byId = {};
+  for (const r of (manifest.rigs || [])) byId[r.id] = r;
+  for (const [checkId, rigId] of Object.entries(manifest.byCheck)) injectRig(checkId, rigId, byId[rigId]);
+}
+loadRigManifest();
+
+// In-game captures: re-read the shared store when the deck regains focus or a
+// sibling tab writes it.
+function refreshFromStore() { restore(); renderProgress(); renderReport(); }
+window.addEventListener("focus", refreshFromStore);
+window.addEventListener("storage", e => { if (e.key === STORE_KEY) refreshFromStore(); });
 
 // ── reveal.js init with graceful offline fallback. ───────────────────
 if (typeof Reveal !== "undefined") {

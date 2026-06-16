@@ -170,7 +170,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 41 | Levers and ledgers: settings sliders, notifications, stat windows, minimap modes | scaffolded | [phase-41-levers-and-ledgers](./phase-41-levers-and-ledgers/) |
 | 42 | Map builder: an in-browser map editor that looks exactly like the game, play custom maps locally | at the device gate | [phase-42-map-builder](./phase-42-map-builder/) |
 | 43 | Community maps: publish, browse, and play shared maps on serfbound.com | scaffolded | [phase-43-community-maps](./phase-43-community-maps/) |
-| 44 | Gate verification: a steppable device-gate playtest protocol that closes the Bucket-A gates | complete | [phase-44-gate-verification](./phase-44-gate-verification/) |
+| 44 | Gate verification: a steppable device-gate playtest protocol plus scenario rigging — `?rig=` boots the game into each check's exact state with an in-game pass/fail HUD — that closes the Bucket-A gates | complete | [phase-44-gate-verification](./phase-44-gate-verification/) |
 
 Phases 42–43 (the map builder and community map sharing) come from a
 maintainer-directed product expansion, not the parity audit: an
