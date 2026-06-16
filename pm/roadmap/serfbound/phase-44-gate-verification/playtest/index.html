@@ -262,6 +262,15 @@ function resultsSlide() {
         <button id="reset-report" style="flex:1;font-size:0.7em;padding:0.5em;border-radius:10px;border:2px solid var(--no);background:var(--card);color:var(--ink)">↺ Reset</button>
       </div>
       <pre id="report" style="font-size:0.5em;background:#0f0f0f;border:1px solid var(--line);border-radius:8px;padding:0.7em;max-height:9em;overflow:auto;white-space:pre-wrap"></pre>
+      <p class="label" style="margin-top:0.6em">Submit to the report server</p>
+      <p class="watch" style="font-size:0.62em">Saves this run as a file the harness pulls into the repo
+         (<code>npm run pull:reports</code>) so we work on it later. Paste your submit token once.</p>
+      <input id="report-token" type="password" placeholder="submit token" autocomplete="off"
+             style="width:100%;box-sizing:border-box;font-size:0.62em;padding:0.5em;border-radius:8px;border:1px solid var(--line);background:#141414;color:var(--ink);margin-bottom:0.4em">
+      <div style="display:flex;gap:0.5em;align-items:center">
+        <button id="submit-report" style="flex:1;font-size:0.7em;padding:0.5em;border-radius:10px;border:2px solid var(--gate);background:var(--card);color:var(--ink)">⇪ Submit report</button>
+        <span id="submit-status" class="watch" style="font-size:0.6em;flex:1"></span>
+      </div>
     </section>`;
 }
 document.getElementById("protocol-mount").outerHTML = PROTOCOL.map(phaseStack).join("") + resultsSlide();
@@ -454,6 +463,53 @@ loadRigManifest();
 function refreshFromStore() { restore(); renderProgress(); renderReport(); }
 window.addEventListener("focus", refreshFromStore);
 window.addEventListener("storage", e => { if (e.key === STORE_KEY) refreshFromStore(); });
+
+// ── Submit to the report server (SB-44-06). ──────────────────────────
+// POST the built report to the reports service so it is saved as a file the
+// harness pulls into the repo. The submit token (held by the maintainer)
+// gates the endpoint and is remembered locally after first use.
+function resolveReportsBase() {
+  try {
+    const fromUrl = new URLSearchParams(location.search).get("reportsBase");
+    if (fromUrl) return fromUrl.replace(/\/+$/, "");
+    const saved = localStorage.getItem("serfbound-reports-base");
+    if (saved) return saved.replace(/\/+$/, "");
+  } catch (e) {}
+  return "https://api.serfbound.com/reports";   // the /reports route prefix
+}
+const REPORTS_BASE = resolveReportsBase();
+const TOKEN_KEY = "serfbound-reports-token";
+
+const tokenInput = document.getElementById("report-token");
+if (tokenInput) {
+  try { tokenInput.value = localStorage.getItem(TOKEN_KEY) || ""; } catch (e) {}
+}
+
+document.addEventListener("click", async (e) => {
+  if (e.target.id !== "submit-report") return;
+  const status = document.getElementById("submit-status");
+  const token = (document.getElementById("report-token")?.value || "").trim();
+  try { localStorage.setItem(TOKEN_KEY, token); } catch (err) {}
+  const setStatus = (msg, color) => { if (status) { status.textContent = msg; status.style.color = color || "var(--dim)"; } };
+  setStatus("submitting…");
+  try {
+    const res = await fetch(`${REPORTS_BASE}/reports`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-serfbound-report-token": token },
+      body: JSON.stringify({ markdown: buildReport(), meta: { source: "playtest-deck", submittedAtIso: new Date().toISOString() } }),
+    });
+    if (res.ok) {
+      const body = await res.json();
+      setStatus(`✓ saved — id ${String(body.reportId || "").slice(0, 8)}`, "var(--ok)");
+    } else if (res.status === 401) {
+      setStatus("✗ token rejected", "var(--no)");
+    } else {
+      setStatus(`✗ ${res.status} — ${(await res.json().catch(() => ({}))).message || "failed"}`, "var(--no)");
+    }
+  } catch (err) {
+    setStatus("✗ unreachable (offline or CORS) — use Download", "var(--no)");
+  }
+});
 
 // ── reveal.js init with graceful offline fallback. ───────────────────
 if (typeof Reveal !== "undefined") {

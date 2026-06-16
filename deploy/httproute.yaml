@@ -2,8 +2,8 @@
 # catalyst-gateway listeners added by
 # patches/catalyst-gateway-listeners.json. Path-split: the identity
 # service lives under /identity, the mailbox under /mailbox, the maps
-# service under /maps, each rewritten to the service root so the
-# service code is unchanged.
+# service under /maps, the reports service under /reports, each rewritten
+# to the service root so the service code is unchanged.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -65,6 +65,21 @@ spec:
         - group: ""
           kind: Service
           name: maps
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /reports
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: reports
           port: 80
 ---
 # HTTP→HTTPS. ACME solver routes match their specific token path and

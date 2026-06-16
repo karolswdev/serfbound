@@ -7,15 +7,15 @@ The game itself is never deployed here — it stays a static artifact.
 
 - `namespace.yaml` — the one namespace Serfbound owns on the shared
   cluster.
-- `identity.yaml` / `mailbox.yaml` / `maps.yaml` — Deployment +
-  Service + PVC per service. One replica, `Recreate` over the RWO store
-  volume (single-node cluster posture), TCP probes so the service code
-  is unchanged. `httproute.yaml` path-splits `/identity`, `/mailbox`,
-  and `/maps` on `api.serfbound.com`.
+- `identity.yaml` / `mailbox.yaml` / `maps.yaml` / `reports.yaml` —
+  Deployment + Service + PVC per service. One replica, `Recreate` over
+  the RWO store volume (single-node cluster posture), TCP probes so the
+  service code is unchanged. `httproute.yaml` path-splits `/identity`,
+  `/mailbox`, `/maps`, and `/reports` on `api.serfbound.com`.
 
 Images are published to GHCR by `.github/workflows/services.yml`:
-`ghcr.io/karolswdev/serfbound-identity`, `…/serfbound-mailbox`, and
-`…/serfbound-maps`.
+`ghcr.io/karolswdev/serfbound-identity`, `…/serfbound-mailbox`,
+`…/serfbound-maps`, and `…/serfbound-reports`.
 
 Validate without a cluster:
 
@@ -62,3 +62,35 @@ curl -s https://api.serfbound.com/maps/maps     # -> {"maps":[]}
 identity/mailbox routes unaffected. Rollback:
 `kubectl -n serfbound delete -f deploy/maps.yaml` and re-apply
 `httproute.yaml` from the previous revision.
+
+## Deploying the reports service (SB-44-06)
+
+The gate-verification deck submits playtest reports here; `npm run
+pull:reports` writes them into the repo. Staged and manifest-validated;
+the apply is the maintainer's outward action.
+
+```sh
+# 1. The image is built + pushed by services.yml on push to services/**.
+#    GHCR: ghcr.io/karolswdev/serfbound-reports:latest
+
+# 2. Create the submit token secret (the maintainer holds this; it gates
+#    write + read). Skippable — with optional:true the pod starts and runs
+#    open until the secret exists, then gating activates on next rollout.
+kubectl -n serfbound create secret generic reports-token \
+  --from-literal=token="$(openssl rand -hex 24)"
+
+# 3. Apply the workload + the updated routes:
+kubectl apply -f deploy/reports.yaml
+kubectl apply -f deploy/httproute.yaml          # now carries the /reports rule
+kubectl -n serfbound rollout status deploy/reports
+
+# 4. Smoke. The route strips /reports (ReplacePrefixMatch -> /), so the
+#    health path is /reports/health.
+curl -s https://api.serfbound.com/reports/health   # -> {"service":"serfbound-reports","ok":true}
+
+# 5. Read the token back to paste into the deck + the pull script:
+kubectl -n serfbound get secret reports-token -o jsonpath='{.data.token}' | base64 -d
+```
+
+Rollback: `kubectl -n serfbound delete -f deploy/reports.yaml` and
+re-apply `httproute.yaml` from the previous revision.

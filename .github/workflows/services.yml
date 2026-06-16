@@ -59,7 +59,7 @@ jobs:
 
       - name: Build and push images
         run: |
-          for service in identity mailbox maps; do
+          for service in identity mailbox maps reports; do
             image="ghcr.io/${{ github.repository_owner }}/serfbound-${service}"
             docker build \
               -t "${image}:latest" \
@@ -73,7 +73,7 @@ jobs:
           {
             echo "## Serfbound service images"
             echo ""
-            for service in identity mailbox maps; do
+            for service in identity mailbox maps reports; do
               image="ghcr.io/${{ github.repository_owner }}/serfbound-${service}"
               digest="$(docker inspect --format '{{index .RepoDigests 0}}' "${image}:latest")"
               echo "- \`${digest}\` (tags: latest, ${{ github.sha }})"

@@ -1,0 +1,109 @@
+# Reports service (SB-44-06). Same posture as identity/mailbox/maps: one
+# replica, Recreate over the RWO store volume, TCP probes, no code changes.
+# Stores submitted gate-verification reports (hand-typed markdown + small
+# metadata) — never original game data.
+#
+# The submit token gates write+read. Create the secret before (or after)
+# applying; with optional:true the pod starts either way, and token gating
+# activates once the secret exists:
+#
+#   kubectl -n serfbound create secret generic reports-token \
+#     --from-literal=token="$(openssl rand -hex 24)"
+#
+# Read the token back to paste into the deck / pull script:
+#   kubectl -n serfbound get secret reports-token -o jsonpath='{.data.token}' | base64 -d
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: reports-store
+  namespace: serfbound
+  labels:
+    app.kubernetes.io/part-of: serfbound
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reports
+  namespace: serfbound
+  labels:
+    app.kubernetes.io/name: reports
+    app.kubernetes.io/part-of: serfbound
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: reports
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: reports
+        app.kubernetes.io/part-of: serfbound
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: reports
+          image: ghcr.io/karolswdev/serfbound-reports:latest
+          ports:
+            - name: http
+              containerPort: 4340
+          env:
+            - name: SERFBOUND_REPORTS_STORE
+              value: /data/reports.json
+            - name: SERFBOUND_REPORTS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: reports-token
+                  key: token
+                  optional: true
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          volumeMounts:
+            - name: store
+              mountPath: /data
+      volumes:
+        - name: store
+          persistentVolumeClaim:
+            claimName: reports-store
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reports
+  namespace: serfbound
+  labels:
+    app.kubernetes.io/name: reports
+    app.kubernetes.io/part-of: serfbound
+spec:
+  selector:
+    app.kubernetes.io/name: reports
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
