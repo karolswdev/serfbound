@@ -68,6 +68,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-07 | Split-screen protocol + lumberjack trees | done | story-07-split-screen-and-trees.md | evidence-story-07.md |
 | SB-44-08 | Vertical split + forged results window | done | story-08-forged-results-window.md | evidence-story-08.md |
 | SB-44-09 | The protocol deck, in style | done | story-09-deck-in-style.md | evidence-story-09.md |
+| SB-44-10 | One source of truth: deck guides, game is the rig | done | story-10-one-source-of-truth.md | evidence-story-10.md |
 
 ## Active risks
 

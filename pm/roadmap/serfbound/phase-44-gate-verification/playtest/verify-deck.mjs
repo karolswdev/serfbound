@@ -153,14 +153,16 @@ const browser = await chromium.launch();
   );
   await page.goto(url, { waitUntil: "networkidle" });
   await page.evaluate(() => localStorage.removeItem("serfbound-gate-playtest-v1"));
-  await page.waitForSelector('section[data-check="36.1"] .rig-launch a', { timeout: 5000 }).catch(() => {});
+  await page.waitForSelector('section[data-check="36.1"] .rig-launch button.rig-open', { timeout: 5000 }).catch(() => {});
 
   const hasOpen = await page.$('section[data-check="36.1"] .rig-launch button.rig-open');
   ok(hasOpen !== null, "rig 'Open rig here' button injected on the check");
-  const instr = await page
-    .$eval('section[data-check="36.1"] .rig-do', (p) => p.textContent)
-    .catch(() => "");
-  ok(/middle of the road/.test(instr), "rig instruction shown on the slide");
+  // Single source: the launch panel must NOT repeat the instruction/result —
+  // the slide's own do/watch/pass is the one guidance.
+  const repeated = await page.$('section[data-check="36.1"] .rig-launch .rig-do, section[data-check="36.1"] .rig-launch .rig-expect');
+  ok(repeated === null, "the rig panel does not repeat the check's instruction (single source)");
+  const ownDo = await page.$eval('section[data-check="36.1"] .do', (p) => p.textContent).catch(() => "");
+  ok(ownDo.trim().length > 0, "the check slide carries its own do/guidance");
 
   // Split-screen: clicking it loads the rig into the game iframe and splits.
   await page.$eval('section[data-check="36.1"] .rig-launch button.rig-open', (b) => b.click());

@@ -3574,18 +3574,32 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     }
     // gallery rigs are service-driven: the HUD guides publish/browse/rate/play.
 
-    mountRigHud({
-      root,
-      rig: {
-        id: fixture.id,
-        gate: fixture.gate,
-        title: fixture.title,
-        instruction: fixture.instruction,
-        result: fixture.result,
-        covers: fixture.covers ?? [fixture.check],
-      },
-      sequence,
-    });
+    // When the rig runs embedded in the protocol deck (the split-screen
+    // iframe), the deck is the single source of truth — it shows the check and
+    // captures the verdict — so an in-game HUD would only duplicate it. Mount
+    // the HUD only when a rig is opened standalone (a direct ?rig= with no deck
+    // driving it).
+    const embedded = (() => {
+      try {
+        return globalThis.self !== globalThis.top;
+      } catch {
+        return true;
+      }
+    })();
+    if (!embedded) {
+      mountRigHud({
+        root,
+        rig: {
+          id: fixture.id,
+          gate: fixture.gate,
+          title: fixture.title,
+          instruction: fixture.instruction,
+          result: fixture.result,
+          covers: fixture.covers ?? [fixture.check],
+        },
+        sequence,
+      });
+    }
   };
 
   void (async () => {

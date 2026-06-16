@@ -72,15 +72,12 @@
 
   /* Rig launch (SB-44-03): one tap boots the game into this check's exact
      state. Injected per-slide when the rig manifest loads. */
-  .rig-launch { margin: 0.5em 0 0.2em; padding: 0.7em 0.9em; background: var(--surface);
-                border: 11px solid transparent; border-image: var(--g-frame) 16 / 9px round; image-rendering: pixelated; }
+  .rig-launch { margin: 0.6em 0 0.3em; }
   .rig-launch a, .rig-launch button.rig-open {
                   display:inline-block; font-size:0.6em; font-weight:800; text-decoration:none;
                   color: var(--on-gold); font-family: var(--font); padding: 0.2em 0.9em; cursor: pointer;
                   border: 11px solid transparent; border-image: var(--g-button) 18 fill / 10px stretch;
                   background: transparent; image-rendering: pixelated; }
-  .rig-launch .rig-do { color: var(--ink); font-size:0.64em; margin: 0.5em 0 0; }
-  .rig-launch .rig-expect { color: var(--dim); font-size:0.58em; margin: 0.25em 0 0; }
   .rig-base { font-size: 0.64em; color: var(--dim); margin-top: 0.6em; }
   .rig-base input, #report-token {
     font-size: 0.9em; padding: 0.35em 0.55em; border-radius: 6px; border:1px solid var(--line);
@@ -479,6 +476,12 @@ if (baseInput) {
   });
 }
 
+// The deck is the single source of truth: each check slide already carries
+// its do / watch / pass and its Pass/Fail/Skip controls. The rig panel is
+// JUST the launch — no repeated instruction or pass condition. The game on
+// the right is the rig, nothing more (its in-game HUD is suppressed when
+// embedded, packages/app/src/main.ts).
+let rigByCheck = {};
 function injectRig(checkId, rigId, entry) {
   const slide = document.querySelector(`section[data-check="${checkId}"]`);
   if (!slide || slide.querySelector(".rig-launch")) return;
@@ -491,19 +494,12 @@ function injectRig(checkId, rigId, entry) {
   open.textContent = "▶ Open rig here";
   open.addEventListener("click", () => openRigInFrame(rigId, entry));
   box.appendChild(open);
-  if (entry && entry.instruction) {
-    const p = document.createElement("p"); p.className = "rig-do";
-    p.textContent = entry.instruction; box.appendChild(p);
-  }
-  if (entry && entry.result) {
-    const p = document.createElement("p"); p.className = "rig-expect";
-    p.textContent = "Pass when: " + entry.result; box.appendChild(p);
-  }
   if (controls) slide.insertBefore(box, controls); else slide.appendChild(box);
 }
 
 async function loadRigManifest() {
   document.querySelectorAll(".rig-launch").forEach(el => el.remove());
+  rigByCheck = {};
   let manifest = null;
   try {
     const res = await fetch(`${RIG_BASE}/rigs/manifest.json`, { cache: "no-store" });
@@ -512,7 +508,10 @@ async function loadRigManifest() {
   if (!manifest || !manifest.byCheck) return;
   const byId = {};
   for (const r of (manifest.rigs || [])) byId[r.id] = r;
-  for (const [checkId, rigId] of Object.entries(manifest.byCheck)) injectRig(checkId, rigId, byId[rigId]);
+  for (const [checkId, rigId] of Object.entries(manifest.byCheck)) {
+    rigByCheck[checkId] = { rigId, entry: byId[rigId] };
+    injectRig(checkId, rigId, byId[rigId]);
+  }
 }
 loadRigManifest();
 
@@ -603,6 +602,16 @@ if (typeof Reveal !== "undefined") {
   Reveal.initialize({ hash:true, slideNumber:"c/t", controls:true, progress:true,
                       touch:true, width:1100, height:760, margin:0.06,
                       transition:"slide", navigationMode:"linear" });
+  // The deck drives the rig: once the split is open, stepping to another
+  // check slide swaps the game on the right to that check's rig — so you
+  // walk the protocol on the left and the right follows.
+  Reveal.on("slidechanged", () => {
+    if (!document.body.classList.contains("split")) return;
+    const slide = Reveal.getCurrentSlide();
+    const checkId = slide && slide.getAttribute("data-check");
+    const hit = checkId && rigByCheck[checkId];
+    if (hit && hit.rigId !== activeRigId) openRigInFrame(hit.rigId, hit.entry);
+  });
 } else {
   document.body.classList.add("no-reveal");   // CDN blocked → scrollable stack
 }
