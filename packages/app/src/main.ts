@@ -90,6 +90,7 @@ import {
 } from "./landscape-scene.js";
 import { MapEditorScreen } from "./editor-screen.js";
 import { mountRigHud, type RigSequenceEntry } from "./rig-hud.js";
+import { mountBuildingEditor } from "./building-editor.js";
 
 // The baked rig fixture shape written by scripts/build-rigs.mjs to
 // public/rigs/<id>.json. Validated structurally at load; any mismatch makes
@@ -1844,6 +1845,22 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
   renderGeneratedScene();
   observeSceneResize(canvas, renderCurrentScene);
+
+  // Dev god-mode building editor (SB-44): highlight / move / replace / delete /
+  // place buildings on the live map. Self-contained overlay; reuses the live
+  // world + view handles. Its launcher only shows once a world is running.
+  mountBuildingEditor(root, {
+    canvas,
+    getWorld: () => currentWorld,
+    getView: () =>
+      currentLandscapeAssets === undefined
+        ? undefined
+        : { landscape: currentLandscapeAssets.landscape, scroll: currentScroll, worldScale: effectiveWorldScale() },
+    getPlayer: () => currentLocalPlayer,
+    getTick: () => commandRouter.state.tick,
+    requestRender: renderCurrentScene,
+  });
+
   attachPointerMapInteraction(root, canvas, {
     commandRouter: () => commandRouter,
     landscapeContext: () =>

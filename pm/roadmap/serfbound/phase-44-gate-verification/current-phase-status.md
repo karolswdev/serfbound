@@ -1,10 +1,12 @@
 # Phase 44 — Gate Verification
 
-**Last updated:** 2026-06-16 (SB-44-17 done: the protocol deck redesigned —
-one coherent verdict-plaque family, a matching wax-seal family, a single type
-scale + Cinzel headings, and each check composed as a full-bleed screen with a
-character portrait and a bottom-pinned verdict bar. Earlier: SB-44-03 done: a
-scenario rigging harness +
+**Last updated:** 2026-06-16 (SB-44-18 done: a god-mode building editor —
+under ?rig/?dev, highlight every building and move / replace / delete it, or
+place new ones from a palette, right on the live map. SB-44-17 done: the
+protocol deck redesigned — one coherent verdict-plaque family, a matching
+wax-seal family, a single type scale + Cinzel headings, and each check composed
+as a full-bleed screen with a character portrait and a bottom-pinned verdict
+bar. Earlier: SB-44-03 done: a scenario rigging harness +
 in-game verification HUD. `?rig=<id>` boots the game into a check's exact
 deterministic state — castle, splittable road, fisher on a shore, contested
 border — on a purpose-built test map, and an overlay records Pass/Fail/Skip
@@ -80,6 +82,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-15 | Fast-forward in the rig debugger | done | story-15-rig-fast-forward.md | evidence-story-15.md |
 | SB-44-16 | The real touch fix + new buttons | done | story-16-touch-and-buttons.md | evidence-story-16.md |
 | SB-44-17 | The protocol deck, properly designed | done | story-17-deck-overhaul.md | evidence-story-17.md |
+| SB-44-18 | God-mode building editor | done | story-18-building-editor.md | evidence-story-18.md |
 
 ## Active risks
 
