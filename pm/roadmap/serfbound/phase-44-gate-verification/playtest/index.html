@@ -227,6 +227,13 @@
   /* The app-fill card reverts to flow height in split + offline modes. */
   body.split .card, body.no-reveal .card { height: auto; overflow: visible; display: block; }
   body.split .check-card .verdict-set, body.no-reveal .check-card .verdict-set { margin-top: 14px; }
+  /* THE rig-open input block: reveal's background layer (.backgrounds /
+     .slide-background) must never capture clicks. In split mode we flatten the
+     slides to static positioning, which lets reveal's absolutely-positioned
+     background div stack ON TOP of the deck and swallow every verdict tap the
+     instant the rig opens. The deck has no interactive backgrounds, so kill
+     pointer events on them entirely (harmless in normal mode too). */
+  .reveal .backgrounds, .reveal .slide-background, .reveal .slide-background-content { pointer-events: none !important; }
 
   /* Fixed progress chip — always visible while stepping. */
   #progress {

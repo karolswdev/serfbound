@@ -1,6 +1,11 @@
 # Phase 44 — Gate Verification
 
-**Last updated:** 2026-06-16 (SB-44-20 done: correctable verdicts on a resumed
+**Last updated:** 2026-06-16 (SB-44-21 done: THE rig-open input block — in
+split mode reveal's flattened-static slides let its `.backgrounds` layer stack
+on top and swallow every verdict click the instant "Open rig here" was tapped;
+fixed with pointer-events:none on reveal's background layers. This was the real
+cause of the dead taps in the rig flow. SB-44-20 done: correctable verdicts on
+a resumed
 run — auto-advance now fires only on a fresh decision (so re-deciding a
 pre-filled check no longer jumps away), plus an always-visible ↺ Reset.
 SB-44-19 done: verdict taps that actually land —
@@ -91,6 +96,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-18 | God-mode building editor | done | story-18-building-editor.md | evidence-story-18.md |
 | SB-44-19 | Verdict taps that actually land (touch:false) | done | story-19-verdict-taps.md | evidence-story-19.md |
 | SB-44-20 | Correctable verdicts on a resumed run + reset | done | story-20-correctable-verdicts.md | evidence-story-20.md |
+| SB-44-21 | The rig-open input block (reveal backgrounds eat clicks) | done | story-21-rig-open-input-block.md | evidence-story-21.md |
 
 ## Active risks
 
