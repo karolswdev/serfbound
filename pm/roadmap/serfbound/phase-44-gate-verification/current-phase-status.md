@@ -1,6 +1,9 @@
 # Phase 44 — Gate Verification
 
-**Last updated:** 2026-06-16 (SB-44-19 done: verdict taps that actually land —
+**Last updated:** 2026-06-16 (SB-44-20 done: correctable verdicts on a resumed
+run — auto-advance now fires only on a fresh decision (so re-deciding a
+pre-filled check no longer jumps away), plus an always-visible ↺ Reset.
+SB-44-19 done: verdict taps that actually land —
 reveal's touch handler swallowed Pass/Fail/Skip on a real device despite
 data-prevent-swipe, so it's now disabled (touch:false) with our own swipe-nav
 that ignores controls. SB-44-18 done: a god-mode building editor —
@@ -87,6 +90,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-17 | The protocol deck, properly designed | done | story-17-deck-overhaul.md | evidence-story-17.md |
 | SB-44-18 | God-mode building editor | done | story-18-building-editor.md | evidence-story-18.md |
 | SB-44-19 | Verdict taps that actually land (touch:false) | done | story-19-verdict-taps.md | evidence-story-19.md |
+| SB-44-20 | Correctable verdicts on a resumed run + reset | done | story-20-correctable-verdicts.md | evidence-story-20.md |
 
 ## Active risks
 

@@ -129,7 +129,7 @@
     border: 13px solid transparent; border-image: url("./gumps/btn-wood.png") 16 fill / 12px stretch;
     background: transparent; color: var(--parch-bright); text-shadow: 0 1px 2px rgba(0,0,0,0.85);
     font-weight: 700; font-family: var(--font);
-    cursor: pointer; image-rendering: pixelated; -webkit-tap-highlight-color: transparent;
+    cursor: pointer; image-rendering: pixelated; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
     transition: opacity .12s, transform .1s, filter .12s, box-shadow .12s;
   }
   /* Colour-coded plaques per verdict — the option's colour always shows. */
@@ -236,6 +236,16 @@
     border-radius: 999px; padding: 4px 12px; pointer-events: none;
   }
   #progress b.ok { color: var(--ok); } #progress b.no { color: var(--no); } #progress b.skip { color: var(--skip); }
+  /* Always-reachable reset, so a stale resumed run is one tap from a clean
+     slate. Top-left normally; flips to the right in split (the chip takes the
+     left there). */
+  #reset-fab {
+    position: fixed; top: 8px; left: 10px; z-index: 61;
+    font-family: var(--font); font-size: 12px; font-weight: 700; color: var(--ink);
+    background: var(--ink-veil); border: 1px solid var(--gate); border-radius: 999px;
+    padding: 5px 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  body.split #reset-fab { left: auto; right: 10px; }
 
   /* No-reveal fallback: stack everything, make it scroll. */
   body.no-reveal .reveal .slides { position: static; transform: none !important; width: auto; height: auto; left:0; top:0; }
@@ -254,6 +264,7 @@
 </head>
 <body>
 <div id="progress" aria-live="polite">—</div>
+<button id="reset-fab" type="button" title="Clear this run and start over">↺ Reset</button>
 
 <div id="deck-pane">
 <div class="reveal">
@@ -512,15 +523,18 @@ function applyButtons(id) {
 }
 function setVerdict(id, status) {
   const cur = state.verdicts[id] || { status:null, notes:"" };
+  const prior = cur.status;                                // what was recorded before this tap
   cur.status = (cur.status === status) ? null : status;   // tap again to clear
   state.verdicts[id] = cur;
   onVerdictChange(id);                                     // hook for SB-44-02 persistence
   applyButtons(id); renderProgress();
-  // Walk straight through: recording a verdict (not clearing it) steps the
-  // deck to the next check — which, in split mode, loads its rig on the
-  // right. Clearing it cancels a pending step. Off when auto-advance is off.
+  // Walk straight through ONLY on a fresh decision (an unset check getting its
+  // first verdict). Changing or clearing an already-recorded verdict — e.g.
+  // when reviewing a resumed run — stays put, so you can actually correct a
+  // disposition without the deck jumping to the next check. Off when the
+  // auto-advance toggle is off.
   clearTimeout(setVerdict._t);
-  if (cur.status && autoAdvance && typeof Reveal !== "undefined") {
+  if (cur.status && !prior && autoAdvance && typeof Reveal !== "undefined") {
     const slide = Reveal.getCurrentSlide();
     if (slide && slide.getAttribute("data-check") === id) {
       // Reveal.next() is a safe no-op at the very end.
@@ -610,7 +624,7 @@ renderReport();
 
 // Export / reset controls.
 document.addEventListener("click", e => {
-  if (e.target.id === "reset-report" || e.target.id === "reset-top") {
+  if (e.target.id === "reset-report" || e.target.id === "reset-top" || e.target.id === "reset-fab") {
     if (confirm("Clear all recorded verdicts and start over?")) resetAll();
   } else if (e.target.id === "copy-report") {
     const txt = buildReport();
