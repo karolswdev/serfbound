@@ -793,10 +793,41 @@ if (typeof Reveal !== "undefined") {
   // A phone-sized slide so reveal barely scales it down on a device — verdict
   // buttons stay finger-sized (the old 1100px slide shrank to ~0.35x, leaving
   // 18px buttons you couldn't reliably tap). maxScale caps the desktop zoom.
+  // touch:false — reveal's own touch handler swallows taps on a real phone
+  // (data-prevent-swipe was supposed to exempt controls but doesn't hold on
+  // every device; the maintainer still couldn't tap a verdict). We disable
+  // reveal's touch entirely so taps reach the buttons natively, and run our
+  // OWN swipe handler below that only fires on a deliberate swipe over empty
+  // slide area — never on a button/input — so navigation survives.
   Reveal.initialize({ hash:true, slideNumber:false, controls:true, progress:false,
-                      center:false, touch:true, width:480, height:850, margin:0.03,
+                      center:false, touch:false, width:480, height:850, margin:0.03,
                       minScale:0.4, maxScale:1.6,
                       transition:"fade", navigationMode:"linear" });
+
+  // Our own swipe-to-navigate. Ignores swipes that start on an interactive
+  // control (so a verdict tap is never hijacked) and ignores split/offline
+  // modes (there the pane scrolls natively). A clear horizontal swipe steps
+  // the linear protocol; small movements stay taps.
+  (() => {
+    const deck = document.getElementById("deck-pane");
+    if (!deck) return;
+    let sx = 0, sy = 0, t0 = 0, fromControl = false;
+    deck.addEventListener("touchstart", (e) => {
+      const t = e.touches[0]; if (!t) return;
+      sx = t.clientX; sy = t.clientY; t0 = Date.now();
+      fromControl = e.target instanceof Element &&
+        e.target.closest("button, a, input, textarea, select, label, .verdict-set, .rig-launch") !== null;
+    }, { passive: true });
+    deck.addEventListener("touchend", (e) => {
+      if (fromControl) return;
+      if (document.body.classList.contains("split") || document.body.classList.contains("no-reveal")) return;
+      const t = e.changedTouches[0]; if (!t) return;
+      const dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Date.now() - t0 > 700) return;                 // a slow drag isn't a swipe
+      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;  // need a clear horizontal swipe
+      if (dx < 0) Reveal.next(); else Reveal.prev();
+    }, { passive: true });
+  })();
   // The deck drives the rig: once the split is open, stepping to another
   // check slide swaps the game on the right to that check's rig — so you
   // walk the protocol on the left and the right follows.
