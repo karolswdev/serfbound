@@ -1,6 +1,6 @@
 # Serfbound — Roadmap
 
-**Last updated:** 2026-06-14.
+**Last updated:** 2026-06-16.
 **Current phase:** [27 — Realtime Online Play](./phase-27-realtime-online-play/)
 **Status:** Phases 0–23 complete; Serfbound v0.1.0 shipped launch-ready
 (see [phase-20-launch-operations/final-summary.md](./phase-20-launch-operations/final-summary.md)).

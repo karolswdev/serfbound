@@ -11,45 +11,68 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" id="theme">
 
+<!-- Cinzel: a Roman-inscriptional display serif for headings. Degrades to a
+     system serif offline (the deck must run on a CDN-blocked phone). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
+
 <style>
   /* SB-44-09: the deck wears the shell's materials — gumps, the Inter
      stack, parchment/gold/moss over wood-under-ink — so the protocol reads
      as part of the game. Palette mirrors packages/app/src/tokens.css. */
   :root {
-    --bg-ink: #101411; --surface: #1b201c; --card: #242a24;
-    --ink: #f2ecd8; --parch-bright: #fff9e7; --dim: #a7b9a8;
+    /* Warm wood-under-ink game skin (mirrors packages/app/src/tokens.css).
+       The deck is PIMPED — pixel-art gumps + seals — but disciplined: ONE
+       type scale, ONE display font, a coherent verdict asset family. */
+    --bg-ink: #101411; --surface: #1b201c; --surface-2: #242a24; --card: #242a24;
+    --ink: #f2ecd8; --parch-bright: #fff9e7; --dim: #a7b9a8; --faint: #84937f;
     --gate: #d7c584; --gold-deep: #b89f5a; --on-gold: #221d14;
-    --ok: #7fae6e; --no: #b5524a; --skip: #b89f5a;
+    --ok: #8cc06f; --no: #d6675c; --skip: #e0b24e;
     --line: rgba(242,236,216,0.16); --line-soft: rgba(242,236,216,0.12); --ink-veil: rgba(16,20,17,0.86);
     --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --display: "Cinzel", Georgia, "Times New Roman", serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    /* ONE fixed type scale — every size is drawn from here, no per-element em soup. */
+    --fs-xs: 11px; --fs-sm: 13px; --fs-base: 15px; --fs-md: 16px; --fs-lg: 22px; --fs-xl: 30px;
+    --radius: 12px;
     --g-frame: url("./gumps/frame.png"); --g-wood: url("./gumps/wood.png"); --g-button: url("./gumps/button.png");
+    /* aliases so split/progress/inline styles keep resolving */
+    --accent: var(--gate); --pass: var(--ok); --fail: var(--no);
+    --text: var(--ink); --text-dim: var(--dim); --text-faint: var(--faint);
+    --bg: var(--bg-ink); --border: var(--line); --border-soft: var(--line-soft); --on-status: var(--on-gold);
   }
   html.reveal-viewport, body, .reveal-viewport {
-    /* A clean dark stage with a soft vignette — the framed cards carry the
-       wood/parchment material, so the page stays calm behind them. */
-    background:
-      radial-gradient(130% 90% at 50% -10%, #1b2620, var(--bg-ink) 62%);
+    /* A dark stage with a soft vignette — the framed cards carry the wood. */
+    background: radial-gradient(130% 90% at 50% -10%, #1b2620, var(--bg-ink) 62%);
   }
-  .reveal { font-family: var(--font); font-size: 30px; color: var(--ink); }
-  .reveal h1 { font-size: 1.5em; color: var(--parch-bright); font-weight: 800; }
-  .reveal h2 { font-size: 1.15em; color: var(--gate); text-transform: none; letter-spacing: 0; font-weight: 800; }
-  .reveal h3 { font-size: 0.95em; color: var(--dim); text-transform: none; }
+  .reveal { font-family: var(--font); font-size: var(--fs-base); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .reveal h1, .reveal h2 { font-family: var(--display); margin: 0 0 0.4em; letter-spacing: 0.01em; text-transform: none; line-height: 1.15; }
+  .reveal h1 { font-size: var(--fs-xl); font-weight: 700; color: var(--parch-bright); }
+  .reveal h2 { font-size: var(--fs-lg); font-weight: 700; color: var(--gate); }
+  .reveal h3 { font-family: var(--font); font-size: var(--fs-base); font-weight: 600; color: var(--dim); margin: 0 0 0.4em; }
   .reveal section { text-align: left; }
   .reveal .center { text-align: center; }
-  .gate-chip { display:inline-block; font-size:0.5em; padding:3px 12px; border:1px solid var(--gate);
-               border-radius: 999px; color: var(--gate); margin-left: 0.4em; vertical-align: middle; font-weight:700; }
-  .phase-num { color: var(--dim); font-size: 0.6em; letter-spacing: 0.2em; text-transform: uppercase; font-weight:700; }
-  .do   { margin: 0.1em 0 0.5em; color: var(--parch-bright); font-size: 0.92em; font-weight: 700; line-height: 1.25; }
-  .label { color: var(--gate); font-size: 0.56em; letter-spacing: 0.14em; text-transform: uppercase; display:block; margin-bottom:0.1em; font-weight:700; }
+  .reveal p { line-height: 1.5; }
+  .reveal ol, .reveal ul { line-height: 1.5; padding-left: 1.3em; }
+  .reveal li { margin: 6px 0; }
+  .reveal code { font-family: var(--mono); font-size: 0.88em; background: var(--surface); padding: 1px 5px; border-radius: 4px; color: var(--gate); }
+  .reveal a { color: var(--gate); }
+  .phase-num { font-size: var(--fs-xs); letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  .gate-chip { display: inline-block; font-size: var(--fs-xs); padding: 3px 11px; border: 1px solid var(--gate);
+               border-radius: 999px; color: var(--gate); margin-left: 0.45em; vertical-align: middle; font-weight: 700; letter-spacing: 0.04em; }
+  .do   { margin: 0 0 12px; color: var(--parch-bright); font-size: var(--fs-md); font-weight: 700; line-height: 1.3; }
+  .label { display: block; font-size: var(--fs-xs); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gate); font-weight: 700; margin-bottom: 4px; }
   .watch { color: var(--dim); }
   .pass  { color: var(--ink); }
+  .t-pass { color: var(--ok); } .t-fail { color: var(--no); } .t-skip { color: var(--skip); }
 
   /* ── Carved cards: the check/phase content sits in a framed parchment
-     panel on the dark stage (SB-44-14) — not floating text. ─────────── */
+     panel on the dark stage — not floating text. Sizes from the scale. ── */
   .card {
-    max-width: 440px; margin: 0 auto; box-sizing: border-box;
+    max-width: 460px; margin: 0 auto; box-sizing: border-box;
     border: 16px solid transparent; border-image: var(--g-frame) 16 / 13px round;
-    border-radius: 12px; padding: 0.85em 1.05em 1.1em;
+    border-radius: 12px; padding: 16px 18px 18px;
     background:
       linear-gradient(var(--ink-veil), var(--ink-veil)),
       var(--g-wood) var(--surface);
@@ -58,35 +81,34 @@
     image-rendering: pixelated;
   }
   .card > * { image-rendering: auto; }
-  .card-head { display: flex; align-items: center; gap: 0.55em; margin-bottom: 0.45em; }
+  .card-head { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
   .check-badge {
-    font-weight: 800; font-size: 0.6em; color: var(--on-gold);
-    background: var(--gate); border-radius: 7px; padding: 0.22em 0.62em;
+    font-family: var(--mono); font-weight: 700; font-size: var(--fs-sm); color: var(--on-gold);
+    background: var(--gate); border-radius: 6px; padding: 3px 9px;
     letter-spacing: 0.02em; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.22);
   }
-  .card-kicker { color: var(--dim); font-size: 0.46em; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; }
-  .field { margin: 0.42em 0; }
-  .field .watch, .field .pass { font-size: 0.66em; margin: 0; line-height: 1.3; }
+  .card-kicker { color: var(--dim); font-size: var(--fs-xs); letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700; }
+  .field { margin: 10px 0; }
+  .field .watch, .field .pass { font-size: var(--fs-sm); margin: 0; line-height: 1.4; }
 
-  /* Asset library (SB-44-14): a pixel-art gate icon per test type, and wax
-     seals on the verdicts — generated first-party (PixelLab). */
+  /* Asset library: a pixel-art gate icon per test type, and wax seals on the
+     verdicts — generated first-party (PixelLab), one coherent family. */
   .gate-icon {
-    display: inline-block; width: 1.9em; height: 1.9em; flex: none;
+    display: inline-block; width: 30px; height: 30px; flex: none;
     background: center/contain no-repeat; image-rendering: pixelated;
     filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
   }
-  .gate-icon--lg { width: 2.8em; height: 2.8em; }
+  .gate-icon--lg { width: 44px; height: 44px; }
   .crest {
-    width: 4.6em; height: 4.6em; margin: 0 auto 0.3em;
+    width: 86px; height: 86px; margin: 0 auto 6px;
     background: url("./gumps/crest.png") center/contain no-repeat; image-rendering: pixelated;
     filter: drop-shadow(0 3px 5px rgba(0,0,0,0.55));
   }
-  .title-card h1 { margin: 0.1em 0 0.3em; }
-  /* The verdict stamps the card with a wax seal — a satisfying, scannable
-     record of the recorded answer. */
+  .title-card h1 { margin: 4px 0 8px; }
+  /* The verdict stamps the card with a wax seal — a scannable record. */
   .check-card { position: relative; }
   .stamp {
-    position: absolute; top: -0.5em; right: -0.2em; width: 3.4em; height: 3.4em;
+    position: absolute; top: -10px; right: -4px; width: 56px; height: 56px;
     background: center/contain no-repeat; image-rendering: pixelated; display: none;
     transform: rotate(-11deg); filter: drop-shadow(0 2px 3px rgba(0,0,0,0.55));
     pointer-events: none; z-index: 2;
@@ -95,49 +117,76 @@
   .check-card[data-verdict="fail"] .stamp { display: block; background-image: url("./gumps/seal-fail.png"); }
   .check-card[data-verdict="skip"] .stamp { display: block; background-image: url("./gumps/seal-skip.png"); }
   .warn  { background: var(--surface); border: 10px solid transparent; border-image: var(--g-frame) 16 / 9px round;
-           padding: 0.6em 0.9em; font-size: 0.78em; color: var(--ink); image-rendering: pixelated; }
-  .rolls { color: var(--dim); font-size: 0.7em; font-style: italic; }
+           padding: 10px 13px; font-size: var(--fs-sm); color: var(--ink); line-height: 1.45; image-rendering: pixelated; }
+  .rolls { color: var(--dim); font-size: var(--fs-sm); font-style: italic; }
 
-  /* Verdict controls — forged buttons (the button gump), large tap targets. */
-  .verdict-set { margin-top: 0.7em; }
-  .verdicts { display: flex; gap: 0.5em; }
+  /* Verdict controls — one coherent forged-plaque family, colour-coded.
+     Same brass frame; only the enamel hue differs. Large tap targets. */
+  .verdict-set { margin-top: 14px; }
+  .verdicts { display: flex; gap: 8px; }
   .verdicts button, .gump-btn {
-    flex: 1; font-size: 0.62em; min-height: 2.5em; padding: 0.1em 0.35em;
-    border: 12px solid transparent; border-image: url("./gumps/btn-wood.png") 16 fill / 11px stretch;
-    background: transparent; color: var(--parch-bright); text-shadow: 0 1px 1px rgba(0,0,0,0.7);
-    font-weight: 800; font-family: var(--font);
+    flex: 1; font-size: var(--fs-sm); min-height: 46px; padding: 2px 6px;
+    border: 13px solid transparent; border-image: url("./gumps/btn-wood.png") 16 fill / 12px stretch;
+    background: transparent; color: var(--parch-bright); text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+    font-weight: 700; font-family: var(--font);
     cursor: pointer; image-rendering: pixelated; -webkit-tap-highlight-color: transparent;
-    transition: opacity .12s, transform .1s, box-shadow .12s;
+    transition: opacity .12s, transform .1s, filter .12s, box-shadow .12s;
   }
-  /* Colored stone buttons per verdict — the option's colour always shows. */
-  .verdicts button[data-v="pass"] { border-image: url("./gumps/btn-pass.png") 16 fill / 11px stretch; }
-  .verdicts button[data-v="fail"] { border-image: url("./gumps/btn-fail.png") 16 fill / 11px stretch; }
-  .verdicts button[data-v="skip"] { border-image: url("./gumps/btn-skip.png") 16 fill / 11px stretch;
-                                     color: var(--on-gold); text-shadow: 0 1px 0 rgba(255,255,255,0.25); }
+  /* Colour-coded plaques per verdict — the option's colour always shows. */
+  .verdicts button[data-v="pass"] { border-image: url("./gumps/btn-pass.png") 16 fill / 12px stretch; }
+  .verdicts button[data-v="fail"] { border-image: url("./gumps/btn-fail.png") 16 fill / 12px stretch; }
+  .verdicts button[data-v="skip"] { border-image: url("./gumps/btn-skip.png") 16 fill / 12px stretch; color: var(--on-gold); text-shadow: 0 1px 0 rgba(255,255,255,0.3); }
   .verdicts button:active, .gump-btn:active { transform: translateY(1px); }
   /* Unselected verdicts dim; the recorded one pops, brass-ringed. */
-  .verdicts button:not(.active) { opacity: 0.66; }
-  .verdicts button.active { opacity: 1; box-shadow: 0 0 0 2px var(--gate), 0 3px 9px rgba(0,0,0,0.5); }
+  .verdicts button:not(.active) { opacity: 0.6; filter: saturate(0.8); }
+  .verdicts button.active { opacity: 1; box-shadow: 0 0 0 2px var(--gate), 0 4px 12px rgba(0,0,0,0.55); }
   .notes {
-    margin-top: 0.5em; width: 100%; box-sizing: border-box; min-height: 2.4em;
-    font-size: 0.62em; padding: 0.5em; border-radius: 6px; border: 1px solid var(--line);
+    margin-top: 10px; width: 100%; box-sizing: border-box; min-height: 40px;
+    font-size: var(--fs-sm); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line);
     background: var(--bg-ink); color: var(--ink); font-family: var(--font); resize: vertical;
   }
+  .notes:focus { outline: none; border-color: var(--gate); }
   .notes::placeholder { color: var(--dim); }
+
+  /* App-fill: in slide mode the card fills the screen (no stranded card in a
+     black void). Header pins top, the subject sits centred, verdicts bottom. */
+  .reveal .slides section { height: 100%; }
+  .card { height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
+  .title-card, .phase-card { justify-content: center; }
+
+  /* The check's SUBJECT — you see what you're testing. A framed portrait of
+     the phase's character/scene, the instruction as the headline beneath. */
+  .check-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: stretch; min-height: 0; }
+  .hero {
+    width: 138px; height: 138px; margin: 4px auto 16px; flex: none; border-radius: 50%;
+    background: radial-gradient(circle at 50% 36%, #38432f 0%, #222a1d 55%, #131a12 100%);
+    border: 4px solid var(--gold-deep);
+    box-shadow: inset 0 3px 10px rgba(0,0,0,0.65), inset 0 0 0 2px rgba(0,0,0,0.35), 0 6px 16px rgba(0,0,0,0.5);
+    display: flex; align-items: flex-end; justify-content: center; overflow: hidden;
+  }
+  .hero .gate-icon { width: 100px; height: 100px; margin-bottom: 8px; filter: drop-shadow(0 4px 5px rgba(0,0,0,0.6)); }
+  .hero--lg { width: 176px; height: 176px; margin: 0 auto 18px; }
+  .hero--lg .gate-icon { width: 128px; height: 128px; }
+  .check-body .do { text-align: center; font-size: var(--fs-lg); line-height: 1.25; margin: 0 0 16px; }
+  .check-fields { background: rgba(0,0,0,0.22); border: 1px solid var(--line-soft); border-radius: 8px; padding: 12px 14px; }
+  .check-fields .field { margin: 0; }
+  .check-fields .field + .field { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
 
   /* Rig launch (SB-44-03): one tap boots the game into this check's exact
      state. Injected per-slide when the rig manifest loads. */
-  .rig-launch { margin: 0.6em 0 0.3em; }
+  .rig-launch { margin: 14px 0 4px; }
   .rig-launch a, .rig-launch button.rig-open {
-                  display:inline-block; font-size:0.6em; font-weight:800; text-decoration:none;
-                  color: var(--parch-bright); text-shadow: 0 1px 1px rgba(0,0,0,0.7);
-                  font-family: var(--font); padding: 0.25em 1em; cursor: pointer;
-                  border: 12px solid transparent; border-image: url("./gumps/btn-wood.png") 16 fill / 11px stretch;
+                  display:inline-block; font-size: var(--fs-sm); font-weight:700; text-decoration:none;
+                  color: var(--parch-bright); text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+                  font-family: var(--font); padding: 8px 18px; cursor: pointer; min-height: 44px; box-sizing: border-box;
+                  border: 13px solid transparent; border-image: url("./gumps/btn-wood.png") 16 fill / 12px stretch;
                   background: transparent; image-rendering: pixelated; }
-  .rig-base { font-size: 0.64em; color: var(--dim); margin-top: 0.6em; }
-  .rig-base input, #report-token {
-    font-size: 0.9em; padding: 0.35em 0.55em; border-radius: 6px; border:1px solid var(--line);
-    background: var(--bg-ink); color: var(--ink); font-family: var(--font); width: 16em; max-width: 100%; }
+  .rig-base { font-size: var(--fs-sm); color: var(--dim); margin-top: 14px; line-height: 1.7; }
+  .rig-base input:not([type="checkbox"]), #report-token {
+    font-family: var(--mono); font-size: var(--fs-sm); padding: 7px 10px; border-radius: 6px; border:1px solid var(--line);
+    background: var(--bg-ink); color: var(--ink); width: 16em; max-width: 100%; }
+  .rig-base input:focus, #report-token:focus { outline: none; border-color: var(--gate); }
+  .rig-base label { font-size: var(--fs-sm); }
 
   /* Split-screen game panel (SB-44-07): the deck and the game share the
      window, cut horizontally. The deck rides the top, the rig the bottom, so
@@ -175,6 +224,9 @@
     visibility: visible !important; height: auto !important; min-height: 0 !important;
     width: auto !important; left: 0 !important; top: 0 !important; padding: 0.6em 1em 2em;
   }
+  /* The app-fill card reverts to flow height in split + offline modes. */
+  body.split .card, body.no-reveal .card { height: auto; overflow: visible; display: block; }
+  body.split .check-card .verdict-set, body.no-reveal .check-card .verdict-set { margin-top: 14px; }
 
   /* Fixed progress chip — always visible while stepping. */
   #progress {
@@ -212,45 +264,41 @@
       <div class="card title-card center">
         <div class="crest"></div>
         <p class="phase-num">Serfbound · PMO Phase 44</p>
-        <h1>Device-Gate Playtest Protocol</h1>
-        <p class="watch">The Bucket-A gates whose engineering is done — they close
-         only when you play on a real device and sign off.</p>
-      <p class="label">Pre-flight (automated, verified 2026-06-14)</p>
-      <p style="font-size:0.7em">✓ 323/323 unit tests · ✓ boundaries · ✓ design tokens · ✓ zero-.NET independence</p>
-      <p class="fallback-note warn">Offline mode — reveal.js didn't load. The
-         protocol is stacked below; scroll to run it. Your verdicts still record.</p>
-      <p id="resume" class="warn" style="display:none">Resumed a run in progress —
-         <b id="resume-count">0</b> verdicts restored. Jump to <b>Results</b> (last slide)
-         to export, or <button id="reset-top" style="font-size:0.6em;padding:2px 10px">start over</button>.</p>
-      <p style="font-size:0.62em;color:var(--dim)">Arrow keys / swipe to advance · down for each check within a phase.</p>
+        <h1>Device-Gate Playtest</h1>
+        <p class="watch">Bucket-A gates whose engineering is done. They close only
+         after a sign-off run on a real device.</p>
+        <p class="label" style="margin-top:16px">Pre-flight · automated · 2026-06-14</p>
+        <p class="watch" style="font-family:var(--mono);font-size:var(--fs-sm)">✓ 323/323 unit · ✓ boundaries · ✓ design tokens · ✓ zero-.NET</p>
+        <p class="fallback-note warn" style="margin-top:14px">Offline — reveal.js didn't load. The protocol is stacked below; verdicts still record.</p>
+        <p id="resume" class="warn" style="display:none;margin-top:14px">Resumed a run —
+         <b id="resume-count">0</b> verdicts restored. Open <b>Results</b> to export, or
+         <button id="reset-top" class="gump-btn" style="min-height:0;padding:4px 12px;font-size:var(--fs-sm)">start over</button>.</p>
+        <p class="phase-num" style="margin-top:18px;letter-spacing:0;text-transform:none">Arrow / swipe to advance · down for each check.</p>
       </div>
     </section>
 
     <!-- PRE-FLIGHT -->
     <section data-phase="setup">
-      <h2>Before you start</h2>
-      <ol style="font-size:0.78em">
-        <li>A <b>real phone</b> (not a desktop emulator — that's what missed these bugs).</li>
-        <li>Open <b>serfbound.com</b> (or a LAN <code>npm run build:web</code> URL).</li>
-        <li>Import your local <code>SPAU.PA</code> once — the map builder and
-            community maps are import-gated like play.</li>
-        <li>Tap <b style="color:var(--ok)">▶ Open rig here</b> on a check — the game opens in the
-            <b>bottom half of this screen</b>. Read the check up top, play below, mark the verdict.
-            No second tab.</li>
-      </ol>
-      <p class="watch" style="font-size:0.7em">Mark every check <b style="color:var(--ok)">Pass</b>,
-         <b style="color:var(--no)">Fail</b>, or <b style="color:var(--skip)">Skip</b>.
-         A phase closes only when all its checks pass; any Fail loops it (the Phase-34 pattern).</p>
-      <p class="watch" style="font-size:0.7em">Most checks have a <b style="color:var(--ok)">▶ Open rig here</b>
-         button: it boots the game into that check's exact state in a split-screen panel below — do the one
-         thing it asks, then mark Pass/Fail/note on the check above. ↻ reloads the rig, ↗ pops it to a tab, ✕ closes.</p>
-      <div class="rig-base">
-        Game base URL (for the rig buttons):
-        <br><input id="rig-base-input" type="url" placeholder="https://serfbound.com" autocomplete="off" spellcheck="false">
-        <br><span style="font-size:0.85em">For live verdict sync, open this deck from that same origin.</span>
-        <br><label style="display:inline-flex;align-items:center;gap:0.4em;margin-top:0.5em">
-          <input id="auto-advance" type="checkbox" checked> Auto-advance to the next check after a verdict
-        </label>
+      <div class="card">
+        <h2>Before you start</h2>
+        <ol style="font-size:var(--fs-sm)">
+          <li>Use a <b class="t-pass">real phone</b> — desktop emulators missed these bugs.</li>
+          <li>Open <b>serfbound.com</b> (or a LAN <code>npm run build:web</code> URL).</li>
+          <li>Import your local <code>SPAU.PA</code> once — it's import-gated like play.</li>
+          <li>On a check, tap <b class="t-pass">▶ Open rig here</b>: the game opens in the
+              right pane. Read left, play right, mark the verdict.</li>
+        </ol>
+        <p class="watch" style="font-size:var(--fs-sm)">Mark each check <b class="t-pass">Pass</b>,
+           <b class="t-fail">Fail</b>, or <b class="t-skip">Skip</b>. A phase closes only when every
+           check passes; any Fail loops it.</p>
+        <div class="rig-base">
+          <span class="label">Game base URL</span>
+          <input id="rig-base-input" type="url" placeholder="https://serfbound.com" autocomplete="off" spellcheck="false">
+          <br>For live verdict sync, open this deck from that same origin.
+          <br><label style="display:inline-flex;align-items:center;gap:8px;margin-top:8px">
+            <input id="auto-advance" type="checkbox" checked> Auto-advance after a verdict
+          </label>
+        </div>
       </div>
     </section>
 
@@ -352,19 +400,23 @@ const esc = s => String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"
 const TOTAL = PROTOCOL.reduce((n,p)=>n+p.checks.length,0);
 const state = { verdicts: {} };           // { "35.1": {status, notes} } — in-memory (SB-44-01)
 
-function checkSlide(c, phase) {
+function checkSlide(c, p) {
   return `
     <section data-check="${c.id}">
       <div class="card check-card" data-id="${c.id}">
         <div class="stamp"></div>
         <div class="card-head">
-          <span class="gate-icon" style="background-image:url('./gumps/gate-${phase}.png')"></span>
           <span class="check-badge">${esc(c.id)}</span>
-          <span class="card-kicker">Gate check</span>
+          <span class="card-kicker">Phase ${p.phase} · ${esc(p.title)}</span>
         </div>
-        <p class="do">${esc(c.do)}</p>
-        <div class="field"><span class="label">Watch</span><p class="watch">${esc(c.watch)}</p></div>
-        <div class="field"><span class="label">Pass when</span><p class="pass">${esc(c.pass)}</p></div>
+        <div class="check-body">
+          <div class="hero"><span class="gate-icon" style="background-image:url('./gumps/gate-${p.phase}.png')"></span></div>
+          <p class="do">${esc(c.do)}</p>
+          <div class="check-fields">
+            <div class="field"><span class="label">Watch</span><p class="watch">${esc(c.watch)}</p></div>
+            <div class="field"><span class="label">Pass when</span><p class="pass">${esc(c.pass)}</p></div>
+          </div>
+        </div>
         <div class="verdict-set" data-id="${c.id}">
           <div class="verdicts">
             <button data-v="pass">✓ Pass</button>
@@ -380,43 +432,44 @@ function checkSlide(c, phase) {
 function phaseStack(p) {
   const intro = `
     <section data-phase="${p.phase}">
-      <div class="card phase-card">
-        <div class="card-head">
-          <span class="gate-icon gate-icon--lg" style="background-image:url('./gumps/gate-${p.phase}.png')"></span>
-          <p class="phase-num" style="margin:0">Phase ${p.phase}</p>
-        </div>
-        <h2>${esc(p.title)} <span class="gate-chip">${esc(p.gate)}</span></h2>
-        <p>${esc(p.intro)}</p>
+      <div class="card phase-card center">
+        <p class="phase-num">Phase ${p.phase}</p>
+        <div class="hero hero--lg"><span class="gate-icon" style="background-image:url('./gumps/gate-${p.phase}.png')"></span></div>
+        <h2 style="text-align:center">${esc(p.title)}</h2>
+        <p class="center"><span class="gate-chip">${esc(p.gate)}</span></p>
+        <p style="margin-top:10px">${esc(p.intro)}</p>
         ${p.rolls ? `<p class="rolls">${esc(p.rolls)}</p>` : ""}
         ${p.warn ? `<p class="warn">${esc(p.warn)}</p>` : ""}
-        <p class="watch" style="font-size:0.66em">↓ ${p.checks.length} check${p.checks.length>1?"s":""} below.</p>
+        <p class="phase-num" style="margin-top:14px;letter-spacing:0;text-transform:none">↓ ${p.checks.length} check${p.checks.length>1?"s":""} below.</p>
       </div>
     </section>`;
-  return `<section>${intro}${p.checks.map(c => checkSlide(c, p.phase)).join("")}</section>`;
+  return `<section>${intro}${p.checks.map(c => checkSlide(c, p)).join("")}</section>`;
 }
 
 // Results / export slide (SB-44-02) appended after the protocol.
 function resultsSlide() {
   return `
     <section data-phase="results">
+      <div class="card">
       <p class="phase-num">Hand-back</p>
       <h2>Results</h2>
-      <p class="watch" style="font-size:0.72em">When a phase is all-pass, paste this report back
-         and that gate gets its story + evidence and flips to complete. Any Fail loops the phase.</p>
-      <div style="display:flex;gap:0.5em;margin:0.5em 0">
-        <button id="copy-report" class="gump-btn">⧉ Copy report</button>
+      <p class="watch" style="font-size:var(--fs-sm)">When a phase is all-pass, paste this report back —
+         that gate gets its story + evidence and flips to complete. Any Fail loops the phase.</p>
+      <div style="display:flex;gap:8px;margin:12px 0">
+        <button id="copy-report" class="gump-btn">⧉ Copy</button>
         <button id="dl-report" class="gump-btn">⤓ Download</button>
         <button id="reset-report" class="gump-btn">↺ Reset</button>
       </div>
-      <pre id="report" style="font-size:0.5em;background:var(--bg-ink);border:1px solid var(--line-soft);border-radius:6px;padding:0.7em;max-height:9em;overflow:auto;white-space:pre-wrap;color:var(--ink)"></pre>
-      <p class="label" style="margin-top:0.6em">Submit to the report server</p>
-      <p class="watch" style="font-size:0.62em">Saves this run as a file the harness pulls into the repo
-         (<code>npm run pull:reports</code>) so we work on it later. Paste your submit token once.</p>
+      <pre id="report" style="font-family:var(--mono);font-size:var(--fs-xs);background:var(--bg-ink);border:1px solid var(--line-soft);border-radius:6px;padding:10px;max-height:200px;overflow:auto;white-space:pre-wrap;color:var(--dim)"></pre>
+      <p class="label" style="margin-top:14px">Submit to report server</p>
+      <p class="watch" style="font-size:var(--fs-sm)">Saves this run as a file the harness pulls into the repo
+         (<code>npm run pull:reports</code>). Paste your submit token once.</p>
       <input id="report-token" type="password" placeholder="submit token" autocomplete="off"
-             style="width:100%;box-sizing:border-box;margin-bottom:0.4em">
-      <div style="display:flex;gap:0.5em;align-items:center">
+             style="width:100%;box-sizing:border-box;margin:6px 0 8px">
+      <div style="display:flex;gap:8px;align-items:center">
         <button id="submit-report" class="gump-btn" style="flex:1">⇪ Submit report</button>
-        <span id="submit-status" class="watch" style="font-size:0.6em;flex:1"></span>
+        <span id="submit-status" class="watch" style="font-size:var(--fs-sm);flex:1"></span>
+      </div>
       </div>
     </section>`;
 }
