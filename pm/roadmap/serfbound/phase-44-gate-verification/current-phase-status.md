@@ -1,6 +1,9 @@
 # Phase 44 — Gate Verification
 
-**Last updated:** 2026-06-16 (SB-44-21 done: THE rig-open input block — in
+**Last updated:** 2026-06-17 (SB-44-22 done: rigs open on the action — the
+camera now centers on the castle when a rig/save loads (was stranded at the map
+origin, i.e. open sea on coastal maps), with the column scroll corrected for the
+renderer's per-row stagger. SB-44-21 done: THE rig-open input block — in
 split mode reveal's flattened-static slides let its `.backgrounds` layer stack
 on top and swallow every verdict click the instant "Open rig here" was tapped;
 fixed with pointer-events:none on reveal's background layers. This was the real
@@ -97,6 +100,7 @@ and the phase flips to complete; any fail loops that phase.
 | SB-44-19 | Verdict taps that actually land (touch:false) | done | story-19-verdict-taps.md | evidence-story-19.md |
 | SB-44-20 | Correctable verdicts on a resumed run + reset | done | story-20-correctable-verdicts.md | evidence-story-20.md |
 | SB-44-21 | The rig-open input block (reveal backgrounds eat clicks) | done | story-21-rig-open-input-block.md | evidence-story-21.md |
+| SB-44-22 | Rigs open on the action (camera centering) | done | story-22-rig-camera-centering.md | evidence-story-22.md |
 
 ## Active risks
 

@@ -1412,6 +1412,29 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     };
     renderCurrentScene();
   };
+  // Center the camera on a map position. Used when a world loads already
+  // populated (rigs, saved games) so it opens on the action instead of the map
+  // origin — which on a half-water map is open sea. scroll is the top-left tile,
+  // so subtract half the visible tiles (tile is 32x20 px, scaled by worldScale).
+  const centerScrollOnPosition = (position: number) => {
+    if (currentLandscapeAssets === undefined) {
+      return;
+    }
+    const { columns, rows } = currentLandscapeAssets.landscape;
+    const col = ((position % columns) + columns) % columns;
+    const row = Math.trunc(position / columns);
+    const scale = Math.max(1, effectiveWorldScale());
+    const halfCols = Math.round(canvas.width / (32 * scale) / 2);
+    const halfRows = Math.round(canvas.height / (20 * scale) / 2);
+    // Row centering is straightforward. Column centering must undo the
+    // renderer's per-row stagger (columnShift = (r + (r&1)) >> 1, the same
+    // term mapTileToScreen applies), or the focus lands off to one side.
+    const scrollRow = (((row - halfRows) % rows) + rows) % rows;
+    const r = (((row - scrollRow) % rows) + rows) % rows;
+    const columnShift = (r + (r & 1)) >> 1;
+    const scrollColumn = (((col - columnShift - halfCols) % columns) + columns) % columns;
+    currentScroll = { column: scrollColumn, row: scrollRow };
+  };
   // SB-26-04: the language toggle persists and re-renders the scene.
   root
     .querySelector<HTMLButtonElement>("[data-testid='language-button']")
@@ -3479,6 +3502,24 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     attachAiPlayers(restored.game);
     applyRunningLocalGameSnapshot(root, restored.snapshot);
     syncWorldState(root, currentWorld);
+    // Open on the action: center on the local player's castle (or any building
+    // if there's no castle yet), so a rigged/loaded world doesn't strand the
+    // camera at the map origin. New games (no buildings) stay at the origin.
+    if (currentWorld !== undefined) {
+      const focusPosition = (() => {
+        const player = currentWorld.players[currentLocalPlayer];
+        if (player !== undefined && player.castlePosition !== null) {
+          return player.castlePosition;
+        }
+        for (const building of currentWorld.buildings.values()) {
+          return building.position;
+        }
+        return null;
+      })();
+      if (focusPosition !== null) {
+        centerScrollOnPosition(focusPosition);
+      }
+    }
     renderCurrentScene();
     syncBuildFlagEnabled(root, selectedInteraction, currentBuiltStructures);
     if (options.savedRecord !== undefined) {
