@@ -398,14 +398,22 @@ test("importing a decodable archive renders the decoded sprite scene", async ({ 
     "dos-pa-decoded",
   );
 
-  // Arrow keys scroll the landscape by whole tiles and wrap at map edges.
+  // Arrow keys scroll the landscape by whole tiles. Loading a save centers the
+  // camera on the settlement (SB-44-22), so assert movement relative to that
+  // baseline rather than a fixed origin.
   await page.locator("#app").focus();
+  const readScroll = async (): Promise<{ c: number; r: number }> => {
+    const value = (await page.locator("#app").getAttribute("data-serfbound-scroll")) ?? "0,0";
+    const [c, r] = value.split(",").map(Number);
+    return { c: c ?? 0, r: r ?? 0 };
+  };
+  const base = await readScroll();
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowDown");
-  await expect(page.locator("#app")).toHaveAttribute("data-serfbound-scroll", "1,1");
+  await expect(page.locator("#app")).toHaveAttribute("data-serfbound-scroll", `${base.c + 1},${base.r + 1}`);
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("ArrowLeft");
-  await expect(page.locator("#app")).toHaveAttribute("data-serfbound-scroll", "63,1");
+  await expect(page.locator("#app")).toHaveAttribute("data-serfbound-scroll", `${base.c - 1},${base.r + 1}`);
 
   await page.screenshot({ fullPage: true, path: decodedSceneScreenshotPath });
 });
