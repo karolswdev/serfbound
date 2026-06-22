@@ -1,15 +1,13 @@
 # Phase 31 — Licensed Asset Delivery
 
-**Last updated:** 2026-06-22 (SB-31-04 in progress: the repository now
-ships `public/licensed-assets/manifest.json` and the converted
-`serfbound-demo-dos-en.sb31.json` package. Local preview audit passes
-with package checksum `fnv1a32:3ddba0a7` and source checksum
-`fnv1a32:08dbd8c7`; the default `/licensed-assets/manifest.json` path
-proves zero-import active play and offline cache restore in CI. Remaining:
-deploy to `serfbound.com`, rerun the public audit, capture desktop/phone
-play, and record the final legal re-audit; current live audit still fails
-because `/licensed-assets/manifest.json` is HTTP 404.)
-**Status:** in progress — SB-31-04 public evidence pending.
+**Last updated:** 2026-06-22 (Phase complete: `serfbound.com` serves
+`/licensed-assets/manifest.json` and
+`serfbound-demo-dos-en.sb31.json`; the live public audit passes with
+package checksum `fnv1a32:3ddba0a7` and source checksum
+`fnv1a32:08dbd8c7`; clean desktop and phone contexts reach active play
+with zero import steps, then reload offline and start again from the
+IndexedDB package cache.)
+**Status:** complete — all Phase 31 exit criteria met.
 
 ## Goal
 
@@ -70,7 +68,7 @@ follow the written record, not the earlier verbal report.
   inspectable package from original archives, reproducibly. (SB-31-02)
 - [x] The hosted package downloads once, caches locally, survives
   offline restarts, and the import path still works. (SB-31-03)
-- [ ] A first-time visitor on `serfbound.com` reaches active play with
+- [x] A first-time visitor on `serfbound.com` reaches active play with
   zero import steps — e2e, with the legal posture re-audited.
   (SB-31-04)
 
@@ -81,7 +79,7 @@ follow the written record, not the earlier verbal report.
 | SB-31-01 | Permission record and boundary revision | done | story-01-permission-record.md | evidence-story-01.md |
 | SB-31-02 | Deterministic asset conversion pipeline | done | story-02-conversion-pipeline.md | evidence-story-02.md |
 | SB-31-03 | Hosted delivery and local caching | done | story-03-hosted-delivery-caching.md | evidence-story-03.md |
-| SB-31-04 | Zero-import play gate | in progress | story-04-zero-import-play-gate.md | pending final live evidence |
+| SB-31-04 | Zero-import play gate | done | story-04-zero-import-play-gate.md | evidence-story-04.md |
 
 ## Where we are
 
@@ -92,12 +90,10 @@ and package inspector; SB-31-03 shipped the configured hosted package
 download/verify/cache/activate path. SB-31-04 has now landed the CI
 zero-import/offline fixture gate, the no-manifest storage privacy
 regression guard, the repository-hosted converted package/manifest, and
-the public-origin audit command. A local preview of the release artifact
-passes the public audit; the live `serfbound.com` audit still fails
-because `https://serfbound.com/licensed-assets/manifest.json` is not
-deployed. The phase still needs deployment, the real public run, device
-captures, and the shipped-artifact legal re-audit before the final exit
-criterion can close.
+the public-origin audit command. The package commit was pushed to
+`main`, GitHub Pages deployed it, the live `serfbound.com` audit passed,
+and clean desktop/phone contexts proved first-visit active play plus
+offline package-cache restore. Phase 31 is complete.
 
 ## Active risks
 
@@ -107,8 +103,8 @@ criterion can close.
 | The written grant is narrower than implementation assumptions | medium | Boundary revision follows the document, not the conversation | Any shipped behavior exceeding the documented scope |
 | Hosted assets blur the "your data never leaves your machine" promise | medium | Separate, loud messaging: hosted package is Serfbound-distributed under license; imported data still never uploads | Player-facing copy conflating the two paths |
 | Provenance/scope drift in the artifact | low | Version, checksums, permission reference, and content checksum baked into the package; release-gate check | A published package missing its provenance block |
-| Public package URL not live yet | high | Repository artifact and local preview audit are recorded; `npm run audit:licensed-assets:public -- --base https://serfbound.com` remains the deployment check | Audit continues to report HTTP 404 for `/licensed-assets/manifest.json` |
-| Device evidence not captured from the live URL yet | medium | Keep SB-31-04 in progress until desktop and phone first-visit captures prove active play from `serfbound.com` | Closing the story using only local preview evidence |
+| Public package freshness after future deploys | medium | Keep `npm run audit:licensed-assets:public -- --base https://serfbound.com` in the release runbook | Audit fails or reports unexpected package/provenance |
+| Broader corpus scope drift | medium | DOS EN demo package is the first hosted corpus; any additional corpus follows the written record and gets its own PMO evidence | A new package appears without provenance and legal re-audit |
 
 ## Decisions made (this phase)
 
@@ -134,9 +130,8 @@ criterion can close.
   cached, startup leaves `serfbound-licensed-assets` uncreated.
 - 2026-06-22 — The final public run uses
   `npm run audit:licensed-assets:public -- --base https://serfbound.com`
-  before desktop/phone capture. The command currently fails on HTTP 404
-  for `/licensed-assets/manifest.json`, so publication is the remaining
-  external step.
+  before desktop/phone capture. After the Pages deploy, the command
+  passes against `https://serfbound.com/licensed-assets/manifest.json`.
 - 2026-06-22 — The first repository-hosted converted package is
   `public/licensed-assets/serfbound-demo-dos-en.sb31.json`, referenced
   by `public/licensed-assets/manifest.json`; local release preview audit
@@ -146,8 +141,6 @@ criterion can close.
 
 ## Decisions deferred
 
-- The real public capture run — recorded in SB-31-04 against the
-  published release artifact after `serfbound.com` serves the manifest.
 - Which language/version corpora the grant covers (DOS EN first;
   Amiga reopening condition from Phase 26 unaffected) — follows the
   written record.

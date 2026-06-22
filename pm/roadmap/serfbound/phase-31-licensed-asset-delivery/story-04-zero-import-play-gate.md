@@ -2,7 +2,7 @@
 
 - **Project:** serfbound
 - **Phase:** 31
-- **Status:** in progress
+- **Status:** done
 - **Depends on:** SB-31-03
 - **Unblocks:** none
 - **Owner:** unassigned
@@ -30,12 +30,12 @@ spent thirty phases saying "bring your own data."
 
 ## Acceptance criteria
 
-- [ ] A clean browser on the public URL reaches active play with zero
+- [x] A clean browser on the public URL reaches active play with zero
   import steps — e2e against a served fixture package in CI, and a
   recorded real-URL run with the licensed package.
 - [x] The same browser, offline, starts the game from cache on the
   second visit.
-- [ ] The legal re-audit is recorded: every SB-31-01 condition met by
+- [x] The legal re-audit is recorded: every SB-31-01 condition met by
   the shipped artifact and pages; the import path verified
   untouched.
 - [x] Player guide and README document both paths without conflating
@@ -83,11 +83,13 @@ passes with package checksum `fnv1a32:3ddba0a7` and source checksum
 
 The repository also has a repeatable public-origin audit:
 `npm run audit:licensed-assets:public -- --base https://serfbound.com`.
-The current live public run fails exactly where expected before
-deployment: `https://serfbound.com/licensed-assets/manifest.json`
-returns HTTP 404.
+After the Pages deployment for commit `286aaf6`, the live public run
+passes and verifies the served manifest/package, provenance, HTTPS
+delivery, and raw-archive absence.
 
-Remaining before `done`: record the real `serfbound.com` run with the
-licensed package, including desktop/phone captures and the shipped
-artifact/legal re-audit. The final `evidence-story-04.md` ships when
-this story flips to done.
+Live desktop and phone clean-profile captures now prove zero-import
+active play from `serfbound.com`; each then reloads offline and starts
+again from the IndexedDB package cache without a second package
+download.
+
+Evidence: `evidence-story-04.md`.

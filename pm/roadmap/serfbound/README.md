@@ -31,8 +31,7 @@ and the gamification gate proved the whole loop on the public
 backbone with the privacy sweep green (see
 [phase-30-rankings-gamification/final-summary.md](./phase-30-rankings-gamification/final-summary.md)).
 Remaining: realtime WebRTC online play (27), open-source readiness
-(28), licensed asset delivery (31 — written permission, conversion
-pipeline, and hosted cache path landed; zero-import public gate next), product experience (32 — at the maintainer gate), and
+(28), product experience (32 — at the maintainer gate), and
 the social realm (33 — scaffolded from the maintainer's product
 evolution: opt-in social Serfbound with familiar sign-in; supersedes
 the Phase 25 identity decision by recorded direction).
@@ -159,7 +158,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 28 | Open-source readiness: README, e2e screenshots, contributor onramp | scaffolded | [phase-28-open-source-readiness](./phase-28-open-source-readiness/) |
 | 29 | Hosting backbone: serfbound.com, LKE cluster, online surface | complete | [phase-29-hosting-backbone](./phase-29-hosting-backbone/) |
 | 30 | Rankings and gamification: leaderboard, profiles, achievements | complete | [phase-30-rankings-gamification](./phase-30-rankings-gamification/) |
-| 31 | Licensed asset delivery: documented permission, hosted converted assets | in progress | [phase-31-licensed-asset-delivery](./phase-31-licensed-asset-delivery/) |
+| 31 | Licensed asset delivery: documented permission, hosted converted assets | complete | [phase-31-licensed-asset-delivery](./phase-31-licensed-asset-delivery/) |
 | 32 | Product experience: design standard, shell redesign, first-run, platform feel | scaffolded | [phase-32-product-experience](./phase-32-product-experience/) |
 | 33 | The social realm: familiar sign-in, identity v2, the opt-in social game | scaffolded | [phase-33-social-realm](./phase-33-social-realm/) |
 | 34 | Touch playability: real-touch gates, founding confirm, DPR-3 truth, the device gate | in progress | [phase-34-touch-playability](./phase-34-touch-playability/) |
@@ -246,8 +245,8 @@ when the previous phase has evidence:
   local-first.
 - Phase 31 proves licensed asset delivery honestly: the written
   rights-holder record exists, converted assets download once and cache
-  locally without blurring the import path, and the remaining gate proves
-  the public zero-import first run.
+  locally without blurring the import path, and the public
+  zero-import first run is live on `serfbound.com`.
 - Phase 32 proves the product looks like we care: a written design
   standard, the shell rebuilt to it, and the maintainer's own eyes as
   the gate.
