@@ -19,6 +19,8 @@ const bodyByteCap = 768 * 1024;
 const landscapeByteCap = 512 * 1024;
 const mapsPerKey = 50;
 const reportQuarantineThreshold = 3;
+const mapTitleMaxLength = 40;
+const authorNameMaxLength = 12;
 
 function loadStore() {
   const empty = { maps: {} };
@@ -134,11 +136,36 @@ function validMapRecord(map) {
   return true;
 }
 
+function sanitizeMapText(input, fallback, maxLength, options = {}) {
+  const allowSpaces = options.allowSpaces === true;
+  let text = "";
+  for (const character of String(input ?? "").toUpperCase()) {
+    if (text.length >= maxLength) {
+      break;
+    }
+
+    if (character === " ") {
+      if (allowSpaces && text.length > 0 && text[text.length - 1] !== " ") {
+        text += character;
+      }
+      continue;
+    }
+
+    if (/[A-Z0-9ÄÖÜ.\-:?%]/.test(character)) {
+      text += character;
+    }
+  }
+
+  text = text.trim();
+  return text.length > 0 ? text : fallback;
+}
+
 function sanitizeTitle(title) {
-  return String(title ?? "UNTITLED")
-    .replace(/[^\w !?'.\-]/g, "")
-    .slice(0, 40)
-    .toUpperCase();
+  return sanitizeMapText(title, "UNTITLED", mapTitleMaxLength, { allowSpaces: true });
+}
+
+function sanitizeAuthorName(name) {
+  return sanitizeMapText(name, "PLAYER", authorNameMaxLength);
 }
 
 function averageRating(entry) {
@@ -241,7 +268,11 @@ export const server = createServer(async (request, response) => {
       const mapId = randomUUID();
       const stored = {
         ...map,
-        meta: { ...map.meta, title: sanitizeTitle(map.meta.title) },
+        meta: {
+          ...map.meta,
+          title: sanitizeTitle(map.meta.title),
+          authorName: sanitizeAuthorName(map.meta.authorName),
+        },
       };
       store.maps[mapId] = {
         mapId,

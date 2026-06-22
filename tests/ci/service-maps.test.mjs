@@ -48,7 +48,7 @@ async function fingerprint(keys) {
   return Buffer.from(digest).toString("hex");
 }
 
-async function authoredMap(keys, title = "TEST MAP") {
+async function authoredMap(keys, title = "TEST MAP", authorName = "TESTER") {
   const base = generateClassicMap(3, [1, 2, 3]);
   const editor = new MapEditor(base);
   editor.heights.fill(4);
@@ -61,7 +61,7 @@ async function authoredMap(keys, title = "TEST MAP") {
     {
       title,
       authorKeyId,
-      authorName: "TESTER",
+      authorName,
       createdAtIso: "2026-06-13T00:00:00.000Z",
     },
     { playerCount: 1, starts: [] },
@@ -133,6 +133,32 @@ test("the wire has no field for original data (SB-43-01)", async () => {
   // A wrong kind / schema is refused outright.
   const wrong = { ...map, kind: "serfbound.sprite-pack" };
   assert.equal((await publish(keys, wrong)).status, 400, "a foreign kind is refused");
+});
+
+test("metadata moderation filters title/author and per-key quota stops spam (SB-43-05)", async () => {
+  const keys = await generateIdentityKeys();
+  const messy = await authoredMap(keys, "  grüß__ bad title !!!  ", "  maker_?! ");
+  const first = await publish(keys, messy);
+  assert.equal(first.status, 200, "messy metadata publishes after filtering");
+
+  const gallery = await (await fetch(`${serviceUrl}/maps`)).json();
+  const listed = gallery.maps.find((m) => m.mapId === first.body.mapId);
+  assert.notEqual(listed, undefined, "the filtered map lists");
+  assert.equal(listed.title, "GRÜSS BAD TITLE");
+  assert.equal(listed.authorName, "MAKER?");
+
+  const fetched = await (await fetch(`${serviceUrl}/maps/${first.body.mapId}`)).json();
+  assert.equal(fetched.map.meta.title, "GRÜSS BAD TITLE", "stored title is filtered");
+  assert.equal(fetched.map.meta.authorName, "MAKER?", "stored author is filtered");
+
+  for (let count = 1; count < 50; count += 1) {
+    const accepted = await publish(keys, await authoredMap(keys, `SPAM ${count}`));
+    assert.equal(accepted.status, 200, `publish ${count + 1}/50 accepted`);
+  }
+
+  const overQuota = await publish(keys, await authoredMap(keys, "TOO MANY"));
+  assert.equal(overQuota.status, 429, "the 51st map for one key is refused");
+  assert.equal(overQuota.body.error, "quota-exceeded");
 });
 
 test("rate once per key, report quarantines, author deletes (SB-43-01)", async () => {

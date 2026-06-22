@@ -170,7 +170,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 40 | Boats and waterways: the boatbuilder works, sailors carry cargo | in progress | [phase-40-boats-and-waterways](./phase-40-boats-and-waterways/) |
 | 41 | Levers and ledgers: settings sliders, notifications, stat windows, minimap modes | scaffolded | [phase-41-levers-and-ledgers](./phase-41-levers-and-ledgers/) |
 | 42 | Map builder: an in-browser map editor that looks exactly like the game, play custom maps locally | at the device gate | [phase-42-map-builder](./phase-42-map-builder/) |
-| 43 | Community maps: publish, browse, and play shared maps on serfbound.com | scaffolded | [phase-43-community-maps](./phase-43-community-maps/) |
+| 43 | Community maps: publish, browse, and play shared maps on serfbound.com | in progress | [phase-43-community-maps](./phase-43-community-maps/) |
 | 44 | Gate verification: a hosted device-gate playtest protocol plus scenario rigging — `?rig=` boots the game into each check's exact state with an in-game pass/fail HUD — and a report server that saves each submitted run as a file, to close the Bucket-A gates | complete | [phase-44-gate-verification](./phase-44-gate-verification/) |
 
 Phases 42–43 (the map builder and community map sharing) come from a
