@@ -26,6 +26,10 @@ The import-your-own-data path remains first-class. Imported local `SPAU.PA`
 still never uploads, and the app prevents a late hosted-package response from
 overriding a user import.
 
+Post-closeout fix, 2026-06-22: the licensed-package renderer now tints
+`font_shadow` glyphs black like the direct import path, restoring game-font
+contrast without changing the hosted package payload.
+
 Evidence:
 
 - `evidence-story-01.md` — written permission record and boundary revision.

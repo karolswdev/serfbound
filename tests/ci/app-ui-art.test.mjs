@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  convertDosPaArchiveToLicensedAssetPackage,
   DosPaArchive,
   decodeUiFontShadowGlyph,
   layoutUiText,
@@ -9,6 +10,7 @@ import {
   uiFontAdvance,
 } from "@serfbound/assets";
 import {
+  buildDecodedRenderAssetsFromLicensedPackage,
   buildDecodedRenderAssets,
   buildLandscapeRenderAssets,
   createLandscapeScene,
@@ -76,6 +78,27 @@ test("the font-shadow set decodes black with the font's glyph coverage", () => {
     }
   }
   assert.equal(visible > 0, true, "shadow glyph has coverage");
+});
+
+test("licensed package font shadows decode black like imported UI art", () => {
+  const converted = convertDosPaArchiveToLicensedAssetPackage(createDecodableGeneratedPaArchive());
+  const decoded = buildDecodedRenderAssetsFromLicensedPackage(converted.package);
+  assert.notEqual(decoded, null);
+  const shadow = decoded.rawFontShadows[0];
+  assert.notEqual(shadow, null);
+
+  let visible = 0;
+  for (let pixel = 0; pixel < shadow.rgba.length; pixel += 4) {
+    if (shadow.rgba[pixel + 3] !== 0) {
+      visible += 1;
+      assert.deepEqual(
+        [shadow.rgba[pixel], shadow.rgba[pixel + 1], shadow.rgba[pixel + 2]],
+        [0, 0, 0],
+        "packaged shadow pixels tint black like imported shadows",
+      );
+    }
+  }
+  assert.equal(visible > 0, true, "packaged shadow glyph has coverage");
 });
 
 test("decoded UI art lands in the render assets and the landscape atlas", () => {

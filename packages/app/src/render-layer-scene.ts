@@ -18,6 +18,7 @@ import {
   layoutUiText,
   sfxType,
   parseSerfAnimationTable,
+  tintDecodedSprite,
   type XmiEvent,
   uiFontGlyphCount,
   type ComposedSerfTorso,
@@ -1049,7 +1050,8 @@ export function buildDecodedRenderAssetsFromLicensedPackage(
   const rawFontShadows: (DecodedDosSprite | null)[] = [];
   for (let glyph = 0; glyph < uiFontGlyphCount; glyph += 1) {
     rawFontGlyphs.push(decodePackagedSprite("font", glyph));
-    rawFontShadows.push(decodePackagedSprite("font_shadow", glyph));
+    const shadow = decodePackagedSprite("font_shadow", glyph);
+    rawFontShadows.push(shadow === null ? null : tintDecodedSprite(shadow, 0, 0, 0));
   }
 
   const rawIcons = new Map<number, DecodedDosSprite>();

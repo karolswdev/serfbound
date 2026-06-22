@@ -138,6 +138,9 @@ offline package-cache restore. Phase 31 is complete.
   verifies package checksum `fnv1a32:3ddba0a7`, source checksum
   `fnv1a32:08dbd8c7`, 34 resources, 2,233 sprites, 39 SFX, and
   4 music tracks.
+- 2026-06-22 — Post-closeout fix: the licensed-package renderer now
+  tints `font_shadow` glyphs black like the direct import path, restoring
+  game-font contrast while keeping the package payload unchanged.
 
 ## Decisions deferred
 

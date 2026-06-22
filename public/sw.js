@@ -1,7 +1,7 @@
 // Serfbound offline app shell. Caches the built shell and assets on
 // demand; never caches or fetches original game data (imports stay in
 // the user's IndexedDB, which works offline by nature).
-const CACHE = "serfbound-shell-v3";
+const CACHE = "serfbound-shell-v4";
 const swVersion = CACHE;
 
 self.addEventListener("install", (event) => {
