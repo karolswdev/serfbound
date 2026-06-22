@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
+test.use({ serviceWorkers: "block" });
+
 const screenshotPath =
   "pm/roadmap/serfbound/phase-2-browser-foundation/artifacts/story-04-app-shell-desktop.png";
 const renderSceneScreenshotPath =
