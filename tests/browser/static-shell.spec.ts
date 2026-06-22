@@ -38,6 +38,16 @@ test("static app shell renders without original data or a desktop companion", as
   await mkdir(dirname(basicPanelsDesktopScreenshotPath), { recursive: true });
   await mkdir(dirname(localGameStartedScreenshotPath), { recursive: true });
   await mkdir(dirname(firstBuildFlagScreenshotPath), { recursive: true });
+  // Keep the first assertions on the deliberate no-data shell; the default
+  // hosted manifest is released before reload coverage below.
+  const manifestRoute = "**/licensed-assets/manifest.json";
+  await page.route(manifestRoute, (route) =>
+    route.fulfill({
+      status: 404,
+      contentType: "application/json",
+      body: "{}",
+    }),
+  );
   await page.goto("/?dev=1");
 
   const shell = page.getByTestId("serfbound-shell");
@@ -154,6 +164,7 @@ test("static app shell renders without original data or a desktop companion", as
     "dos-pa-catalog",
   );
 
+  await page.unroute(manifestRoute);
   await page.reload();
   await expect(page.getByTestId("data-state")).toHaveText("Data imported");
   await expect(page.getByTestId("data-detail")).toHaveText("SPAU.PA restored with 2 resources.");
