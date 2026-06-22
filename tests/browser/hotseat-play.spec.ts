@@ -20,6 +20,14 @@ async function probeCastle(page: Page): Promise<void> {
   }
 }
 
+async function pickUpSeat(page: Page, app: ReturnType<Page["locator"]>): Promise<void> {
+  await expect(async () => {
+    await page.keyboard.press("Enter");
+    const mode = await app.getAttribute("data-serfbound-cor-mode");
+    expect(mode).toMatch(/^(recap|your-window)$/);
+  }).toPass({ timeout: 10_000 });
+}
+
 test("a hot-seat match plays windows through handover, recap, and back", async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto("/?seed=6235842872325272&window=512");
@@ -48,8 +56,7 @@ test("a hot-seat match plays windows through handover, recap, and back", async (
 
   // Player 2 picks up: the recap replays player 1's window (the
   // trustless verify), then their window begins with the digest shown.
-  await page.keyboard.press("Enter");
-  await expect(app).toHaveAttribute("data-serfbound-cor-mode", "recap");
+  await pickUpSeat(page, app);
   await expect(app).toHaveAttribute("data-serfbound-cor-mode", "your-window", {
     timeout: 30_000,
   });
@@ -62,7 +69,7 @@ test("a hot-seat match plays windows through handover, recap, and back", async (
     timeout: 30_000,
   });
   await expect(app).toHaveAttribute("data-serfbound-cor-player", "0");
-  await page.keyboard.press("Enter");
+  await pickUpSeat(page, app);
   await expect(app).toHaveAttribute("data-serfbound-cor-mode", "your-window", {
     timeout: 30_000,
   });

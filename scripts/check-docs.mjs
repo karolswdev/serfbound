@@ -39,6 +39,7 @@ const requiredText = new Map([
       "npm run test:local:assets",
       "npm run release:static",
       "npm run test:release:static",
+      "npm run audit:licensed-assets:public",
       "evidence-story-{n}.md",
       "Do not use `--no-verify`.",
     ],
@@ -50,6 +51,7 @@ const requiredText = new Map([
       "The static host never receives, stores, or serves that data.",
       "index.html: Cache-Control: no-cache",
       "assets/*: Cache-Control: public, max-age=31536000, immutable",
+      "npm run audit:licensed-assets:public",
     ],
   ],
   [

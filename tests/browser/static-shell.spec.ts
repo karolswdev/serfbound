@@ -317,10 +317,20 @@ test("static app shell renders without original data or a desktop companion", as
   );
 
   await page.reload();
+  await expect(page.getByTestId("data-state")).toHaveText("Licensed package ready");
+  await expect(page.getByTestId("source-state")).toHaveText("Licensed package");
+  await expect(page.locator("#app")).toHaveAttribute(
+    "data-serfbound-active-data-source",
+    "licensed-asset-package",
+  );
+  await expect(page.locator("#app")).toHaveAttribute("data-serfbound-start-mode", "licensed-package");
+  await expect(page.getByTestId("data-reset-button")).toBeEnabled();
+  await page.getByTestId("data-reset-button").click();
   await expect(page.getByTestId("data-state")).toHaveText("No game data");
+  await expect(page.getByTestId("source-state")).toHaveText("No data");
   await expect(page.locator("#app")).toHaveAttribute(
     "data-serfbound-storage-state",
-    "empty",
+    "cleared",
   );
   await movePointerToCanvasFraction(page, 0.5, 0.5);
   await expect(page.locator("#app")).toHaveAttribute("data-serfbound-pointer-state", "hover");
@@ -381,7 +391,7 @@ test("render layer scene stays framed on desktop and mobile viewports", async ({
   ] as const) {
     await page.setViewportSize(viewport.size);
     await page.goto("/?dev=1");
-    await expect(page.getByTestId("scene-state")).toHaveText("Preview terrain");
+    await expect(page.getByTestId("scene-state")).toHaveText("Imported terrain");
     await expect(page.locator("#app")).toHaveAttribute("data-serfbound-renderer", "webgl2");
     await waitForCanvasResize(page);
     await assertSceneLayoutIsFramed(page, viewport.name);

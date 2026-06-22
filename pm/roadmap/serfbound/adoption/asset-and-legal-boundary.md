@@ -1,18 +1,22 @@
 # Serfbound Asset And Legal Boundary
 
-**Status:** accepted baseline for Phase 1, Phase 2, and Phase 4.
-**Date:** 2026-06-09.
-**Story:** SB-0-05.
+**Status:** accepted baseline for local import; amended by SB-31-01 for
+licensed hosted converted asset packages.
+**Date:** 2026-06-09; amended 2026-06-22.
+**Story:** SB-0-05; SB-31-01.
 
 ## Purpose
 
 Define how Serfbound may use original DOS/Amiga data while remaining a
 browser-native project that does not commit, host, bundle, redistribute, or
-silently download copyrighted original game assets.
+silently download copyrighted original game assets except through the
+documented Phase 31 licensed converted-package path.
 
 This is an engineering policy, not legal advice. If the project later wants to
 ship any third-party original asset payload, that must be treated as a new
 rights/licensing decision with explicit written permission and a new PMO review.
+Phase 31 is that review for converted runtime packages; raw original archives
+remain outside the boundary.
 
 ## Existing Repository Constraint
 
@@ -22,16 +26,20 @@ files to play. It also states that the current desktop game needs a DOS
 `SPAx.PA` data file, where `x` is the language shortcut, or Amiga disk/extracted
 files.
 
-Serfbound preserves that boundary in browser form:
+Serfbound preserves that local-import boundary in browser form:
 
 - The browser app may ask the player to select local original data files.
 - The browser app may parse and persist those files locally after explicit user
   selection.
-- The repo and release artifact must not include original DOS/Amiga archives,
-  extracted sprites, music, sound effects, palettes, title art, executable
-  files, manuals, or other original payloads.
-- The app must not fetch original assets from abandonware, archive, forum,
+- The repo and release artifact must not include raw original DOS/Amiga
+  archives, extracted sprites, music, sound effects, palettes, title art,
+  executable files, manuals, or other raw original payloads.
+- The app must not fetch raw original assets from abandonware, archive, forum,
   torrent, CDN, or project-hosted URLs.
+- A separate Phase 31 licensed path may host browser-native converted runtime
+  packages only under the written consent record in `LICENSE-CONSENT.md` and
+  only after the conversion/hosting stories prove provenance, integrity, and
+  player-facing messaging.
 
 ## Copyright Baseline
 
@@ -44,9 +52,11 @@ redistribution license, public-domain status, or verified rights-holder
 permission.
 
 For Serfbound policy, "abandonware" is never accepted as redistribution
-permission. Treat original game data as user-provided local data unless a future
+permission. Treat original game data as user-provided local data unless a
 rights review records a specific redistributable license or written
-rights-holder grant.
+rights-holder grant. `LICENSE-CONSENT.md` is the Phase 31 written grant for
+converted browser-native runtime packages; it is not permission to redistribute
+raw original archives.
 
 ## Current Local Verification Source
 
@@ -98,7 +108,8 @@ and should stay optional.
 | CI-safe generated fixtures | synthetic `.PA`-like buffers, JSON oracle fixtures with no original payload | allowed | allowed |
 | Local/manual metadata summaries | `SPAU.PA` checksum, entry count, resource names/counts, derived metadata checksums | allowed in evidence if no payload bytes | allowed in docs if no payload bytes |
 | Local original data | `SPAU.PA`, `SPAE.PA`, `SPAF.PA`, `SPAD.PA`, Amiga `.adf`, extracted `sounds`, `music`, graphics files | forbidden | forbidden |
-| Extracted original assets | sprites, palettes, music, sound effects, title art, converted PNG/WAV/MIDI assets from original data | forbidden | forbidden |
+| Unlicensed extracted/converted original assets | sprites, palettes, music, sound effects, title art, converted PNG/WAV/MIDI/runtime assets from original data outside Phase 31 | forbidden | forbidden |
+| Licensed converted runtime packages | Browser-native packages produced under SB-31-02 from original assets, with provenance, source checksums, package checksum, and permission reference | package bytes: forbidden in source unless a later story explicitly says otherwise; manifests/checksums allowed | allowed only after SB-31-02/SB-31-03 gates prove scope, integrity, and hosted delivery |
 | Original executables/tools | `SERF.EXE`, DOS drivers, setup programs, DOSBox bundles for normal play | forbidden | forbidden |
 | Third-party downloads of original data | abandonware zips, mirrors, torrents, unofficial archives | forbidden | forbidden |
 
@@ -168,21 +179,25 @@ Phase 4 parser tests must prove both paths:
 
 The browser UI must:
 
-- state that the player supplies their own DOS/Amiga data;
-- offer direct `.PA` import as the first path;
+- state which asset source is active: a player's imported local data or a
+  Serfbound-distributed licensed converted package;
+- keep direct `.PA` import first-class forever;
 - accept `SPAU.PA` as the current known DOS verification file;
 - handle missing, invalid, unsupported, or truncated files recoverably;
 - show whether imported data is stored locally and provide a clear reset/remove
   path;
-- avoid wording that implies Serfbound includes, hosts, sells, or downloads
-  original game data.
+- avoid wording that implies imported local data uploads to Serfbound;
+- avoid wording that conflates raw original archives with the Phase 31 hosted
+  converted runtime package.
 
 ## Stop Signals
 
 Stop and update this boundary before proceeding if any story proposes:
 
 - committing original DOS/Amiga data or extracted assets;
-- adding project-hosted download links for original data;
+- adding project-hosted download links for raw original data;
+- serving a converted runtime package without the SB-31 permission reference,
+  provenance, integrity checks, and the Phase 31 hosting gate;
 - treating "abandonware" as permission to redistribute assets;
 - making CI depend on local original assets;
 - requiring a desktop helper, emulator, native launcher, or original executable
@@ -233,6 +248,42 @@ before routing any *decoded original sprite* into the maps service, a
 gallery thumbnail, or any map-sharing payload — the line is "real tiles
 on the player's own client only, never on the wire."
 
+## Addendum — Licensed Converted Asset Packages (SB-31-01, 2026-06-22)
+
+`LICENSE-CONSENT.md` records the written Blue Byte confirmation supplied to the
+project. The confirmation authorizes Serfbound to convert original Settlers
+asset files into a browser-native runtime format and host those converted
+assets for player use. The stated purpose is deterministic, inspectable,
+cacheable web delivery: players download a converted package once, store it in
+the browser cache, and reuse it on later runs.
+
+This addendum opens the Phase 31 licensed path and leaves the original import
+path intact.
+
+- **What is now allowed:** SB-31-02 may build a deterministic conversion
+  pipeline for browser-native runtime packages, and SB-31-03 may host those
+  packages for player download and local browser caching.
+- **What remains forbidden:** raw original archives, original executables,
+  disk images, abandonware downloads, and player-uploaded local asset files
+  remain outside the project. The permission record is for converted runtime
+  packages, not raw redistribution.
+- **No package ships from this story alone.** SB-31-01 records the consent and
+  boundary revision. Converted packages do not reach players until SB-31-02 and
+  SB-31-03 prove deterministic output, provenance, integrity verification, and
+  hosted delivery.
+- **The import path remains first-class.** Players may still provide their own
+  local `SPAU.PA`; that data stays in their browser and is not uploaded. The
+  hosted package path is Serfbound-distributed licensed content, a distinct
+  source with distinct messaging.
+- **Every package needs provenance.** The package or adjacent manifest must
+  carry a format version, source checksums, package checksum, this consent
+  reference, and a license note. Release checks must fail if those fields are
+  missing.
+- **Hosting stays scoped and auditable.** The current written record states no
+  domain-specific restriction. SB-31-03 must record the chosen
+  Serfbound-controlled HTTPS host and verify that the served artifact matches
+  the documented package manifest.
+
 ## Sources Consulted
 
 - `README.md` - current `freeserf.net` data-file requirement.
@@ -240,6 +291,8 @@ on the player's own client only, never on the wire."
   and Serfbound local data paths.
 - `pm/roadmap/serfbound/adoption/local-asset-inventory.md` - current local
   verification source and checksums.
+- `LICENSE-CONSENT.md` - Phase 31 written consent record for hosted converted
+  runtime packages.
 - `pm/roadmap/serfbound/adoption/parity-harness-design.md` - metadata-only
   local/manual oracle policy.
 - U.S. Copyright Office, "What is Copyright?":

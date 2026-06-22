@@ -2,7 +2,7 @@
 
 - **Project:** serfbound
 - **Phase:** 31
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-31-02, SB-29-03
 - **Unblocks:** SB-31-04
 - **Owner:** unassigned
@@ -32,13 +32,13 @@ imported-data path already has after its first import.
 
 ## Acceptance criteria
 
-- [ ] First visit downloads the package once; reload and offline
+- [x] First visit downloads the package once; reload and offline
   restart use the local copy (no re-download), proven in e2e.
-- [ ] A corrupted or checksum-mismatched download is rejected
+- [x] A corrupted or checksum-mismatched download is rejected
   recoverably and never activates.
-- [ ] Import-your-own-data still works end to end and visibly
+- [x] Import-your-own-data still works end to end and visibly
   coexists; the source indicator is honest about which is in use.
-- [ ] The permission-condition checks run in the release gate and
+- [x] The permission-condition checks run in the release gate and
   pass.
 
 ## Test plan
@@ -61,3 +61,15 @@ imported-data path already has after its first import.
   storage of the package).
 - .NET reference use: none.
 - Phase gate advanced: exit criterion 3.
+
+## Outcome
+
+Shipped 2026-06-22. The app now accepts a configured licensed package
+URL/checksum, verifies the `sb31-runtime-v1` package before activation,
+stores it in a dedicated IndexedDB cache, restores it without a second
+download, reconstructs the existing decoded render/audio assets from
+the package, and records the active source as either `Licensed package`
+or `Imported data`. Importing local `SPAU.PA` still works and overrides
+the hosted package without uploading anything.
+
+Evidence: `evidence-story-03.md`.

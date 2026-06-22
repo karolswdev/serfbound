@@ -3,7 +3,10 @@
 Serfbound is the pure-browser workspace for the PMO roadmap in
 `pm/roadmap/serfbound/`. Product code is TypeScript-first browser code. Do not
 add .NET runtime code, desktop launchers, Electron/Tauri shells, native
-companions, server-side asset hosting, or bundled original DOS/Amiga data.
+companions, unlicensed server-side asset hosting, or bundled raw original
+DOS/Amiga data. The only hosted asset path is the Phase 31 licensed converted
+runtime package flow recorded in `LICENSE-CONSENT.md` and
+`pm/roadmap/serfbound/adoption/asset-and-legal-boundary.md`.
 
 ## Setup
 
@@ -54,8 +57,9 @@ fixtures, builds the static browser shell, and runs Chromium browser smoke
 tests.
 
 `npm run ci:release` runs the release gate: CI-safe tests, module boundary
-checks, static release build and artifact inspection, subpath static-hosting
-verification, and the local asset skip path.
+checks, licensed-asset consent/artifact checks, static release build and
+artifact inspection, subpath static-hosting verification, and the local asset
+skip path.
 
 ## Oracle Fixtures
 
@@ -75,8 +79,8 @@ Tests consume these files as data. Product runtime code must not import or run
 
 Local/manual oracle outputs live under ignored `serfbound-local-data/` paths and
 must remain metadata-only. Do not commit raw `.PA` bytes, extracted sprites,
-music, sounds, palettes, original executables, disk images, or converted
-original assets.
+music, sounds, palettes, original executables, disk images, or unlicensed
+converted original assets.
 
 ## Local Asset Checks
 
@@ -108,6 +112,93 @@ SERFBOUND_RUN_LOCAL_ASSET_TESTS=1 \
 SERFBOUND_SPAU_PA="serfbound-local-data/sources/TheSettlersDemo/Serf-City-Life-is-Feudal_DOS_EN/SPAU.PA" \
 npm run capture:local:screenshots
 ```
+
+## Licensed Asset Conversion
+
+Phase 31's licensed package path starts with a deterministic conversion step.
+It reads a local original archive and writes a browser-runtime package that
+records `LICENSE-CONSENT.md`, source checksum, content checksum, decoded sprite
+payloads, composed serf torsos, decoded SFX, and parsed music events. Do not
+commit generated packages unless a later Phase 31 story explicitly opens that
+path.
+
+```bash
+npm run build
+node scripts/convert-licensed-assets.mjs \
+  --input serfbound-local-data/sources/TheSettlersDemo/Serf-City-Life-is-Feudal_DOS_EN/SPAU.PA \
+  --output .tmp/serfbound-assets.sb31.json \
+  --archive-name SPAU.PA
+
+node scripts/convert-licensed-assets.mjs --inspect .tmp/serfbound-assets.sb31.json
+```
+
+The package format is `sb31-runtime-v1`. Normal CI covers it with generated
+fixtures only; real-data conversion remains opt-in until an audited package is
+published for a release.
+
+## Hosted Licensed Asset Delivery
+
+SB-31-03 adds the browser delivery/cache path for `sb31-runtime-v1` packages,
+and SB-31-04 adds the default public manifest discovery path. The app accepts a
+package URL and release checksum, downloads the package once, verifies the
+checksum and embedded provenance before activation, stores it in a separate
+IndexedDB database from imported `SPAU.PA`, and restores it on reload without a
+second network request.
+
+For public-style releases, serve:
+
+```text
+/licensed-assets/manifest.json
+```
+
+with this shape:
+
+```json
+{
+  "kind": "serfbound.licensed-asset-delivery",
+  "schemaVersion": 1,
+  "formatVersion": "sb31-runtime-v1",
+  "permissionRecord": "LICENSE-CONSENT.md",
+  "pmoStory": "SB-31-01",
+  "packageUrl": "serfbound-assets.sb31.json",
+  "packageChecksum": {
+    "algorithm": "fnv1a32",
+    "value": "<fnv1a32>"
+  }
+}
+```
+
+For local override runs:
+
+```text
+/?licensedAssetPackage=/licensed-assets/serfbound-assets.sb31.json&licensedAssetChecksum=<fnv1a32>
+```
+
+`Import data` remains an override path. When a player imports local `SPAU.PA`,
+the Data panel source switches from `Licensed package` to `Imported data`, and
+the imported file still never uploads.
+
+Run the release guard whenever package hosting changes:
+
+```bash
+npm run check:licensed-assets
+```
+
+The guard requires `LICENSE-CONSENT.md`, the amended asset/legal boundary, no
+raw original archives in `public/`, `deploy/`, or `dist/`, and valid
+`public/licensed-assets/*.sb31.json` or `dist/licensed-assets/*.sb31.json`
+packages when such artifacts are deliberately present.
+
+Run the public-origin audit after the manifest/package are deployed:
+
+```bash
+npm run audit:licensed-assets:public -- --base https://serfbound.com
+```
+
+The public audit fetches `/licensed-assets/manifest.json`, verifies the served
+package checksum and embedded `LICENSE-CONSENT.md` / `SB-31-01` provenance,
+requires HTTPS outside localhost, and probes common raw-archive paths so the
+served origin does not accidentally expose original data.
 
 ## Static Release Commands
 

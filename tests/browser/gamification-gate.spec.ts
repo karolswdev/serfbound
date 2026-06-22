@@ -139,13 +139,15 @@ test("the loop: rated match -> ladder -> chronicle -> deeds", async ({ browser }
   await expect(alice.locator(".deed[data-achievement-id='rated']")).toBeVisible();
   await expect(alice.locator(".deed[data-achievement-id='victor']")).toBeVisible();
 
-  // Privacy sweep: the local stores are exactly the recorded set —
-  // nothing new appeared under gamification.
+  // Privacy sweep: the local stores are exactly the recorded set. The
+  // licensed package store is expected now that the public manifest is
+  // served by default; gamification still creates no extra storage.
   const databases = await alice.evaluate(async () =>
     (await indexedDB.databases()).map((database) => database.name).sort(),
   );
   expect(databases).toEqual([
     "serfbound-imported-data",
+    "serfbound-licensed-assets",
     "serfbound-local-game-saves",
     "serfbound-profile",
   ]);

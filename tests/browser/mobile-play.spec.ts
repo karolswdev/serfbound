@@ -44,9 +44,10 @@ test("a phone founds a settlement through the authentic UI by touch", async ({ p
   // synthetic down+up pairs — Playwright's tap() can straddle the 500ms
   // long-press threshold on a loaded CI machine, turning the tap into
   // a tile inspect.
+  let pointerId = 90;
   const quickTap = (x: number, y: number) =>
     page.evaluate(
-      ({ x, y }) => {
+      ({ pointerId, x, y }) => {
         const target = document.querySelector("[data-testid='terrain-preview']");
         if (target === null) {
           throw new Error("canvas missing");
@@ -56,7 +57,7 @@ test("a phone founds a settlement through the authentic UI by touch", async ({ p
         for (const type of ["pointerdown", "pointerup"]) {
           target.dispatchEvent(
             new PointerEvent(type, {
-              pointerId: 99,
+              pointerId,
               pointerType: "touch",
               isPrimary: true,
               clientX: rect.left + x,
@@ -67,8 +68,19 @@ test("a phone founds a settlement through the authentic UI by touch", async ({ p
           );
         }
       },
-      { x, y },
+      { pointerId: (pointerId += 1), x, y },
     );
+  const publishedRect = async (
+    attribute: string,
+  ): Promise<{ x: number; y: number; width: number; height: number }> => {
+    const raw = await page.locator("#app").getAttribute(attribute);
+    if (raw === null) {
+      throw new Error(`${attribute} is not published`);
+    }
+
+    const [x, y, width, height] = raw.split(",").map(Number);
+    return { x: x!, y: y!, width: width!, height: height! };
+  };
   const probeBox = (await canvas.boundingBox()) ?? box;
   const probeColumns = 7;
   const probeRows = 8;
@@ -95,23 +107,13 @@ test("a phone founds a settlement through the authentic UI by touch", async ({ p
   );
 
   // Layout can shift once the status panel updates; measure fresh.
-  const runningBox = await canvas.boundingBox();
-  if (runningBox === null) {
-    throw new Error("canvas has no bounding box");
-  }
+  const panel = await publishedRect("data-serfbound-panel-rect");
+  const chromeScale = panel.width / 320;
 
   // The panel bar responds to taps: the road slot arms road mode, and
   // the starred build slot cancels it (the reference road-builder bar,
   // SB-34-08).
-  const panelX = Math.max(0, Math.floor((runningBox.width - 320 * scale) / 2));
-  const panelY = Math.max(0, runningBox.height - 40 * scale);
-  await canvas.tap({
-    position: {
-      x: panelX + (64 + 48) * scale + 16 * scale,
-      y: panelY + 4 * scale + 16 * scale,
-    },
-    force: true,
-  });
+  await quickTap(panel.x + (64 + 48 + 16) * chromeScale, panel.y + (4 + 16) * chromeScale);
   await expect(page.locator("#app")).toHaveAttribute(
     "data-serfbound-road-mode",
     "awaiting-start",
@@ -119,23 +121,11 @@ test("a phone founds a settlement through the authentic UI by touch", async ({ p
 
   // The stats popup opens and closes by touch (cancel road mode first
   // via the starred slot 0 — the bar is otherwise inert while building).
-  await canvas.tap({
-    position: {
-      x: panelX + 64 * scale + 16 * scale,
-      y: panelY + 4 * scale + 16 * scale,
-    },
-    force: true,
-  });
+  await quickTap(panel.x + (64 + 16) * chromeScale, panel.y + (4 + 16) * chromeScale);
   await expect(page.locator("#app")).toHaveAttribute("data-serfbound-road-mode", "idle");
-  await canvas.tap({
-    position: {
-      x: panelX + (64 + 3 * 48) * scale + 16 * scale,
-      y: panelY + 4 * scale + 16 * scale,
-    },
-    force: true,
-  });
+  await quickTap(panel.x + (64 + 3 * 48 + 16) * chromeScale, panel.y + (4 + 16) * chromeScale);
   await expect(page.locator("#app")).toHaveAttribute("data-serfbound-popup", "stats");
-  await canvas.tap({ position: { x: 10, y: 60 }, force: true });
+  await quickTap(10, 60);
   await expect(page.locator("#app")).not.toHaveAttribute("data-serfbound-popup", /.+/);
 
   // SB-21-04: real hand gestures. Synthetic touch PointerEvents drive

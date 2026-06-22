@@ -11,6 +11,8 @@ import {
   decodeUiIcon,
   decodeSfxSamples,
   decodeUiLogo,
+  decodeLicensedPackagePcm16,
+  decodeLicensedPackageSprite,
   parseXmiTrack,
   decodeUiPanelButton,
   layoutUiText,
@@ -19,6 +21,7 @@ import {
   type XmiEvent,
   uiFontGlyphCount,
   type ComposedSerfTorso,
+  type LicensedAssetPackage,
   type SerfAnimationTable,
   terrainGroundSpriteIndex,
   triangleMaskCodeDown,
@@ -863,6 +866,303 @@ export function buildDecodedRenderAssets(
     rawLogo,
     rawSfx,
     rawMusic,
+  };
+}
+
+export function buildDecodedRenderAssetsFromLicensedPackage(
+  licensedPackage: LicensedAssetPackage,
+): DecodedRenderAssets | null {
+  const spriteMap = new Map<string, DecodedDosSprite>();
+  for (const packaged of licensedPackage.contents.sprites) {
+    try {
+      spriteMap.set(
+        `${packaged.resourceName}:${packaged.spriteIndex}`,
+        decodeLicensedPackageSprite(packaged),
+      );
+    } catch {
+      // Verification already guards the package as a whole; malformed optional
+      // sprite payloads are skipped so partial packages degrade like partial
+      // player imports.
+    }
+  }
+
+  const decodePackagedSprite = (
+    resourceName: string,
+    spriteIndex: number,
+  ): DecodedDosSprite | null => spriteMap.get(`${resourceName}:${spriteIndex}`) ?? null;
+
+  const groundCache = new Map<number, DecodedDosSprite | null>();
+  const maskCache = new Map<string, DecodedDosSprite | null>();
+  const decodeGround = (groundIndex: number): DecodedDosSprite | null => {
+    let ground = groundCache.get(groundIndex);
+    if (ground === undefined) {
+      ground = decodePackagedSprite("map_ground", groundIndex);
+      groundCache.set(groundIndex, ground);
+    }
+
+    return ground;
+  };
+  const decodeMask = (orientation: "up" | "down", maskCode: number): DecodedDosSprite | null => {
+    const cacheKey = `${orientation}:${maskCode}`;
+    let mask = maskCache.get(cacheKey);
+    if (mask === undefined) {
+      mask = decodePackagedSprite(
+        orientation === "up" ? "map_mask_up" : "map_mask_down",
+        maskCode,
+      );
+      maskCache.set(cacheKey, mask);
+    }
+
+    return mask;
+  };
+
+  const sprites: Record<string, DecodedDosSprite> = {};
+  let terrainTriangleCount = 0;
+
+  for (let row = -4; row <= decodedFieldRows; row += 1) {
+    for (let column = -2; column <= decodedFieldColumns; column += 1) {
+      for (const triangle of [decodedTriangleUp(column, row), decodedTriangleDown(column, row)]) {
+        if (triangle === null) {
+          continue;
+        }
+
+        const key = terrainComboKey(triangle);
+        if (sprites[key] !== undefined) {
+          continue;
+        }
+
+        const groundIndex = terrainGroundSpriteIndex(
+          triangle.terrain,
+          triangle.maskCode,
+          triangle.orientation,
+        );
+        const ground = decodeGround(groundIndex);
+        const mask = decodeMask(triangle.orientation, triangle.maskCode);
+        if (ground === null || mask === null) {
+          continue;
+        }
+
+        sprites[key] = composeMaskedTile(ground, mask);
+        terrainTriangleCount += 1;
+      }
+    }
+  }
+
+  if (terrainTriangleCount === 0) {
+    return null;
+  }
+
+  const objectKeys: string[] = [];
+  const objectEntries = [
+    ...decodedObjectSprites,
+    { kind: "flag", spriteIndex: decodedFlagSpriteIndex } as const,
+  ];
+  for (const { kind, spriteIndex } of objectEntries) {
+    const object = decodePackagedSprite("map_object", spriteIndex);
+    if (object === null) {
+      continue;
+    }
+
+    sprites[`obj:${kind}`] = object;
+    objectKeys.push(`obj:${kind}`);
+
+    const shadow = decodePackagedSprite("map_shadow", spriteIndex);
+    if (shadow !== null) {
+      sprites[`objshadow:${kind}`] = shadow;
+    }
+  }
+
+  const rawGrounds: (DecodedDosSprite | null)[] = [];
+  for (let groundIndex = 0; groundIndex < 33; groundIndex += 1) {
+    rawGrounds.push(decodeGround(groundIndex));
+  }
+
+  const rawMasksUp: (DecodedDosSprite | null)[] = [];
+  const rawMasksDown: (DecodedDosSprite | null)[] = [];
+  for (let maskCode = 0; maskCode < 81; maskCode += 1) {
+    rawMasksUp.push(decodeMask("up", maskCode));
+    rawMasksDown.push(decodeMask("down", maskCode));
+  }
+
+  const rawMapObjects = new Map<number, DecodedMapObjectSprite>();
+  for (const spriteIndex of Array.from({ length: 193 }, (_, index) => index)) {
+    const sprite = decodePackagedSprite("map_object", spriteIndex);
+    if (sprite === null) {
+      continue;
+    }
+
+    rawMapObjects.set(spriteIndex, {
+      sprite,
+      shadow: decodePackagedSprite("map_shadow", spriteIndex),
+    });
+  }
+
+  const rawWaves: (DecodedDosSprite | null)[] = [];
+  for (let waveIndex = 0; waveIndex < 16; waveIndex += 1) {
+    rawWaves.push(decodePackagedSprite("map_waves", waveIndex));
+  }
+
+  const rawPathGrounds: (DecodedDosSprite | null)[] = [];
+  for (let groundIndex = 0; groundIndex < 10; groundIndex += 1) {
+    rawPathGrounds.push(decodePackagedSprite("path_ground", groundIndex));
+  }
+
+  const rawPathMasks: (DecodedDosSprite | null)[] = [];
+  for (let maskIndex = 0; maskIndex < 27; maskIndex += 1) {
+    rawPathMasks.push(decodePackagedSprite("path_mask", maskIndex));
+  }
+
+  const rawBorders: (DecodedDosSprite | null)[] = [];
+  for (let borderIndex = 0; borderIndex < 10; borderIndex += 1) {
+    rawBorders.push(decodePackagedSprite("map_border", borderIndex));
+  }
+
+  const rawSerfTorsos = new Map<number, ComposedSerfTorso>();
+  for (const torso of licensedPackage.contents.serfTorsos) {
+    try {
+      rawSerfTorsos.set(torso.bodyIndex, {
+        sprite: decodeLicensedPackageSprite(torso.sprite),
+        playerMask: decodeLicensedPackageSprite(torso.playerMask),
+      });
+    } catch {
+      // Partial packages skip malformed optional bodies.
+    }
+  }
+
+  const rawSerfHeads = new Map<number, DecodedDosSprite>();
+  for (let head = 0; head < 640; head += 1) {
+    const sprite = decodePackagedSprite("serf_head", head);
+    if (sprite !== null) {
+      rawSerfHeads.set(head, sprite);
+    }
+  }
+
+  const rawResourceObjects = new Map<number, DecodedDosSprite>();
+  for (let resource = 0; resource < 26; resource += 1) {
+    const sprite = decodePackagedSprite("game_object", resource);
+    if (sprite !== null) {
+      rawResourceObjects.set(resource, sprite);
+    }
+  }
+
+  const rawFontGlyphs: (DecodedDosSprite | null)[] = [];
+  const rawFontShadows: (DecodedDosSprite | null)[] = [];
+  for (let glyph = 0; glyph < uiFontGlyphCount; glyph += 1) {
+    rawFontGlyphs.push(decodePackagedSprite("font", glyph));
+    rawFontShadows.push(decodePackagedSprite("font_shadow", glyph));
+  }
+
+  const rawIcons = new Map<number, DecodedDosSprite>();
+  for (let icon = 0; icon < 380; icon += 1) {
+    const sprite = decodePackagedSprite("icon", icon);
+    if (sprite !== null) {
+      rawIcons.set(icon, sprite);
+    }
+  }
+
+  const rawPanelButtons = new Map<number, DecodedDosSprite>();
+  for (let button = 0; button < 30; button += 1) {
+    const sprite = decodePackagedSprite("panel_button", button);
+    if (sprite !== null) {
+      rawPanelButtons.set(button, sprite);
+    }
+  }
+
+  const rawPopupFrames: (DecodedDosSprite | null)[] = [];
+  for (let frame = 0; frame < 10; frame += 1) {
+    rawPopupFrames.push(decodePackagedSprite("frame_popup", frame));
+  }
+
+  const rawBottomFrames: (DecodedDosSprite | null)[] = [];
+  for (let frame = 0; frame < 26; frame += 1) {
+    rawBottomFrames.push(decodePackagedSprite("frame_bottom", frame));
+  }
+
+  const rawCursor = decodePackagedSprite("cursor", 0);
+  const rawLogo = decodePackagedSprite("logo", 0);
+
+  const rawSfx = new Map<number, Int16Array>();
+  for (const clip of licensedPackage.contents.sfx) {
+    try {
+      rawSfx.set(clip.sfxId, decodeLicensedPackagePcm16(clip));
+    } catch {
+      // Partial packages skip malformed optional clips.
+    }
+  }
+
+  const rawMusic = licensedPackage.contents.music.find((track) => track.trackId === 0)?.events;
+
+  const zeroAnchored = (sprite: DecodedDosSprite): DecodedDosSprite => ({
+    ...sprite,
+    deltaX: 0,
+    deltaY: 0,
+    offsetX: 0,
+    offsetY: 0,
+  });
+  const cropSpriteHeight = (sprite: DecodedDosSprite, height: number): DecodedDosSprite => {
+    const rows = Math.min(height, sprite.height);
+    return {
+      ...sprite,
+      height: rows,
+      rgba: sprite.rgba.slice(0, sprite.width * rows * 4),
+    };
+  };
+  rawFontGlyphs.forEach((glyph, index) => {
+    if (glyph !== null) {
+      sprites[`uif:${index}`] = zeroAnchored(glyph);
+    }
+  });
+  rawFontShadows.forEach((glyph, index) => {
+    if (glyph !== null) {
+      sprites[`uifs:${index}`] = zeroAnchored(glyph);
+    }
+  });
+  const backgroundPattern = rawIcons.get(310);
+  if (backgroundPattern !== undefined) {
+    sprites["uii:310"] = zeroAnchored(backgroundPattern);
+  }
+
+  const initSideHeight = initBoxHeight - popupBorderSize.top - popupBorderSize.bottom;
+  rawPopupFrames.slice(0, 4).forEach((frame, index) => {
+    if (frame !== null) {
+      sprites[`uifr:${index}`] =
+        index >= 2
+          ? cropSpriteHeight(zeroAnchored(frame), initSideHeight)
+          : zeroAnchored(frame);
+    }
+  });
+  if (rawLogo !== null) {
+    sprites["uilogo"] = zeroAnchored(rawLogo);
+  }
+
+  return {
+    source: "dos-pa-decoded",
+    atlas: buildSpriteAtlas(sprites),
+    terrainTriangleCount,
+    objectKeys,
+    definedArchiveEntries: licensedPackage.source.catalog.definedArchiveEntries,
+    rawGrounds,
+    rawMasksUp,
+    rawMasksDown,
+    rawMapObjects,
+    rawWaves,
+    rawPathGrounds,
+    rawPathMasks,
+    rawBorders,
+    serfAnimationTable: licensedPackage.contents.serfAnimationTable,
+    rawSerfTorsos,
+    rawSerfHeads,
+    rawResourceObjects,
+    rawFontGlyphs,
+    rawFontShadows,
+    rawIcons,
+    rawPanelButtons,
+    rawPopupFrames,
+    rawBottomFrames,
+    rawCursor,
+    rawLogo,
+    rawSfx,
+    rawMusic: rawMusic === undefined ? null : [...rawMusic],
   };
 }
 

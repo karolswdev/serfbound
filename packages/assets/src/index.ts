@@ -53,6 +53,35 @@ export {
 } from "./audio-xmi.js";
 
 export {
+  convertDosPaArchiveToLicensedAssetPackage,
+  decodeLicensedAssetPackageBytes,
+  decodeLicensedPackagePcm16,
+  decodeLicensedPackageSprite,
+  encodeLicensedAssetPackage,
+  inspectLicensedAssetPackageBytes,
+  licensedAssetPackageChecksumAlgorithm,
+  licensedAssetPackageFormatVersion,
+  licensedAssetPackageKind,
+  licensedAssetPackageSchemaVersion,
+  verifyLicensedAssetPackageBytes,
+  LicensedAssetPackageError,
+  type LicensedAssetPackage,
+  type LicensedAssetPackageChecksum,
+  type LicensedAssetPackageContents,
+  type LicensedAssetPackageConversionOptions,
+  type LicensedAssetPackageConversionResult,
+  type LicensedAssetPackageInspection,
+  type LicensedAssetPackageMusicTrack,
+  type LicensedAssetPackagePermission,
+  type LicensedAssetPackageResourceSummary,
+  type LicensedAssetPackageSerfTorso,
+  type LicensedAssetPackageSfx,
+  type LicensedAssetPackageSource,
+  type LicensedAssetPackageSprite,
+  type LicensedAssetSpritePayload,
+} from "./licensed-package.js";
+
+export {
   convertSfxToPcm16,
   decodeSfxSamples,
   dosSfxLevel,

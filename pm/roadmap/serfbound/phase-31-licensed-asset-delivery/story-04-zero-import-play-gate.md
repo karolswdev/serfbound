@@ -2,7 +2,7 @@
 
 - **Project:** serfbound
 - **Phase:** 31
-- **Status:** backlog
+- **Status:** in progress
 - **Depends on:** SB-31-03
 - **Unblocks:** none
 - **Owner:** unassigned
@@ -33,12 +33,12 @@ spent thirty phases saying "bring your own data."
 - [ ] A clean browser on the public URL reaches active play with zero
   import steps — e2e against a served fixture package in CI, and a
   recorded real-URL run with the licensed package.
-- [ ] The same browser, offline, starts the game from cache on the
+- [x] The same browser, offline, starts the game from cache on the
   second visit.
 - [ ] The legal re-audit is recorded: every SB-31-01 condition met by
   the shipped artifact and pages; the import path verified
   untouched.
-- [ ] Player guide and README document both paths without conflating
+- [x] Player guide and README document both paths without conflating
   their privacy properties.
 
 ## Test plan
@@ -59,3 +59,35 @@ spent thirty phases saying "bring your own data."
 - Browser boundary: network + persistence (proof of the whole path).
 - .NET reference use: none.
 - Phase gate advanced: exit criterion 4 (re-proving 1–3).
+
+## Progress
+
+2026-06-22: the CI fixture gate now proves the default public-style
+path: `/licensed-assets/manifest.json` points at an
+`sb31-runtime-v1` package, a clean browser reaches `Running` from `/`
+without importing a file, and the same browser reloads offline and
+starts again from the IndexedDB package cache without a second package
+download.
+
+The fixture is isolated from the shared browser test server, and the
+startup cache probe no longer creates `serfbound-licensed-assets` on
+ordinary no-manifest visits. Full browser verification is green at 36
+tests.
+
+The repository now carries the first converted public package:
+`public/licensed-assets/serfbound-demo-dos-en.sb31.json`, referenced by
+`public/licensed-assets/manifest.json`. Local release-preview audit
+passes with package checksum `fnv1a32:3ddba0a7` and source checksum
+`fnv1a32:08dbd8c7`; the package inspection reports 34 resources,
+2,233 sprites, 39 SFX, and 4 music tracks.
+
+The repository also has a repeatable public-origin audit:
+`npm run audit:licensed-assets:public -- --base https://serfbound.com`.
+The current live public run fails exactly where expected before
+deployment: `https://serfbound.com/licensed-assets/manifest.json`
+returns HTTP 404.
+
+Remaining before `done`: record the real `serfbound.com` run with the
+licensed package, including desktop/phone captures and the shipped
+artifact/legal re-audit. The final `evidence-story-04.md` ships when
+this story flips to done.

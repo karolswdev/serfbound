@@ -48,6 +48,9 @@ dist/
   assets/
     index-*.css
     index-*.js
+  licensed-assets/        # only when Phase 31 deliberately publishes a package
+    manifest.json
+    *.sb31.json
 ```
 
 The artifact must not contain:
@@ -57,7 +60,16 @@ The artifact must not contain:
   bundles.
 - References to local-only paths such as `serfbound-local-data/`.
 
-`npm run check:release-artifact` enforces those boundaries.
+`npm run check:release-artifact` enforces those boundaries. When a Phase 31
+licensed package is deliberately present, `npm run check:licensed-assets`
+verifies the converted package artifact. After deployment, run:
+
+```bash
+npm run audit:licensed-assets:public -- --base https://serfbound.com
+```
+
+That public-origin audit fetches the deployed manifest/package, checks
+provenance and integrity, and probes common raw-archive paths.
 
 ## Hosting Target
 
@@ -87,6 +99,8 @@ Imported data and local saves are stored in IndexedDB on the browser origin:
 
 - Imported archive database: `serfbound-imported-data`
 - Local save database: `serfbound-local-game-saves`
+- Licensed converted package database: `serfbound-licensed-assets` when a
+  verified Phase 31 package has actually been downloaded
 
 Browser storage is scoped by scheme, host, and port. Moving from
 `http://example.test` to `https://example.test`, changing subdomains, or using a

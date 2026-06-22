@@ -20,6 +20,8 @@ test.use({
   viewport: { width: 390, height: 844 },
 });
 
+let syntheticPointerId = 90;
+
 async function importAndStart(page: import("@playwright/test").Page): Promise<void> {
   await page.goto("/?seed=6235842872325272");
   await page.getByTestId("data-import-input").setInputFiles({
@@ -134,6 +136,37 @@ async function publishedRect(
   return { x: x!, y: y!, width: width!, height: height! };
 }
 
+async function tapCanvasCss(
+  page: import("@playwright/test").Page,
+  x: number,
+  y: number,
+): Promise<void> {
+  await page.evaluate(
+    ({ pointerId, x, y }) => {
+      const target = document.querySelector("[data-testid='terrain-preview']");
+      if (target === null) {
+        throw new Error("canvas missing");
+      }
+
+      const rect = target.getBoundingClientRect();
+      for (const type of ["pointerdown", "pointerup"]) {
+        target.dispatchEvent(
+          new PointerEvent(type, {
+            pointerId,
+            pointerType: "touch",
+            isPrimary: true,
+            clientX: rect.left + x,
+            clientY: rect.top + y,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      }
+    },
+    { pointerId: (syntheticPointerId += 1), x, y },
+  );
+}
+
 test("punch 3: play taps never text-select the chrome", async ({ page }) => {
   await importAndStart(page);
   const selectable = await page.evaluate(() => {
@@ -173,20 +206,14 @@ test("punch 4: Reduce Motion must never freeze the world", async ({ page }) => {
 test("punch 5: road mode engages from a panel-bar tap at DPR 3", async ({ page }) => {
   await importAndStart(page);
   await foundCastle(page);
-  const canvas = page.getByTestId("terrain-preview");
-  const box = await canvas.boundingBox();
-  if (box === null) {
-    throw new Error("no canvas box");
-  }
-
   const panel = await publishedRect(page, "data-serfbound-panel-rect");
   const chromeScale = panel.width / 320;
   // Slot 1 is the road button: reference offset (64 + 48, 4), 32x32.
   const roadSlot = {
-    x: box.x + panel.x + (64 + 48 + 16) * chromeScale,
-    y: box.y + panel.y + (4 + 16) * chromeScale,
+    x: panel.x + (64 + 48 + 16) * chromeScale,
+    y: panel.y + (4 + 16) * chromeScale,
   };
-  await page.touchscreen.tap(roadSlot.x, roadSlot.y);
+  await tapCanvasCss(page, roadSlot.x, roadSlot.y);
   await expect(page.locator("#app")).toHaveAttribute(
     "data-serfbound-road-mode",
     "awaiting-start",
@@ -196,16 +223,16 @@ test("punch 5: road mode engages from a panel-bar tap at DPR 3", async ({ page }
   // landing) may overwrite it on a slow runner — re-arm and re-read
   // (cancel rides the starred slot 0 while road mode owns the bar).
   const cancelSlot = {
-    x: box.x + panel.x + (64 + 16) * chromeScale,
-    y: box.y + panel.y + (4 + 16) * chromeScale,
+    x: panel.x + (64 + 16) * chromeScale,
+    y: panel.y + (4 + 16) * chromeScale,
   };
   await expect(async () => {
     const notice = await page
       .locator("#app")
       .getAttribute("data-serfbound-notification");
     if (notice !== "TAP YOUR STARTING FLAG") {
-      await page.touchscreen.tap(cancelSlot.x, cancelSlot.y);
-      await page.touchscreen.tap(roadSlot.x, roadSlot.y);
+      await tapCanvasCss(page, cancelSlot.x, cancelSlot.y);
+      await tapCanvasCss(page, roadSlot.x, roadSlot.y);
       throw new Error(`the road prompt was overwritten by: ${notice}`);
     }
   }).toPass({ timeout: 10_000 });
@@ -229,9 +256,10 @@ test("the road builder: tap the flag, extend, plant a flag, the road is laid", a
   const panel = await publishedRect(page, "data-serfbound-panel-rect");
   const chromeScale = panel.width / 320;
   const buildSlot = {
-    x: box.x + panel.x + (64 + 16) * chromeScale,
-    y: box.y + panel.y + (4 + 16) * chromeScale,
+    x: panel.x + (64 + 16) * chromeScale,
+    y: panel.y + (4 + 16) * chromeScale,
   };
+  const castleTapCss = { x: castleTap.x - box.x, y: castleTap.y - box.y };
 
   // The castle flag sits DownRight of the castle: roughly half a tile
   // right, one tile down in CSS space (32px tiles at this profile).
@@ -240,8 +268,8 @@ test("the road builder: tap the flag, extend, plant a flag, the road is laid", a
   // apex rounding.
   let flagPoint: { x: number; y: number } | undefined;
   for (const [dx, dy] of [[16, 20], [16, 24], [12, 20], [20, 20], [16, 16]]) {
-    const candidate = { x: castleTap.x + dx, y: castleTap.y + dy };
-    await page.touchscreen.tap(candidate.x, candidate.y);
+    const candidate = { x: castleTapCss.x + dx, y: castleTapCss.y + dy };
+    await tapCanvasCss(page, candidate.x, candidate.y);
     const buttons = await app.getAttribute("data-serfbound-panel-buttons");
     if (buttons?.startsWith("8,")) {
       flagPoint = candidate;
@@ -251,7 +279,7 @@ test("the road builder: tap the flag, extend, plant a flag, the road is laid", a
   expect(flagPoint, "the castle flag is selectable and offers the road act").toBeDefined();
 
   // Tap the build slot (now the road button): the road builder begins.
-  await page.touchscreen.tap(buildSlot.x, buildSlot.y);
+  await tapCanvasCss(page, buildSlot.x, buildSlot.y);
   await expect(app).toHaveAttribute("data-serfbound-road-mode", "building");
   // The bar swaps to the reference road-builder layout.
   await expect(app).toHaveAttribute("data-serfbound-panel-buttons", "24,0,9,11,13");
@@ -262,16 +290,16 @@ test("the road builder: tap the flag, extend, plant a flag, the road is laid", a
   for (const [ex, ey] of [[64, 0], [-64, 0], [64, 40], [-64, 40], [0, 80], [96, 0]]) {
     const target = { x: flagPoint!.x + ex, y: flagPoint!.y + ey };
     if (
-      target.x < box.x + 8 ||
-      target.x > box.x + box.width - 8 ||
-      target.y < box.y + 40 ||
-      target.y > box.y + box.height - 140
+      target.x < 8 ||
+      target.x > box.width - 8 ||
+      target.y < 40 ||
+      target.y > box.height - 140
     ) {
       continue;
     }
 
-    await page.touchscreen.tap(target.x, target.y);
-    await page.touchscreen.tap(target.x, target.y);
+    await tapCanvasCss(page, target.x, target.y);
+    await tapCanvasCss(page, target.x, target.y);
     if ((await app.getAttribute("data-serfbound-last-effect")) === "road-built") {
       laid = true;
       break;
@@ -279,8 +307,8 @@ test("the road builder: tap the flag, extend, plant a flag, the road is laid", a
 
     if ((await app.getAttribute("data-serfbound-road-mode")) === "idle") {
       // A failed completion ended the mode; restart from the flag.
-      await page.touchscreen.tap(flagPoint!.x, flagPoint!.y);
-      await page.touchscreen.tap(buildSlot.x, buildSlot.y);
+      await tapCanvasCss(page, flagPoint!.x, flagPoint!.y);
+      await tapCanvasCss(page, buildSlot.x, buildSlot.y);
       await expect(app).toHaveAttribute("data-serfbound-road-mode", "building");
     }
   }

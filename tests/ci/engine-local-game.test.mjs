@@ -74,7 +74,7 @@ test("startSerfboundLocalGame rejects missing data and invalid settings", () => 
   assert.deepEqual(startSerfboundLocalGame({}), {
     status: "rejected",
     reason: "missing-imported-data",
-    message: "A local Serfbound game requires imported SPAU.PA catalog data.",
+    message: "A local Serfbound game requires game data.",
   });
 
   assert.deepEqual(startSerfboundLocalGame({

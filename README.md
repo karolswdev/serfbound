@@ -5,16 +5,18 @@ at [serfbound.com](https://serfbound.com).**
 
 A faithful, pure-browser remake of **The Settlers I / Serf City: Life
 is Feudal** (Blue Byte, 1993) — TypeScript, WebGL2, and WebAudio, with
-no servers required to play. Bring your own original data file
+no servers required to play. Today, bring your own original data file
 (`SPAU.PA`) and the whole game comes to life: the original world,
 every production chain, knights and conquest, the 1993 interface
 decoded pixel-for-pixel from your data.
 
 ![A living settlement: decoded terrain, the castle founded, serfs at work](docs/media/settlement.png)
 
-**Your game data never leaves your machine.** Serfbound contains no
-original assets and never uploads, hosts, bundles, or caches them; the
-data you import lives only in your browser's local storage.
+**Your imported game data never leaves your machine.** Serfbound never uploads
+your local `SPAU.PA`. A separate licensed converted-package path is now
+documented in [LICENSE-CONSENT.md](LICENSE-CONSENT.md): configured releases can
+download a browser-native converted package once, verify it, cache it locally,
+and keep the import-your-own-data path first-class.
 
 ## What's inside
 

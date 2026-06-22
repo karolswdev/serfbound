@@ -4,11 +4,18 @@ Serfbound runs in the browser. The app does not include, host, sell, download,
 or redistribute original DOS/Amiga game data. You provide your own local data
 file through the browser file picker.
 
+Phase 31 now records written permission for a separate Serfbound-distributed
+licensed converted package path. That package path is not the same thing as
+your imported local `SPAU.PA`: imported local data still never uploads, and the
+import-your-own-data path remains supported.
+
 ## Requirements
 
 - A modern desktop or mobile browser with JavaScript, the File API, IndexedDB,
   and WebGL2 enabled.
-- Your own local DOS data file. The current verified file is `SPAU.PA`.
+- Either a Serfbound-hosted licensed package configured for the current
+  release, or your own local DOS data file. The current verified local file is
+  `SPAU.PA`.
 - A stable Serfbound URL. Browser storage is tied to the origin, so changing
   scheme, host, or port can require reimporting data.
 
@@ -23,6 +30,22 @@ The file is read by your browser. It is not uploaded to a Serfbound server.
 After a successful import, Serfbound stores the current imported archive in
 IndexedDB for that browser origin.
 
+## Licensed Converted Package Path
+
+The licensed package path lets Serfbound provide a browser-native converted
+runtime package under the written consent record in `LICENSE-CONSENT.md`. When
+a release configures a package URL and checksum, the browser downloads that
+Serfbound-distributed package once, verifies it, caches it in IndexedDB, and
+reuses it on later visits without re-downloading.
+
+This is distinct from importing your own file:
+
+- **Imported data:** you select `SPAU.PA`; it stays in your browser and is not
+  uploaded.
+- **Licensed package:** Serfbound distributes a converted runtime package under
+  the recorded permission; the Data panel shows `Licensed package` as the
+  source.
+
 If the Data panel says `File not usable`, choose `SPAU.PA`. Other files are not
 accepted by the current browser slice.
 
@@ -32,15 +55,15 @@ reload.
 
 ## Start And Play The Current Slice
 
-After import succeeds:
+After a licensed package is ready or import succeeds:
 
 1. Use `Start game`.
 2. Select land on the map.
 3. If the Action panel says `Build flag available`, use `Build flag`.
 
-The current browser slice proves local import, deterministic game start,
-selection, one build action path, save, reload, and resume. It is not the full
-original game yet.
+The current browser slice proves deterministic game start, selection, one build
+action path, save, reload, and resume from either a licensed package or imported
+local data.
 
 ## Save, Load, And Resume
 
@@ -50,20 +73,24 @@ Use `Save game` after a local game is running. A valid save appears as
 To resume:
 
 1. Open the same Serfbound origin.
-2. Confirm the Data panel shows `Data imported`.
+2. Confirm the Data panel shows `Data imported` or `Licensed package ready`.
 3. Use `Load game`.
 
-The save is tied to the imported data source. If Serfbound says the saved game
-uses another imported data source, import the same `SPAU.PA` source used when
-the save was created, or clear the save and start again.
+The save is tied to the game data source. If Serfbound says the saved game uses
+another game data source, restore the same licensed package or import the same
+`SPAU.PA` source used when the save was created, or clear the save and start
+again.
 
 ## Reset Controls
 
 `Clear save` deletes only the local-game save. It keeps imported `SPAU.PA` data
 available.
 
-`Clear data` deletes imported data and returns Serfbound to the no-data setup
-state. After `Clear data`, import `SPAU.PA` again before starting a local game.
+`Clear data` deletes imported data when `Imported data` is the active source.
+When `Licensed package` is active, it deletes the licensed package cache.
+Either path returns Serfbound to the no-data setup state. After `Clear data`,
+import `SPAU.PA` again or reload a configured licensed package before starting
+a local game.
 
 Use browser site-data controls only as a last resort. Clearing site data removes
 both imported data and saves for that origin.

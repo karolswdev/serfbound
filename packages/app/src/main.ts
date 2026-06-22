@@ -6,6 +6,7 @@ import {
   validateArchiveFileSelection,
   type ArchiveValidationResult,
   type DosPaCatalog,
+  type LicensedAssetPackage,
   type TypedAssetCatalog,
 } from "@serfbound/assets";
 import { PointerGestureTracker } from "./gestures.js";
@@ -82,6 +83,17 @@ import {
   type StoredLocalGameSaveRecord,
 } from "./local-game-save-store.js";
 import {
+  BrowserIndexedDbLicensedAssetPackageStore,
+  clearLicensedAssetPackageRecord,
+  loadLicensedAssetPackage,
+  resolveLicensedAssetDeliveryConfig,
+  resolveLicensedAssetDeliveryManifest,
+  type LicensedAssetDeliveryConfig,
+  type LicensedAssetFetch,
+  type LicensedAssetPackageStore,
+  type StoredLicensedAssetPackageRecord,
+} from "./licensed-asset-delivery.js";
+import {
   buildLandscapeRenderAssets,
   createLandscapeScene,
   screenToMapTile,
@@ -109,6 +121,7 @@ type RigFixture = {
 };
 import {
   buildDecodedRenderAssets,
+  buildDecodedRenderAssetsFromLicensedPackage,
   createFirstRenderLayerScene,
   renderFirstRenderLayerScene,
   resolveFirstRenderLayerPointer,
@@ -203,6 +216,27 @@ export {
   type StoredLocalGameSaveRecord,
 } from "./local-game-save-store.js";
 export {
+  BrowserIndexedDbLicensedAssetPackageStore,
+  InvalidStoredLicensedAssetPackageRecordError,
+  assertStoredLicensedAssetPackageRecord,
+  clearLicensedAssetPackageRecord,
+  createStoredLicensedAssetPackageRecord,
+  currentLicensedAssetPackageKey,
+  licensedAssetPackageDatabaseName,
+  licensedAssetPackageStoreName,
+  loadLicensedAssetPackage,
+  resolveLicensedAssetDeliveryConfig,
+  resolveLicensedAssetDeliveryManifest,
+  type LicensedAssetDeliveryConfig,
+  type LicensedAssetDeliveryResult,
+  type LicensedAssetFetch,
+  type LicensedAssetPackageActivation,
+  type LicensedAssetPackageStorageOperationResult,
+  type LicensedAssetPackageStore,
+  type StoredLicensedAssetPackageMetadata,
+  type StoredLicensedAssetPackageRecord,
+} from "./licensed-asset-delivery.js";
+export {
   buildLandscapeRenderAssets,
   constructionCrossSprite,
   createLandscapeScene,
@@ -216,6 +250,7 @@ export {
 } from "./landscape-scene.js";
 export {
   buildDecodedRenderAssets,
+  buildDecodedRenderAssetsFromLicensedPackage,
   createFirstRenderLayerScene,
   renderFirstRenderLayerScene,
   resolveFirstRenderLayerPointer,
@@ -252,6 +287,9 @@ export function bootstrapSummary(): AppBootstrapSummary {
 export type MountSerfboundOptions = {
   readonly importedArchiveStore?: ImportedArchiveStore;
   readonly localGameSaveStore?: LocalGameSaveStore;
+  readonly licensedAssetPackageStore?: LicensedAssetPackageStore;
+  readonly licensedAssetDelivery?: LicensedAssetDeliveryConfig | null;
+  readonly fetchLicensedAssetPackage?: LicensedAssetFetch;
 };
 
 type SceneRenderGenerated = () => void;
@@ -367,6 +405,16 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     options.importedArchiveStore ?? new BrowserIndexedDbImportedArchiveStore();
   const localGameSaveStore =
     options.localGameSaveStore ?? new BrowserIndexedDbLocalGameSaveStore();
+  const licensedAssetPackageStore =
+    options.licensedAssetPackageStore ?? new BrowserIndexedDbLicensedAssetPackageStore();
+  const queryLicensedAssetDelivery = resolveLicensedAssetDeliveryConfig();
+  const licensedAssetDelivery =
+    options.licensedAssetDelivery === undefined
+      ? queryLicensedAssetDelivery
+      : options.licensedAssetDelivery;
+  const discoverLicensedAssetManifest =
+    options.licensedAssetDelivery === undefined && queryLicensedAssetDelivery === null;
+  const fetchLicensedAssetPackage = options.fetchLicensedAssetPackage;
   // Language (SB-26-04): ?lang= wins, then the persisted choice, then
   // English. The whole game-font surface follows (SB-26-03 tables).
   const languageStorageKey = "serfbound.language";
@@ -580,6 +628,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   root.dataset.serfboundDataState = summary.dataState;
   root.dataset.serfboundCatalogState = "unread";
   root.dataset.serfboundStorageState = "empty";
+  root.dataset.serfboundLicensedAssetState =
+    licensedAssetDelivery === null && !discoverLicensedAssetManifest ? "not-configured" : "configured";
+  root.dataset.serfboundActiveDataSource = "none";
   root.dataset.serfboundGameState = "setup";
   root.dataset.serfboundStartMode = "import-required";
   root.dataset.serfboundLocalGameState = "none";
@@ -666,6 +717,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             <p class="status-panel__value" data-testid="data-state">No game data</p>
           </div>
           <p class="status-panel__detail" data-testid="data-detail">Import SPAU.PA to start a local game.</p>
+          <div>
+            <p class="status-panel__label">Source</p>
+            <p class="status-panel__value" data-testid="data-source-state">No data</p>
+          </div>
           <div class="panel-group__actions">
             <input
               id="data-import"
@@ -1747,6 +1802,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     currentLocalGameSnapshot = undefined;
     selectedInteraction = undefined;
     commandRouter = new SerfboundCommandRouter();
+    root.dataset.serfboundActiveDataSource = "none";
     root.dataset.serfboundCommandState = "idle";
     root.dataset.serfboundCommandLogLength = "0";
     root.dataset.serfboundBuiltStructureCount = "0";
@@ -1774,8 +1830,122 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     }
     syncAudioState();
     currentImportedDataSource = localGameDataSourceFromCatalog(catalog, archiveName);
+    root.dataset.serfboundActiveDataSource = "imported-dos-pa";
     syncLocalGameSaveControls(root, currentLocalGameSnapshot, currentSavedLocalGame, currentImportedDataSource);
     renderCurrentScene();
+  };
+
+  const activateLicensedPackage = (
+    record: StoredLicensedAssetPackageRecord,
+    licensedPackage: LicensedAssetPackage,
+    state: "restored" | "downloaded",
+    cacheState: "persisted" | "error",
+  ): boolean => {
+    const decodedAssets = buildDecodedRenderAssetsFromLicensedPackage(licensedPackage);
+    if (decodedAssets === null) {
+      root.dataset.serfboundLicensedAssetState = "error";
+      root.dataset.serfboundRecoverableState = "licensed-package-error";
+      root.dataset.serfboundStorageMessage =
+        "Licensed asset package did not contain usable runtime terrain.";
+      if (currentImportedDataSource === undefined) {
+        getDataStateElement(root).textContent = "Licensed package unavailable";
+        getDataDetailElement(root).textContent = "Import SPAU.PA to start.";
+        setSourceState(root, "No data");
+        syncGameReadiness(root);
+      }
+      return false;
+    }
+
+    currentTypedAssetCatalog = undefined;
+    currentDecodedAssets = decodedAssets;
+    currentLandscapeAssets = undefined;
+    currentScroll = { column: 0, row: 0 };
+    currentTick = 0;
+    audioService.loadClips(decodedAssets.rawSfx);
+    audioService.loadMusic(decodedAssets.rawMusic);
+    syncAudioState();
+    currentImportedDataSource = localGameDataSourceFromLicensedPackage(record);
+    root.dataset.serfboundDataState = "supported";
+    root.dataset.serfboundCatalogState = "parsed";
+    root.dataset.serfboundStorageState = cacheState === "persisted" ? "persisted" : "error";
+    root.dataset.serfboundRecoverableState = cacheState === "persisted" ? "none" : "storage-error";
+    root.dataset.serfboundLicensedAssetState = state;
+    root.dataset.serfboundLicensedAssetCache = cacheState;
+    root.dataset.serfboundLicensedAssetChecksum = record.packageChecksum.value;
+    root.dataset.serfboundActiveDataSource = "licensed-asset-package";
+    getDataStateElement(root).textContent = "Licensed package ready";
+    getDataDetailElement(root).textContent =
+      state === "restored"
+        ? `${record.archiveName} package restored with ${record.definedArchiveEntries} resources.`
+        : `${record.archiveName} package downloaded and cached.`;
+    setSourceState(root, "Licensed package");
+    syncGameReadiness(root);
+    setResetEnabled(root, true);
+    syncLocalGameSaveControls(root, currentLocalGameSnapshot, currentSavedLocalGame, currentImportedDataSource);
+    renderCurrentScene();
+    return true;
+  };
+
+  const loadConfiguredLicensedAssetPackage = async (): Promise<void> => {
+    const importedDataTookPriority = () => {
+      if (currentImportedDataSource === undefined) {
+        return false;
+      }
+
+      if (root.dataset.serfboundLicensedAssetState === "loading") {
+        root.dataset.serfboundLicensedAssetState = "configured";
+      }
+      return true;
+    };
+
+    if (
+      importedDataTookPriority() ||
+      (licensedAssetDelivery === null && !discoverLicensedAssetManifest)
+    ) {
+      return;
+    }
+
+    root.dataset.serfboundLicensedAssetState = "loading";
+    const deliveryConfig =
+      licensedAssetDelivery ??
+      (discoverLicensedAssetManifest
+        ? await resolveLicensedAssetDeliveryManifest(undefined, fetchLicensedAssetPackage)
+        : null);
+    if (importedDataTookPriority()) {
+      return;
+    }
+
+    const result = await loadLicensedAssetPackage(
+      deliveryConfig,
+      licensedAssetPackageStore,
+      fetchLicensedAssetPackage,
+    );
+    if (importedDataTookPriority()) {
+      return;
+    }
+
+    if (result.state === "not-configured") {
+      root.dataset.serfboundLicensedAssetState = "not-configured";
+      return;
+    }
+
+    if (result.state === "error") {
+      root.dataset.serfboundLicensedAssetState = "error";
+      root.dataset.serfboundRecoverableState = "licensed-package-error";
+      root.dataset.serfboundStorageMessage = result.message;
+      if (currentImportedDataSource === undefined) {
+        getDataStateElement(root).textContent = "Licensed package unavailable";
+        getDataDetailElement(root).textContent = "Import SPAU.PA to start.";
+        setSourceState(root, "No data");
+        syncGameReadiness(root);
+      }
+      return;
+    }
+
+    if (result.cacheState === "error") {
+      root.dataset.serfboundStorageMessage = result.message;
+    }
+    activateLicensedPackage(result.record, result.licensedPackage, result.state, result.cacheState);
   };
 
   // The road builder (SB-34-08, the reference interface): the path
@@ -2498,6 +2668,11 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   }
 
   resetButton.addEventListener("click", () => {
+    if (root.dataset.serfboundActiveDataSource === "licensed-asset-package") {
+      void clearSelectedLicensedPackage(root, licensedAssetPackageStore, renderGeneratedScene);
+      return;
+    }
+
     void clearSelectedArchive(root, importedArchiveStore, renderGeneratedScene);
   });
 
@@ -2553,7 +2728,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
       renderCurrentScene();
     }
-    applyLocalGameStartResult(root, result, currentTypedAssetCatalog);
+    applyLocalGameStartResult(root, result);
     syncWorldState(root, currentWorld);
     syncBuildFlagEnabled(root, selectedInteraction, currentBuiltStructures);
     syncLocalGameSaveControls(root, currentLocalGameSnapshot, currentSavedLocalGame, currentImportedDataSource);
@@ -3702,6 +3877,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       renderCatalogScene,
       renderGeneratedScene,
     );
+    if (currentImportedDataSource === undefined) {
+      await loadConfiguredLicensedAssetPackage();
+    }
     currentSavedLocalGame = await restorePersistedLocalGameSave(root, localGameSaveStore);
     syncLocalGameSaveControls(root, currentLocalGameSnapshot, currentSavedLocalGame, currentImportedDataSource);
     if (rigId !== undefined) {
@@ -3797,12 +3975,12 @@ async function loadCurrentLocalGame(
 
   onAvailable(record);
   if (currentImportedDataSource === undefined) {
-    applyLocalGameSaveErrorState(root, "Import data before loading a saved game.");
+    applyLocalGameSaveErrorState(root, "Load game data before loading a saved game.");
     return;
   }
 
   if (!localGameDataSourcesMatch(currentImportedDataSource, record.dataSource)) {
-    applyLocalGameSaveErrorState(root, "Saved game uses another imported data source.");
+    applyLocalGameSaveErrorState(root, "Saved game uses another game data source.");
     return;
   }
 
@@ -3865,6 +4043,7 @@ function applyArchiveValidation(
       detail.textContent = `${result.normalizedName} is ready to load.`;
       root.dataset.serfboundCatalogState = "ready";
       root.dataset.serfboundRecoverableState = "none";
+      root.dataset.serfboundActiveDataSource = "imported-dos-pa";
       setSourceState(root, "Imported data");
       syncGameReadiness(root);
       break;
@@ -3874,6 +4053,7 @@ function applyArchiveValidation(
       root.dataset.serfboundCatalogState = "unread";
       root.dataset.serfboundStorageState = "empty";
       root.dataset.serfboundRecoverableState = "file-error";
+      root.dataset.serfboundActiveDataSource = "none";
       renderGeneratedScene();
       setSourceState(root, "No data");
       syncGameReadiness(root);
@@ -3885,6 +4065,7 @@ function applyArchiveValidation(
       root.dataset.serfboundCatalogState = "unread";
       root.dataset.serfboundStorageState = "empty";
       root.dataset.serfboundRecoverableState = "none";
+      root.dataset.serfboundActiveDataSource = "none";
       renderGeneratedScene();
       setSourceState(root, "No data");
       syncGameReadiness(root);
@@ -3926,6 +4107,7 @@ async function importSelectedArchive(
       root.dataset.serfboundCatalogState = "parsed";
       root.dataset.serfboundDataState = "supported";
       root.dataset.serfboundRecoverableState = "storage-error";
+      root.dataset.serfboundActiveDataSource = "imported-dos-pa";
       state.textContent = "Data loaded";
       detail.textContent = "The data works for this session, but could not be saved for next time.";
       root.dataset.serfboundStorageMessage = storageResult.message;
@@ -4001,6 +4183,7 @@ function applyStoredArchiveRecord(
     state.textContent = "Saved data could not be read";
     detail.textContent = "Clear it and import SPAU.PA again.";
     root.dataset.serfboundDataError = errorMessage(error);
+    root.dataset.serfboundActiveDataSource = "none";
     setSourceState(root, "Saved data");
     syncGameReadiness(root);
     setResetEnabled(root, true);
@@ -4019,6 +4202,7 @@ function applyParsedCatalogState(
   root.dataset.serfboundCatalogState = "parsed";
   root.dataset.serfboundStorageState = "persisted";
   root.dataset.serfboundRecoverableState = "none";
+  root.dataset.serfboundActiveDataSource = "imported-dos-pa";
   state.textContent = "Data imported";
   detail.textContent =
     source === "restored" && record !== undefined
@@ -4045,9 +4229,37 @@ async function clearSelectedArchive(
   root.dataset.serfboundStorageState = "cleared";
   root.dataset.serfboundRecoverableState = "none";
   root.dataset.serfboundGameState = "setup";
+  root.dataset.serfboundActiveDataSource = "none";
   renderGeneratedScene();
   getDataStateElement(root).textContent = "No game data";
   getDataDetailElement(root).textContent = "Saved data cleared. Import SPAU.PA to start.";
+  setSourceState(root, "No data");
+  syncGameReadiness(root);
+  setResetEnabled(root, false);
+}
+
+async function clearSelectedLicensedPackage(
+  root: HTMLElement,
+  licensedAssetPackageStore: LicensedAssetPackageStore,
+  renderGeneratedScene: SceneRenderGenerated,
+): Promise<void> {
+  const result = await clearLicensedAssetPackageRecord(licensedAssetPackageStore);
+  if (result.state === "error") {
+    applyStorageErrorState(root, `Could not clear licensed package: ${result.message}`);
+    return;
+  }
+
+  root.dataset.serfboundLicensedAssetState = "cleared";
+  root.dataset.serfboundLicensedAssetCache = "empty";
+  root.dataset.serfboundDataState = "missing";
+  root.dataset.serfboundCatalogState = "unread";
+  root.dataset.serfboundStorageState = "cleared";
+  root.dataset.serfboundRecoverableState = "none";
+  root.dataset.serfboundGameState = "setup";
+  root.dataset.serfboundActiveDataSource = "none";
+  renderGeneratedScene();
+  getDataStateElement(root).textContent = "No game data";
+  getDataDetailElement(root).textContent = "Licensed package cache cleared. Import SPAU.PA to start.";
   setSourceState(root, "No data");
   syncGameReadiness(root);
   setResetEnabled(root, false);
@@ -4061,6 +4273,7 @@ function applyStorageErrorState(
   root.dataset.serfboundStorageState = "error";
   root.dataset.serfboundRecoverableState = "storage-error";
   root.dataset.serfboundStorageMessage = message;
+  root.dataset.serfboundActiveDataSource = "none";
   getDataStateElement(root).textContent = "Saved data unavailable";
   getDataDetailElement(root).textContent = canClearStoredData
     ? "Clear saved data and import SPAU.PA again."
@@ -4654,15 +4867,14 @@ function syncBuildFlagEnabled(
 function applyLocalGameStartResult(
   root: HTMLElement,
   result: SerfboundLocalGameStartResult,
-  typedAssetCatalog: TypedAssetCatalog | undefined,
 ): void {
   if (result.status === "rejected") {
     root.dataset.serfboundLocalGameState = "rejected";
     root.dataset.serfboundLocalGameRejectReason = result.reason;
     root.dataset.serfboundGameState = "setup";
     getGameStateElement(root).textContent = "Data needed";
-    getGameDetailElement(root).textContent = "Import SPAU.PA before starting a local game.";
-    getStartGameButton(root).disabled = typedAssetCatalog === undefined;
+    getGameDetailElement(root).textContent = "Game data is required before starting a local game.";
+    getStartGameButton(root).disabled = root.dataset.serfboundDataState !== "supported";
     return;
   }
 
@@ -4674,7 +4886,8 @@ function applyRunningLocalGameSnapshot(
   snapshot: SerfboundLocalGameSnapshot,
 ): void {
   root.dataset.serfboundGameState = "running";
-  root.dataset.serfboundStartMode = "imported-data";
+  root.dataset.serfboundStartMode =
+    snapshot.data.kind === "licensed-asset-package" ? "licensed-package" : "imported-data";
   root.dataset.serfboundLocalGameState = "running";
   root.dataset.serfboundLocalGameMode = snapshot.mode;
   root.dataset.serfboundLocalGameSeed = snapshot.settings.seedString;
@@ -4761,7 +4974,11 @@ function localGameDataSourcesMatch(
     left.byteLength === right.byteLength &&
     left.entryCount === right.entryCount &&
     left.definedArchiveEntries === right.definedArchiveEntries &&
-    left.fixupCount === right.fixupCount
+    left.fixupCount === right.fixupCount &&
+    (left.kind !== "licensed-asset-package" ||
+      (right.kind === "licensed-asset-package" &&
+        left.packageFormatVersion === right.packageFormatVersion &&
+        left.packageChecksum === right.packageChecksum))
   );
 }
 
@@ -4771,13 +4988,20 @@ function syncGameReadiness(root: HTMLElement): void {
   }
 
   const hasImportedData = root.dataset.serfboundDataState === "supported";
+  const sourceKind = root.dataset.serfboundActiveDataSource;
   root.dataset.serfboundGameState = hasImportedData ? "ready" : "setup";
-  root.dataset.serfboundStartMode = hasImportedData ? "imported-data" : "import-required";
+  root.dataset.serfboundStartMode = hasImportedData
+    ? sourceKind === "licensed-asset-package"
+      ? "licensed-package"
+      : "imported-data"
+    : "import-required";
   root.dataset.serfboundLocalGameState = "none";
   getGameStateElement(root).textContent = hasImportedData ? "Ready" : "Data needed";
   getGameDetailElement(root).textContent = hasImportedData
-    ? "Imported data is ready. Start when prepared."
-    : "Import game data first.";
+    ? sourceKind === "licensed-asset-package"
+      ? "Licensed package is ready. Start when prepared."
+      : "Imported data is ready. Start when prepared."
+    : "Load game data first.";
   const startButton = getStartGameButton(root);
   startButton.textContent = "Start game";
   startButton.disabled = !hasImportedData;
@@ -4800,6 +5024,22 @@ function localGameDataSourceFromCatalog(
     entryCount: catalog.header.entryCount,
     definedArchiveEntries: catalog.entrySummary.defined,
     fixupCount: catalog.fixupSummary.count,
+  };
+}
+
+function localGameDataSourceFromLicensedPackage(
+  record: StoredLicensedAssetPackageRecord,
+): SerfboundLocalGameDataSource {
+  return {
+    kind: "licensed-asset-package",
+    archiveName: record.archiveName,
+    byteLength: record.byteLength,
+    entryCount: record.entryCount,
+    definedArchiveEntries: record.definedArchiveEntries,
+    fixupCount: record.fixupCount,
+    packageFormatVersion: record.formatVersion,
+    packageChecksum: record.packageChecksum.value,
+    permissionRecord: record.permissionRecord,
   };
 }
 
@@ -5054,6 +5294,12 @@ function setSourceState(root: HTMLElement, text: string): void {
   }
 
   sourceState.textContent = text;
+  const dataSourceState = root.querySelector<HTMLElement>("[data-testid='data-source-state']");
+  if (dataSourceState === null) {
+    throw new Error("Serfbound shell data source state did not mount.");
+  }
+
+  dataSourceState.textContent = text;
 }
 
 function setResetEnabled(root: HTMLElement, enabled: boolean): void {

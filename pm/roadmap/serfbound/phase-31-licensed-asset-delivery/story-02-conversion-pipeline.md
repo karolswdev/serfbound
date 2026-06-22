@@ -2,7 +2,7 @@
 
 - **Project:** serfbound
 - **Phase:** 31
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-31-01
 - **Unblocks:** SB-31-03
 - **Owner:** unassigned
@@ -32,12 +32,12 @@ download-once caching instead of per-player import.
 
 ## Acceptance criteria
 
-- [ ] Two conversion runs over the same archives produce
+- [x] Two conversion runs over the same archives produce
   byte-identical packages; the checksum and provenance block are
   verified by the inspection command.
-- [ ] A package-loaded game renders scenes identical to the
+- [x] A package-loaded game renders scenes identical to the
   import-path game (parity checks recorded; opt-in real-data run).
-- [ ] CI covers the pipeline with the existing generated fixture
+- [x] CI covers the pipeline with the existing generated fixture
   archive — no original data committed, unchanged.
 
 ## Test plan
@@ -58,5 +58,7 @@ download-once caching instead of per-player import.
 - Browser boundary: none new at this story (tooling + load path).
 - .NET reference use: none.
 - Phase gate advanced: exit criterion 2.
-- Open: one package per corpus (DOS EN, demo, German strings) or a
-  manifest of variants — follows the SB-31-01 scope.
+- Open for SB-31-03: one package per corpus (DOS EN, demo, German
+  strings) or a manifest of variants. The converter records a single
+  `archiveName` and source checksum today; hosted selection is the
+  delivery story.

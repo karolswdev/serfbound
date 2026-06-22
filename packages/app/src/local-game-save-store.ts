@@ -274,13 +274,26 @@ function isLocalGameDataSource(input: unknown): input is SerfboundLocalGameDataS
   }
 
   const data = input as Partial<SerfboundLocalGameDataSource>;
-  return (
-    data.kind === "imported-dos-pa-catalog" &&
+  const hasCommonShape =
     typeof data.archiveName === "string" &&
     Number.isInteger(data.byteLength) &&
     Number.isInteger(data.entryCount) &&
     Number.isInteger(data.definedArchiveEntries) &&
-    Number.isInteger(data.fixupCount)
+    Number.isInteger(data.fixupCount);
+
+  if (!hasCommonShape) {
+    return false;
+  }
+
+  if (data.kind === "imported-dos-pa-catalog") {
+    return true;
+  }
+
+  return (
+    data.kind === "licensed-asset-package" &&
+    typeof data.packageFormatVersion === "string" &&
+    typeof data.packageChecksum === "string" &&
+    data.permissionRecord === "LICENSE-CONSENT.md"
   );
 }
 
@@ -314,6 +327,10 @@ function localGameDataSourcesMatch(
     left.byteLength === right.byteLength &&
     left.entryCount === right.entryCount &&
     left.definedArchiveEntries === right.definedArchiveEntries &&
-    left.fixupCount === right.fixupCount
+    left.fixupCount === right.fixupCount &&
+    (left.kind !== "licensed-asset-package" ||
+      (right.kind === "licensed-asset-package" &&
+        left.packageFormatVersion === right.packageFormatVersion &&
+        left.packageChecksum === right.packageChecksum))
   );
 }

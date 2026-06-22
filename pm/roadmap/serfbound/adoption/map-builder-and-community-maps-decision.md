@@ -18,10 +18,10 @@ phases build to.
 > *playing* does today (`local-game.ts` rejects with
 > `missing-imported-data` when assets are absent), and renders with
 > their real tiles. It does **not** bundle or bake original assets in;
-> that would cross the asset boundary and is **Phase 31** territory
-> (hard-gated on *written* rights-holder permission, currently
-> verbal-only). When Phase 31's written grant lands and assets cache
-> for everyone, the builder inherits import-free use automatically —
+> that would cross the asset boundary and is **Phase 31** territory.
+> The written permission record now exists (`LICENSE-CONSENT.md`); when
+> Phase 31's conversion/hosting stories land and assets cache for everyone,
+> the builder inherits import-free use automatically —
 > the same gate, not a builder-specific one. An earlier idea of an
 > asset-free *synthetic* render is **dropped** (§7.0): the maintainer
 > wants the real art, and import-gating keeps it boundary-clean today.
@@ -477,12 +477,12 @@ still carries none — the player's own assets supply the look.
 **"Baking the tiles in" is Phase 31, not this feature.** Shipping or
 hosting the converted sprite data so the builder (and the whole game)
 need no import is exactly the Phase-31 "licensed asset delivery" work,
-hard-gated on *written* rights-holder permission (currently
-verbal-only). When that grant lands and assets cache once for
-everyone, the builder inherits import-free use automatically — it is
-the same gate the whole game waits on, not a builder-specific one.
-Until then, the boundary holds: no original art in the repo or on the
-service.
+hard-gated on *written* rights-holder permission (now recorded in
+`LICENSE-CONSENT.md`). When Phase 31's conversion and hosting stories land and
+assets cache once for everyone, the builder inherits import-free use
+automatically — it is the same gate the whole game waits on, not a
+builder-specific one. Until then, the boundary holds: no original art in the
+repo or on the service.
 
 The one place a sprite-derived pixel could still leak off-client is a
 gallery **thumbnail** (§5, §7.2): those are rendered from a flat
@@ -660,9 +660,10 @@ work (42-02/03/04) once the format exists.
   user-authored data, and the service carries only those bytes + a
   sprite-free thumbnail. *Verdict:* accept as engineering policy via
   the SB-42-01 addendum to `asset-and-legal-boundary.md`. "Baking the
-  tiles in" so the builder needs no import is **Phase 31** (written
-  rights permission, currently verbal-only) — the builder inherits it
-  automatically when that lands; it is not a builder-specific gate.
+  tiles in" so the builder needs no import is **Phase 31**; the written
+  rights permission now exists in `LICENSE-CONSENT.md`, and the builder
+  inherits import-free use automatically after the Phase 31 conversion/hosting
+  stories land. It is not a builder-specific gate.
 - **Determinism of hand-authored terrain.** *Risk:* an authored
   landscape that the generator would never produce (sheer cliffs,
   isolated islands, water/land patterns) could expose untested

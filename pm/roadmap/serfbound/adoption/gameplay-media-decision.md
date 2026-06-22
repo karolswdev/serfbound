@@ -43,5 +43,6 @@ repository's README states whose data produced them.
 ## Stop signal
 
 A rights-holder objection to published screenshots → remove the set,
-revisit here. (Note: the pending Phase 31 written permission, if it
-lands, would supersede this caution wholesale.)
+revisit here. The Phase 31 written consent record (`LICENSE-CONSENT.md`)
+authorizes hosted converted runtime packages; screenshots remain governed by
+this media decision unless a later written term says otherwise.

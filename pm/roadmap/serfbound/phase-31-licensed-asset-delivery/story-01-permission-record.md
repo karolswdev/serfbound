@@ -2,7 +2,7 @@
 
 - **Project:** serfbound
 - **Phase:** 31
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** none
 - **Unblocks:** SB-31-02, SB-31-03, SB-31-04
 - **Owner:** unassigned
@@ -32,11 +32,11 @@ it cannot be produced, which closes the phase unshipped.
 
 ## Acceptance criteria
 
-- [ ] The written record is committed and states parties, date, what
+- [x] The written record is committed and states parties, date, what
   may be converted, what may be hosted, and under what conditions.
-- [ ] The boundary canon revision cites the record and enumerates the
+- [x] The boundary canon revision cites the record and enumerates the
   derived conditions as testable obligations.
-- [ ] The README/player-docs messaging split is drafted: hosted
+- [x] The README/player-docs messaging split is drafted: hosted
   package (Serfbound-distributed under documented permission) vs
   imported data (never leaves the machine) — no conflation.
 
@@ -54,6 +54,8 @@ it cannot be produced, which closes the phase unshipped.
 - Browser boundary: none — canon.
 - .NET reference use: none.
 - Phase gate advanced: exit criterion 1; the phase's hard gate.
-- Open: who at Blue Byte/Ubisoft issues the written form, and whether
-  the grant is to the project, the maintainer, or the public — the
-  record must say.
+- Closed 2026-06-22: `LICENSE-CONSENT.md` records the written
+  confirmation supplied to the project from Antoine, Authorized Blue
+  Byte Representative, and the scope it grants. The transcript supplied
+  to the project has no message timestamps, so the PMO record date is
+  2026-06-22.

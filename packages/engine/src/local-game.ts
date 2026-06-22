@@ -6,14 +6,28 @@ import { decodeCustomMapLandscape, type SerfboundCustomMap } from "./custom-map.
 import { SerfboundGameState, type SerfboundGameSnapshot } from "./simulation.js";
 import { isSerfboundWorldAction, replayWorldActions } from "./world-commands.js";
 
-export type SerfboundLocalGameDataSource = {
-  readonly kind: "imported-dos-pa-catalog";
+export type SerfboundLocalGameDataSourceBase = {
   readonly archiveName: string;
   readonly byteLength: number;
   readonly entryCount: number;
   readonly definedArchiveEntries: number;
   readonly fixupCount: number;
 };
+
+export type SerfboundImportedDosPaDataSource = SerfboundLocalGameDataSourceBase & {
+  readonly kind: "imported-dos-pa-catalog";
+};
+
+export type SerfboundLicensedAssetPackageDataSource = SerfboundLocalGameDataSourceBase & {
+  readonly kind: "licensed-asset-package";
+  readonly packageFormatVersion: string;
+  readonly packageChecksum: string;
+  readonly permissionRecord: "LICENSE-CONSENT.md";
+};
+
+export type SerfboundLocalGameDataSource =
+  | SerfboundImportedDosPaDataSource
+  | SerfboundLicensedAssetPackageDataSource;
 
 export type SerfboundLocalGameSettings = {
   readonly mapSize: number;
@@ -50,7 +64,7 @@ export type SerfboundLocalGameSnapshot = {
   readonly settings: SerfboundLocalGameSettings;
   readonly state: SerfboundGameSnapshot;
   readonly renderer: {
-    readonly sceneSource: "dos-pa-catalog";
+    readonly sceneSource: "dos-pa-catalog" | "licensed-asset-package";
   };
 };
 
@@ -163,7 +177,8 @@ export class SerfboundLocalGame {
       settings: this.settings,
       state: this.state.snapshot(),
       renderer: {
-        sceneSource: "dos-pa-catalog",
+        sceneSource:
+          this.data.kind === "licensed-asset-package" ? "licensed-asset-package" : "dos-pa-catalog",
       },
     };
   }
@@ -176,7 +191,7 @@ export function startSerfboundLocalGame(
     return {
       status: "rejected",
       reason: "missing-imported-data",
-      message: "A local Serfbound game requires imported SPAU.PA catalog data.",
+      message: "A local Serfbound game requires game data.",
     };
   }
 
@@ -307,15 +322,18 @@ export function deriveLocalGameSeedString(
   data: SerfboundLocalGameDataSource,
   mapSize = 3,
 ): string {
-  const fields = [
+  const fields: (string | number)[] = [
     data.kind,
     data.archiveName,
     data.byteLength,
     data.entryCount,
     data.definedArchiveEntries,
     data.fixupCount,
-    Math.trunc(mapSize),
   ];
+  if (data.kind === "licensed-asset-package") {
+    fields.push(data.packageFormatVersion, data.packageChecksum);
+  }
+  fields.push(Math.trunc(mapSize));
   let hash = 0x811c9dc5;
   const seedDigits: string[] = [];
 
@@ -352,7 +370,8 @@ function isLocalGameSnapshotShape(input: unknown): input is SerfboundLocalGameSn
     isLocalGameSettings(snapshot.settings) &&
     isGameStateSnapshotShape(snapshot.state) &&
     isRecord(snapshot.renderer) &&
-    snapshot.renderer.sceneSource === "dos-pa-catalog"
+    (snapshot.renderer.sceneSource === "dos-pa-catalog" ||
+      snapshot.renderer.sceneSource === "licensed-asset-package")
   );
 }
 
@@ -362,13 +381,26 @@ function isLocalGameDataSource(input: unknown): input is SerfboundLocalGameDataS
   }
 
   const data = input as Partial<SerfboundLocalGameDataSource>;
-  return (
-    data.kind === "imported-dos-pa-catalog" &&
+  const hasCommonShape =
     typeof data.archiveName === "string" &&
     isNonNegativeInteger(data.byteLength) &&
     isNonNegativeInteger(data.entryCount) &&
     isNonNegativeInteger(data.definedArchiveEntries) &&
-    isNonNegativeInteger(data.fixupCount)
+    isNonNegativeInteger(data.fixupCount);
+
+  if (!hasCommonShape) {
+    return false;
+  }
+
+  if (data.kind === "imported-dos-pa-catalog") {
+    return true;
+  }
+
+  return (
+    data.kind === "licensed-asset-package" &&
+    typeof data.packageFormatVersion === "string" &&
+    typeof data.packageChecksum === "string" &&
+    data.permissionRecord === "LICENSE-CONSENT.md"
   );
 }
 

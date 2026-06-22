@@ -1,0 +1,12 @@
+{
+  "kind": "serfbound.licensed-asset-delivery",
+  "schemaVersion": 1,
+  "formatVersion": "sb31-runtime-v1",
+  "permissionRecord": "LICENSE-CONSENT.md",
+  "pmoStory": "SB-31-01",
+  "packageUrl": "serfbound-demo-dos-en.sb31.json",
+  "packageChecksum": {
+    "algorithm": "fnv1a32",
+    "value": "3ddba0a7"
+  }
+}
