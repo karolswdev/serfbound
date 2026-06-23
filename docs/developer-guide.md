@@ -57,9 +57,9 @@ fixtures, builds the static browser shell, and runs Chromium browser smoke
 tests.
 
 `npm run ci:release` runs the release gate: CI-safe tests, module boundary
-checks, licensed-asset consent/artifact checks, static release build and
-artifact inspection, subpath static-hosting verification, and the local asset
-skip path.
+checks, public README/CONTRIBUTING link checks, licensed-asset
+consent/artifact checks, static release build and artifact inspection,
+subpath static-hosting verification, and the local asset skip path.
 
 ## Oracle Fixtures
 
@@ -281,8 +281,10 @@ add evidence.
   authentic UI, mobile touch play, PWA offline, shell recovery.
 - `npm run measure:performance` / `npm run measure:scale` — the recorded
   performance baselines.
+- `npm run check:links` — README/CONTRIBUTING local-link and media-reference
+  integrity, with external URLs syntax-checked.
 - `SERFBOUND_RUN_LOCAL_ASSET_TESTS=1 SERFBOUND_SPAU_PA=... npm run
   test:local:assets` — opt-in real-data decode checks.
 - `npm run ci:release` — the full data-free release gate set.
 
-Releases: tag `serfbound-v*` (see `docs/static-hosting-release.md`).
+Releases: tag `v*` (see `docs/static-hosting-release.md`).

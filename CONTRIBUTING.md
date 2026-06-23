@@ -38,6 +38,7 @@ npm run check:boundaries
 npm run check:independence
 npm run check:design
 npm run check:media
+npm run check:links
 npm run check:licensed-assets
 npm run test:docs
 ```

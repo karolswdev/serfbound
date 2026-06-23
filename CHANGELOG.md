@@ -1,5 +1,26 @@
 # Serfbound Changelog
 
+## Unreleased — after v0.2.0
+
+- **Licensed asset delivery (Phase 31)**: written permission is recorded in
+  `LICENSE-CONSENT.md`; the deterministic `sb31-runtime-v1` converter,
+  hosted manifest/package delivery, checksum/provenance verification,
+  separate IndexedDB cache, public-origin audit, and zero-import
+  `serfbound.com` first run are shipped. The import-your-own-data path remains
+  first-class, and the licensed-package font-shadow contrast fix is in place.
+- **Gate verification (Phase 44)**: the hosted playtest protocol deck, durable
+  verdict export, in-game rig HUD, report server, phone-targeted deck fixes,
+  asset library, and camera-centering rig fixes are shipped so Bucket-A
+  device gates can close on maintainer evidence.
+- **Community maps (Phase 43)**: the maps service, signed client, sprite-free
+  thumbnails, moderation/quota/reporting, play counts, gallery/library shell,
+  local downloaded-map storage, and deterministic custom-map multiplayer
+  handshake are shipped.
+- **Open-source readiness (Phase 28)**: README media, feature claims,
+  contributor guide, GitHub issue/PR templates, repository topics, five seeded
+  `good first issue` items, and the public-doc link/media CI guard are
+  shipped.
+
 ## serfbound-v0.2.0 — 2026-06-13
 
 The simulation-fidelity release: the reference parity audit, system by
