@@ -30,6 +30,7 @@ export type OnlineLobbyEntry = {
   readonly challengeId: string;
   readonly terms: MatchTerms;
   readonly challengerName: string;
+  readonly challengerKeyId: string;
 };
 
 export class SerfboundOnlineSurface {
@@ -123,6 +124,10 @@ export class SerfboundOnlineSurface {
   ratingForName(name: string): number | undefined {
     const entries = this.#ladder.filter((entry) => entry.name === name);
     return entries.length === 1 ? entries[0]?.rating : undefined;
+  }
+
+  ratingForKeyId(keyId: string): number | undefined {
+    return this.#ladder.find((entry) => entry.keyId === keyId)?.rating;
   }
 
   // A previously linked account (from the stored profile) signs back

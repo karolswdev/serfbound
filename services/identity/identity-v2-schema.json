@@ -1,0 +1,102 @@
+{
+  "$schema": "https://serfbound.com/schemas/identity-v2.schema.json",
+  "schemaId": "serfbound.identity.v2",
+  "version": 2,
+  "status": "accepted-contract",
+  "legacyV1": {
+    "retiredAsCeiling": true,
+    "formerFields": ["accountId", "publicKeyJwk", "name", "createdAtIso"],
+    "v2CredentialKind": false,
+    "migration": "Existing device-key accounts are legacy only. V2 accepts a one-time signed standing claim during migration, then sign-in uses password, oidc, or passkey credentials."
+  },
+  "accountlessPlay": {
+    "requiresAccount": false,
+    "requiresNetwork": false,
+    "requiredForLocalImport": false,
+    "requiredForLocalSave": false,
+    "requiredForCampaign": false,
+    "visuallyPrimary": true
+  },
+  "privacyPosture": {
+    "playerVisibleSummary": "Online identity is optional. Serfbound stores only the credential data required for the sign-in method you choose and the public name you play under. Local play never needs an account, and your game data never uploads.",
+    "noAnalytics": true,
+    "noGameDataUpload": true,
+    "noCredentialLogging": true,
+    "noDataSale": true,
+    "requiredPlayerVisibleFields": [
+      "public display name",
+      "credential method",
+      "credential identifier",
+      "legacy standing claim, if used",
+      "created/updated timestamps"
+    ]
+  },
+  "account": {
+    "required": ["accountId", "displayName", "createdAtIso", "updatedAtIso", "credentials"],
+    "fields": {
+      "accountId": "server-issued stable account id",
+      "displayName": "game-font-safe public name",
+      "createdAtIso": "account creation timestamp",
+      "updatedAtIso": "account update timestamp",
+      "credentials": "array of password, oidc, and passkey credentials",
+      "legacyStandingClaim": "optional one-time migration proof from a Phase 25 device-key account; not a sign-in credential",
+      "recovery": "optional recovery state; never plaintext secrets"
+    },
+    "forbiddenFields": ["gameData", "spauPa", "rawArchive", "analyticsId", "trackingId"]
+  },
+  "credentialKinds": {
+    "password": {
+      "storedFields": [
+        "credentialId",
+        "email",
+        "emailVerifiedAtIso",
+        "passwordHash",
+        "passwordAlgorithm",
+        "linkedAtIso",
+        "lastUsedAtIso"
+      ],
+      "forbiddenFields": [
+        "password",
+        "plainPassword",
+        "passwordResetToken",
+        "accessToken",
+        "refreshToken"
+      ]
+    },
+    "oidc": {
+      "allowedProviders": ["apple", "google", "meta"],
+      "storedFields": [
+        "credentialId",
+        "provider",
+        "providerSubject",
+        "email",
+        "emailVerified",
+        "linkedAtIso",
+        "lastUsedAtIso"
+      ],
+      "forbiddenFields": ["accessToken", "refreshToken", "idToken", "authorizationCode"]
+    },
+    "passkey": {
+      "storedFields": [
+        "credentialId",
+        "publicKeyJwk",
+        "signCount",
+        "transports",
+        "userHandle",
+        "linkedAtIso",
+        "lastUsedAtIso"
+      ],
+      "forbiddenFields": ["privateKeyJwk", "attestationObject", "clientExtensionResults"]
+    }
+  },
+  "legacyStandingClaim": {
+    "storedFields": ["legacyKeyId", "claimedAtIso", "migrationBatchId"],
+    "forbiddenFields": ["privateKeyJwk", "publicKeyJwk", "seed", "mnemonic"],
+    "signInCredential": false
+  },
+  "mailboxChallenge": {
+    "requiresChallengerName": true,
+    "lobbyFields": ["challengeId", "terms", "challengerName", "challengerKeyId", "openedAtIso"],
+    "forbiddenLobbyFields": ["publicKeyJwk", "email", "providerSubject"]
+  }
+}

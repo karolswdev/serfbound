@@ -18,7 +18,10 @@ decoded pixel-for-pixel from your data.
 your local `SPAU.PA`. A separate licensed converted-package path is now
 documented in [LICENSE-CONSENT.md](LICENSE-CONSENT.md): configured releases can
 download a browser-native converted package once, verify it, cache it locally,
-and keep the import-your-own-data path first-class.
+and keep the import-your-own-data path first-class. Online identity is optional:
+Serfbound stores only the credential data required for the sign-in method you
+choose and the public name you play under; local play never needs an account,
+and your game data never uploads.
 
 ## What's inside
 
@@ -53,9 +56,11 @@ to an evidenced delivery phase in
 - Hot-seat pass-and-play and two-tab async matches — zero servers.
 - Realtime two-player lockstep.
 - Online correspondence at [serfbound.com](https://serfbound.com):
-  anonymous device-key accounts (nothing to leak), a challenge lobby,
-  trustless turn windows where your client re-verifies every move,
-  and a dual-attested Elo ladder. Pick an avatar and a guild banner;
+  optional identity (device-key sign-in today as the legacy bridge; identity v2
+  retires device keys after one-time standing migration and uses
+  email/password, Apple/Google/Meta, or passkeys), a challenge lobby keyed by
+  challenger identity, trustless turn windows where your client re-verifies
+  every move, and a dual-attested Elo ladder. Pick an avatar and a guild banner;
   earn deeds drawn from your own decoded icons.
 
 | The welcome | The title screen | On the move |

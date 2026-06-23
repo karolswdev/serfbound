@@ -12,6 +12,7 @@ import { randomUUID, webcrypto } from "node:crypto";
 const port = Number(process.env.SERFBOUND_MAILBOX_PORT ?? "4320");
 const storePath = process.env.SERFBOUND_MAILBOX_STORE ?? ".tmp/mailbox-matches.json";
 const moveByteCap = 256 * 1024;
+const playerNameMaxLength = 12;
 
 function loadStore() {
   const empty = { challenges: {}, matches: {}, ratings: {} };
@@ -77,6 +78,26 @@ function validTerms(terms) {
     Number.isInteger(terms.pickupSeconds) &&
     terms.pickupSeconds >= 0
   );
+}
+
+function normalizePlayerName(input) {
+  if (typeof input !== "string") {
+    return null;
+  }
+
+  const upper = input.toUpperCase();
+  let name = "";
+  for (const character of upper) {
+    if (name.length >= playerNameMaxLength) {
+      break;
+    }
+
+    if (/[A-Z0-9ÄÖÜ.\-:?%]/.test(character)) {
+      name += character;
+    }
+  }
+
+  return name.length > 0 ? name : null;
 }
 
 // The wire carries world actions and checksums only — structurally
@@ -208,6 +229,15 @@ export const server = createServer(async (request, response) => {
         return;
       }
 
+      const challengerName = normalizePlayerName(name);
+      if (challengerName === null) {
+        send(response, 400, {
+          error: "missing-name",
+          message: "Challenges require a player-visible challenger name.",
+        });
+        return;
+      }
+
       const payload = `challenge|${JSON.stringify(terms)}|${signedAtIso}`;
       if (!(await verifySignature(publicKeyJwk, payload, signature))) {
         send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
@@ -218,7 +248,7 @@ export const server = createServer(async (request, response) => {
       store.challenges[challengeId] = {
         challengeId,
         terms,
-        challenger: { publicKeyJwk, name: String(name ?? "PLAYER"), keyId: await keyFingerprint(publicKeyJwk) },
+        challenger: { publicKeyJwk, name: challengerName, keyId: await keyFingerprint(publicKeyJwk) },
         openedAtIso: new Date().toISOString(),
       };
       saveStore(store);
@@ -233,6 +263,7 @@ export const server = createServer(async (request, response) => {
           challengeId: challenge.challengeId,
           terms: challenge.terms,
           challengerName: challenge.challenger.name,
+          challengerKeyId: challenge.challenger.keyId,
           openedAtIso: challenge.openedAtIso,
         })),
       });
@@ -251,6 +282,15 @@ export const server = createServer(async (request, response) => {
 
       const body = JSON.parse((await readBody(request)) || "{}");
       const { publicKeyJwk, name, signedAtIso, signature } = body;
+      const accepterName = normalizePlayerName(name);
+      if (accepterName === null) {
+        send(response, 400, {
+          error: "missing-name",
+          message: "Challenge acceptance requires a player-visible name.",
+        });
+        return;
+      }
+
       const payload = `accept|${challenge.challengeId}|${signedAtIso}`;
       if (!(await verifySignature(publicKeyJwk, payload, signature))) {
         send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
@@ -263,7 +303,7 @@ export const server = createServer(async (request, response) => {
         terms: challenge.terms,
         players: [
           challenge.challenger,
-          { publicKeyJwk, name: String(name ?? "PLAYER"), keyId: await keyFingerprint(publicKeyJwk) },
+          { publicKeyJwk, name: accepterName, keyId: await keyFingerprint(publicKeyJwk) },
         ],
         moves: [],
         state: "active",

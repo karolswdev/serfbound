@@ -1,4 +1,4 @@
-# SB-33-02 — Accounts V2 - Credentials, Providers, Passkeys, Linking
+# SB-33-02 — Accounts V2 - Credentials, Providers, Passkeys, Migration
 
 - **Project:** serfbound
 - **Phase:** 33
@@ -9,11 +9,16 @@
 
 ## Problem
 
-Implement the identity v2 service: email+password (hashed, recovery), OAuth/OIDC for Apple, Google, and Meta, WebAuthn passkeys, and device-key account linking that preserves ladder standing. Contract tests for the v2 schema; provider registrations are maintainer prerequisites.
+Implement the identity v2 service: email+password (hashed, recovery),
+OAuth/OIDC for Apple, Google, and Meta, WebAuthn passkeys, and one-time
+migration from legacy device-key standing. Device keys do not survive as v2
+credentials. Contract tests for the v2 schema; provider registrations are
+maintainer prerequisites.
 
 ## Scope
 
-- **In:** Per the problem statement and `adoption/social-identity-decision.md`.
+- **In:** Per the problem statement, `../adoption/social-identity-decision.md`,
+  and `../adoption/identity-v2-schema.md`.
 - **Out:** Anything gating accountless play; analytics; social features beyond definition (later phases).
 
 ## Acceptance criteria
@@ -26,4 +31,6 @@ Implement the identity v2 service: email+password (hashed, recovery), OAuth/OIDC
 
 ## Notes / open questions
 
-- Canon: `adoption/social-identity-decision.md` (supersedes Phase 25 identity by maintainer direction, 2026-06-11).
+- Canon: `../adoption/social-identity-decision.md` (supersedes Phase 25
+  identity by maintainer direction, 2026-06-11) and
+  `../adoption/identity-v2-schema.md`.

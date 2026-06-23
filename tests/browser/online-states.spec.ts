@@ -65,7 +65,9 @@ test("sign-in, the quiet lobby, the challenge card, the chronicle", async ({ pag
   );
 
   // The privacy posture is presented, not buried.
-  await expect(page.locator(".panel-group--online")).toContainText("nothing to leak");
+  await expect(page.locator(".panel-group--online")).toContainText(
+    "stores only the credential data required",
+  );
   await expect(page.getByTestId("profile-chronicle")).toHaveText("No matches yet");
 
   // The ladder is readable without an account — by explicit request —
@@ -100,6 +102,10 @@ test("sign-in, the quiet lobby, the challenge card, the chronicle", async ({ pag
   // A posted challenge becomes a card: who, on what terms, one action.
   await page.getByTestId("online-challenge-button").click();
   await expect(page.locator(".lobby-card__name")).toHaveText("HERALD", { timeout: 15_000 });
+  await expect(page.locator(".lobby-card")).toHaveAttribute(
+    "data-challenger-key-id",
+    /^[0-9a-f]{64}$/,
+  );
   await expect(page.locator(".lobby-card__terms")).toContainText("512-tick windows");
   await expect(page.getByTestId("online-accept-button")).toBeVisible();
 });

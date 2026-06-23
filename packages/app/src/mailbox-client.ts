@@ -55,10 +55,16 @@ export async function listChallenges(serviceUrl: string): Promise<
     readonly challengeId: string;
     readonly terms: MatchTerms;
     readonly challengerName: string;
+    readonly challengerKeyId: string;
   }[]
 > {
   const result = (await requestJson(`${serviceUrl}/challenges`, "GET")) as {
-    challenges: { challengeId: string; terms: MatchTerms; challengerName: string }[];
+    challenges: {
+      challengeId: string;
+      terms: MatchTerms;
+      challengerName: string;
+      challengerKeyId: string;
+    }[];
   };
   return result.challenges;
 }

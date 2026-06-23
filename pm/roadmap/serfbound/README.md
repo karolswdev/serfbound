@@ -1,7 +1,7 @@
 # Serfbound — Roadmap
 
 **Last updated:** 2026-06-22.
-**Current phase:** [31 — Licensed Asset Delivery](./phase-31-licensed-asset-delivery/)
+**Current phase:** [33 — The Social Realm](./phase-33-social-realm/)
 **Status:** Phases 0–23 complete; Serfbound v0.1.0 shipped launch-ready
 (see [phase-20-launch-operations/final-summary.md](./phase-20-launch-operations/final-summary.md)).
 Post-launch so far: Phase 21 closed the launch-review punch list
@@ -31,10 +31,9 @@ and the gamification gate proved the whole loop on the public
 backbone with the privacy sweep green (see
 [phase-30-rankings-gamification/final-summary.md](./phase-30-rankings-gamification/final-summary.md)).
 Remaining: realtime WebRTC online play (27), product experience
-(32 — at the maintainer gate), and
-the social realm (33 — scaffolded from the maintainer's product
-evolution: opt-in social Serfbound with familiar sign-in; supersedes
-the Phase 25 identity decision by recorded direction).
+(32 — at the maintainer gate), and the social realm (33 — in progress:
+SB-33-01 accepted the identity v2 schema/privacy posture and retired the
+Phase 25 four-field ceiling as a limit; SB-33-02 is the next service slice).
 
 ## Vision
 
@@ -107,6 +106,9 @@ not contain .NET runtime code, desktop-shell code, or a desktop deliverable.
 - `pm/roadmap/serfbound/adoption/social-identity-decision.md` - the 2026-06-11
   product evolution: opt-in social Serfbound with familiar sign-in; supersedes
   the Phase 25 identity decision by maintainer direction; the two unbreakables.
+- `pm/roadmap/serfbound/adoption/identity-v2-schema.md` - the Phase 33
+  identity v2 contract: credential kinds, privacy posture, accountless
+  guarantees, legacy device-key linking, and mailbox hardening.
 - `pm/roadmap/serfbound/adoption/map-builder-and-community-maps-decision.md` -
   the 2026-06-13 product expansion: an in-browser map editor (real tiles via
   the production renderer, import-gated like playing) and community map sharing
@@ -160,7 +162,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 30 | Rankings and gamification: leaderboard, profiles, achievements | complete | [phase-30-rankings-gamification](./phase-30-rankings-gamification/) |
 | 31 | Licensed asset delivery: documented permission, hosted converted assets | complete | [phase-31-licensed-asset-delivery](./phase-31-licensed-asset-delivery/) |
 | 32 | Product experience: design standard, shell redesign, first-run, platform feel | scaffolded | [phase-32-product-experience](./phase-32-product-experience/) |
-| 33 | The social realm: familiar sign-in, identity v2, the opt-in social game | scaffolded | [phase-33-social-realm](./phase-33-social-realm/) |
+| 33 | The social realm: familiar sign-in, identity v2, the opt-in social game | in progress | [phase-33-social-realm](./phase-33-social-realm/) |
 | 34 | Touch playability: real-touch gates, founding confirm, DPR-3 truth, the device gate | in progress | [phase-34-touch-playability](./phase-34-touch-playability/) |
 | 35 | Locomotion fidelity: one reference-paced walker, doors, working poses | at the device gate | [phase-35-locomotion-fidelity](./phase-35-locomotion-fidelity/) |
 | 36 | The transport economy in full: out the castle door, flag scheduling, split roads staff themselves | at the device gate | [phase-36-transport-economy](./phase-36-transport-economy/) |

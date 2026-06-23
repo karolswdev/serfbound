@@ -13,6 +13,7 @@ import {
   listChallenges,
   listMatchesForKey,
   postMove,
+  signIdentityPayload,
 } from "@serfbound/app";
 import { CorrespondenceMatch } from "@serfbound/engine";
 
@@ -97,6 +98,13 @@ test("a real correspondence match plays through the mailbox", async () => {
   const challengeId = await createChallenge(serviceUrl, alice, "ALICE", terms);
   const lobby = await listChallenges(serviceUrl);
   assert.equal(lobby.some((entry) => entry.challengeId === challengeId), true);
+  const lobbyEntry = lobby.find((entry) => entry.challengeId === challengeId);
+  assert.equal(lobbyEntry.challengerKeyId, await identityAccountId(alice));
+  assert.equal(
+    Object.hasOwn(lobbyEntry, "publicKeyJwk"),
+    false,
+    "the lobby exposes the key id, not the raw public key",
+  );
   const match = await acceptChallenge(serviceUrl, bob, "BOB", challengeId);
   assert.deepEqual(match.terms, terms);
   assert.deepEqual(
@@ -140,6 +148,45 @@ test("a real correspondence match plays through the mailbox", async () => {
   assert.equal(aliceMatches.length, 1);
   assert.equal(aliceMatches[0].yourSeat, 0);
   assert.equal(aliceMatches[0].nextPlayer, 0, "it is Alice's turn again");
+});
+
+test("nameless challenges and acceptances reject", async () => {
+  const alice = await generateIdentityKeys();
+  const signedAtIso = new Date().toISOString();
+  const challengeSignature = await signIdentityPayload(
+    alice,
+    `challenge|${JSON.stringify(terms)}|${signedAtIso}`,
+  );
+  const namelessChallenge = await fetch(`${serviceUrl}/challenges`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      publicKeyJwk: alice.publicKeyJwk,
+      name: "",
+      terms,
+      signedAtIso,
+      signature: challengeSignature,
+    }),
+  });
+  assert.equal(namelessChallenge.status, 400);
+  assert.equal((await namelessChallenge.json()).error, "missing-name");
+
+  const challengeId = await createChallenge(serviceUrl, alice, "ALICE", terms);
+  const bob = await generateIdentityKeys();
+  const acceptAtIso = new Date().toISOString();
+  const acceptSignature = await signIdentityPayload(bob, `accept|${challengeId}|${acceptAtIso}`);
+  const namelessAccept = await fetch(`${serviceUrl}/challenges/${challengeId}/accept`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      publicKeyJwk: bob.publicKeyJwk,
+      name: "===",
+      signedAtIso: acceptAtIso,
+      signature: acceptSignature,
+    }),
+  });
+  assert.equal(namelessAccept.status, 400);
+  assert.equal((await namelessAccept.json()).error, "missing-name");
 });
 
 test("out-of-turn and wrongly-signed moves reject", async () => {

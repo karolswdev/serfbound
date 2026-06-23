@@ -20,6 +20,11 @@
   contributor guide, GitHub issue/PR templates, repository topics, five seeded
   `good first issue` items, and the public-doc link/media CI guard are
   shipped.
+- **Social realm (Phase 33)**: the identity v2 schema/privacy posture contract
+  is accepted; README/player-guide/shell copy now state the optional online
+  identity data honestly; device keys are legacy standing migration only, not
+  v2 credentials; nameless mailbox challenges reject; and lobby entries carry
+  challenger key ids for unambiguous challenge/rating joins.
 
 ## v0.2.0 — 2026-06-13
 

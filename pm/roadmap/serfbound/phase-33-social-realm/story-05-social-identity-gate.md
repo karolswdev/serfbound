@@ -13,7 +13,8 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
 
 ## Scope
 
-- **In:** Per the problem statement and `adoption/social-identity-decision.md`.
+- **In:** Per the problem statement, `../adoption/social-identity-decision.md`,
+  and the contracts completed before the gate.
 - **Out:** Anything gating accountless play; analytics; social features beyond definition (later phases).
 
 ## Acceptance criteria
@@ -26,4 +27,5 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
 
 ## Notes / open questions
 
-- Canon: `adoption/social-identity-decision.md` (supersedes Phase 25 identity by maintainer direction, 2026-06-11).
+- Canon: `../adoption/social-identity-decision.md` (supersedes Phase 25
+  identity by maintainer direction, 2026-06-11).

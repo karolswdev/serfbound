@@ -13,9 +13,12 @@ you do — a completely new settlers experience comes in."
 
 Serfbound is, by product definition, also a **social game for those
 who opt in**. Familiar sign-in becomes sanctioned: email + password,
-federated identity providers (Apple, Google, Meta), and passkeys —
-alongside, not replacing, the existing device keys (which become one
-linkable credential among several).
+federated identity providers (Apple, Google, Meta), and passkeys.
+
+**2026-06-23 maintainer decision:** device keys do not survive as a v2
+credential. The Phase 25 device-key service is a legacy bridge only:
+existing standing may be claimed once during migration, but v2 sign-in
+does not create or accept device-key accounts.
 
 ## What does not change — the two unbreakables
 
@@ -44,8 +47,9 @@ door should open the way players expect doors to open.
   (hashed, never logged), OAuth/OIDC flows, passkeys, recovery — the
   four-field schema is formally retired as a ceiling and replaced by
   a documented, contract-tested v2 schema.
-- Device-key accounts remain valid and become linkable to v2
-  accounts (no one loses their ladder standing).
+- Device-key accounts remain a legacy migration source only: no one
+  loses ladder standing, but the v2 account does not keep a device key
+  as a credential.
 - The privacy posture, the shell's sign-in copy, the player guide,
   and the README all rewrite together — the promise changes shape in
   every place it is printed, in one story.

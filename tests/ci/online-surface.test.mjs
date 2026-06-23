@@ -69,11 +69,13 @@ test("sign-in, lobby, accept, and the your-turn badge", async () => {
   assert.notEqual(challengeId, null);
   assert.equal(alice.lobby.length, 1, "the posted challenge shows in the lobby");
   assert.equal(alice.lobby[0].challengerName, "ALICE");
+  assert.equal(alice.lobby[0].challengerKeyId, alice.accountId);
 
   const bob = new SerfboundOnlineSurface({ identityUrl, mailboxUrl });
   assert.equal(await bob.signIn("bob"), true);
   await bob.refresh();
   assert.equal(bob.lobby.length, 1);
+  assert.equal(bob.lobby[0].challengerKeyId, alice.accountId);
 
   const match = await bob.accept(challengeId);
   assert.notEqual(match, null);

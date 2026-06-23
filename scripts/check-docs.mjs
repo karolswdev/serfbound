@@ -29,6 +29,9 @@ const requiredText = new Map([
       "Browser storage is tied to the origin",
       "If imported data cannot be restored",
       "If saving fails because storage is full or blocked",
+      "Online identity is optional",
+      "stores only the credential data required",
+      "game data never uploads and never touches any server",
     ],
   ],
   [

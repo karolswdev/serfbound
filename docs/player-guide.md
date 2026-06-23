@@ -147,12 +147,16 @@ browser (no servers; your game data never leaves the machine). Internet
 play arrives with the online-play phase.
 
 Online correspondence (optional, experimental): a community-hosted
-identity + mailbox service lets you register an anonymous account (a
-keypair generated in your browser — no email, no password), challenge
-players to correspondence matches with agreed terms and pickup
-deadlines, and climb a ladder where only dual-attested results count.
-Your game data never touches any server; every received move is
-re-verified by your own simulation.
+identity + mailbox service lets you sign in, challenge players to
+correspondence matches with agreed terms and pickup deadlines, and climb
+a ladder where only dual-attested results count. Online identity is
+optional; Serfbound stores only the credential data required for the
+sign-in method you choose and the public name you play under. Current
+public sign-in uses a device key generated in your browser as the
+legacy bridge; identity v2 retires device keys after a one-time
+standing migration and uses email/password, Apple/Google/Meta
+providers, or passkeys. Your game data never uploads and never touches
+any server; every received move is re-verified by your own simulation.
 
 Hot-seat 2P (pass and play): two players share one machine in
 correspondence style — you play a session window, hand the seat over

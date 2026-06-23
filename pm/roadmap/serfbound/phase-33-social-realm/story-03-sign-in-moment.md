@@ -13,7 +13,8 @@ The shell's familiar login per the design standard - provider buttons, email flo
 
 ## Scope
 
-- **In:** Per the problem statement and `adoption/social-identity-decision.md`.
+- **In:** Per the problem statement, `../adoption/social-identity-decision.md`,
+  and the privacy posture from `../adoption/identity-v2-schema.md`.
 - **Out:** Anything gating accountless play; analytics; social features beyond definition (later phases).
 
 ## Acceptance criteria
@@ -26,4 +27,6 @@ The shell's familiar login per the design standard - provider buttons, email flo
 
 ## Notes / open questions
 
-- Canon: `adoption/social-identity-decision.md` (supersedes Phase 25 identity by maintainer direction, 2026-06-11).
+- Canon: `../adoption/social-identity-decision.md` (supersedes Phase 25
+  identity by maintainer direction, 2026-06-11) and the privacy posture in
+  `../adoption/identity-v2-schema.md`.

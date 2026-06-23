@@ -13,7 +13,7 @@ The discovery story: what the completely new settlers experience IS for opted-in
 
 ## Scope
 
-- **In:** Per the problem statement and `adoption/social-identity-decision.md`.
+- **In:** Per the problem statement and `../adoption/social-identity-decision.md`.
 - **Out:** Anything gating accountless play; analytics; social features beyond definition (later phases).
 
 ## Acceptance criteria
@@ -26,4 +26,5 @@ The discovery story: what the completely new settlers experience IS for opted-in
 
 ## Notes / open questions
 
-- Canon: `adoption/social-identity-decision.md` (supersedes Phase 25 identity by maintainer direction, 2026-06-11).
+- Canon: `../adoption/social-identity-decision.md` (supersedes Phase 25
+  identity by maintainer direction, 2026-06-11).

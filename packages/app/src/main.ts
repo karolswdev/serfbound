@@ -729,7 +729,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
                 <span>or click to browse</span>
               </label>
               <p class="welcome__error" data-testid="welcome-error" hidden></p>
-              <p class="welcome__promise">Your data never leaves this device. No uploads, no required accounts, nothing to track.</p>
+              <p class="welcome__promise">Your data never leaves this device. No uploads, no required accounts, no passive tracking.</p>
               <p class="welcome__hint">Don't own the game? The free demo's SPAU.PA works too.</p>
             </div>
           </div>
@@ -940,7 +940,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             <p class="status-panel__value" data-testid="online-state">Signed out</p>
           </div>
           <p class="status-panel__detail" data-testid="online-detail">Optional: play correspondence matches over the internet. Local play never needs this.</p>
-          <p class="status-panel__detail">An account is a key born on this device — no email, no password, nothing to leak. Your moves travel signed; the service stores them but can never alter them.</p>
+          <p class="status-panel__detail">Online identity is optional. Sign-in stores only the credential data required for the method you choose and the public name you play under. Your game data never uploads.</p>
           <p class="online-badge" data-testid="online-your-turn" hidden>Your turn in 0 matches</p>
           <div class="match-strip" data-testid="online-match-strip" hidden>
             <p class="status-panel__label">Current match</p>
@@ -3677,9 +3677,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             </div>`;
             }
 
-            const rating = onlineSurface.ratingForName(entry.challengerName);
+            const rating = onlineSurface.ratingForKeyId(entry.challengerKeyId);
             return `
-            <div class="lobby-card">
+            <div class="lobby-card" data-challenger-key-id="${entry.challengerKeyId}">
               <p class="lobby-card__name">${entry.challengerName}${
                 rating === undefined ? "" : ` <span class="lobby-card__rating">${rating}</span>`
               }</p>
