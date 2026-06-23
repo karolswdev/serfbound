@@ -1,7 +1,7 @@
 # Phase 28 — Open-Source Readiness
 
-**Last updated:** 2026-06-22 (after SB-28-03).
-**Status:** in progress.
+**Last updated:** 2026-06-22 (after SB-28-04).
+**Status:** complete.
 
 ## Goal
 
@@ -41,7 +41,7 @@ OSS-readiness gate proven from the outside looking in.
   paths. (SB-28-02)
 - [x] A contributor onramp exists: CONTRIBUTING, templates, repo
   metadata, hook setup documented. (SB-28-03)
-- [ ] A fresh-clone dry run goes clone → install → test → e2e green
+- [x] A fresh-clone dry run goes clone → install → test → e2e green
   with no local data, and the GitHub landing page is captured as the
   visual gate. (SB-28-04)
 
@@ -52,20 +52,16 @@ OSS-readiness gate proven from the outside looking in.
 | SB-28-01 | Gameplay media pipeline | done | story-01-gameplay-media-pipeline.md | evidence-story-01.md |
 | SB-28-02 | README overhaul | done | story-02-readme-overhaul.md | evidence-story-02.md |
 | SB-28-03 | Contributor onramp | done | story-03-contributor-onramp.md | evidence-story-03.md |
-| SB-28-04 | OSS readiness gate | backlog | story-04-oss-readiness-gate.md | — |
+| SB-28-04 | OSS readiness gate | done | story-04-oss-readiness-gate.md | evidence-story-04.md |
 
 ## Where we are
 
-SB-28-03 now adds the outsider onramp: root `CONTRIBUTING.md`, GitHub
-issue forms, the PR template, docs-gate coverage for those files, the
-repo metadata topics, and five seeded `good first issue` items. The
-phase's remaining work is SB-28-04: the fresh-clone dry run, link/media
-integrity gate, changelog pass, and rendered GitHub landing-page
-capture. Ordering note (2026-06-11): Phase 32 (product experience)
-should land before this phase's shell-visible media — in-game
-screenshots are unaffected, but landing/shell captures and the social
-preview should show the redesigned chrome, and SB-28-02's play-now path
-now points at `https://serfbound.com`.
+Phase 28 is closed. The repository now has a real public face
+(README + committed media), a contributor onramp, GitHub issue/PR
+templates, five seeded `good first issue` items, a current changelog,
+README/CONTRIBUTING link and media checks wired into `ci:release`, a
+fresh-clone dry run from a clean directory with no `serfbound-local-data/`,
+and a captured GitHub landing page under this phase's artifacts.
 
 ## Active risks
 
@@ -82,10 +78,15 @@ now points at `https://serfbound.com`.
   homepage, and topics through `gh repo edit`; the social-preview image
   itself remains a repository settings upload because GitHub does not
   expose a supported CLI/API setter for that image.
+- SB-28-04's CI link check resolves repository-local README and
+  CONTRIBUTING links/media and syntax-checks external URLs. It does
+  not fetch external URLs in CI, to avoid coupling every commit to
+  third-party uptime.
 
 ## Decisions deferred
 
-- Animated capture (GIF/video) in the README — decide in SB-28-01
-  against the size budget; default is stills only.
-- Social preview image — default: derived from the curated media set
-  in SB-28-03.
+- Animated capture (GIF/video) remains deferred beyond this phase; the
+  committed still set is the Phase 28 public-media baseline.
+- Custom GitHub social-preview upload remains an owner settings action
+  if the prepared `docs/media/social-preview.png` should replace the
+  default GitHub-generated preview.

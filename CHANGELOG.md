@@ -21,7 +21,7 @@
   `good first issue` items, and the public-doc link/media CI guard are
   shipped.
 
-## serfbound-v0.2.0 — 2026-06-13
+## v0.2.0 — 2026-06-13
 
 The simulation-fidelity release: the reference parity audit, system by
 system, closed — plus the in-browser map builder.
