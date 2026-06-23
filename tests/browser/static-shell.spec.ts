@@ -440,6 +440,10 @@ test("corrupt imported data can be reset from the browser shell", async ({ page 
     "data-serfbound-storage-message",
     "Saved data is corrupt or from an unsupported version. Clear it and import SPAU.PA again.",
   );
+  await expect(page.locator("#app")).toHaveAttribute(
+    "data-serfbound-licensed-asset-state",
+    "configured",
+  );
   await expect(page.getByTestId("start-game-button")).toBeDisabled();
   await expect(page.getByTestId("data-reset-button")).toBeEnabled();
 

@@ -1994,7 +1994,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
   const loadConfiguredLicensedAssetPackage = async (): Promise<void> => {
     const importedDataTookPriority = () => {
-      if (currentImportedDataSource === undefined) {
+      const importedDataHasRecoveryPriority =
+        currentImportedDataSource !== undefined || root.dataset.serfboundStorageState === "error";
+      if (!importedDataHasRecoveryPriority) {
         return false;
       }
 
