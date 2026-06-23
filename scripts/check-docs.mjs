@@ -9,6 +9,10 @@ const docs = new Map([
   ["developer", normalizeDoc(readDoc("docs/developer-guide.md"))],
   ["static", normalizeDoc(readDoc("docs/static-hosting-release.md"))],
   ["index", normalizeDoc(readDoc("docs/README.md"))],
+  ["contributing", normalizeDoc(readDoc("CONTRIBUTING.md"))],
+  ["bugTemplate", normalizeDoc(readDoc(".github/ISSUE_TEMPLATE/bug_report.yml"))],
+  ["featureTemplate", normalizeDoc(readDoc(".github/ISSUE_TEMPLATE/feature_request.yml"))],
+  ["prTemplate", normalizeDoc(readDoc(".github/pull_request_template.md"))],
 ]);
 
 const requiredText = new Map([
@@ -60,6 +64,55 @@ const requiredText = new Map([
       "[Player guide](./player-guide.md)",
       "[Developer guide](./developer-guide.md)",
       "[Static hosting release](./static-hosting-release.md)",
+      "[Contributor guide](../CONTRIBUTING.md)",
+    ],
+  ],
+  [
+    "contributing",
+    [
+      "git config core.hooksPath .githooks",
+      "npm ci",
+      "npx playwright install chromium",
+      "npm test",
+      "npm run ci:release",
+      "SERFBOUND_RUN_LOCAL_ASSET_TESTS=1",
+      "Do not commit `SPAU.PA`",
+      ".tmp/CONTRACT.md",
+      "Do not use `--no-verify`.",
+      "evidence-story-{n}.md",
+      "Copy error report",
+      "good first issue",
+    ],
+  ],
+  [
+    "bugTemplate",
+    [
+      "Browser and version",
+      "Installed as a PWA?",
+      "Data source",
+      "Imported local SPAU.PA",
+      "Copy error report",
+      "I did not attach original DOS/Amiga game data",
+    ],
+  ],
+  [
+    "featureTemplate",
+    [
+      "Player value",
+      "Proposed change",
+      "PMO or evidence pointer",
+      "Main boundary",
+      "bundle, host, or redistribute original DOS/Amiga game data",
+    ],
+  ],
+  [
+    "prTemplate",
+    [
+      "PMO Story",
+      "Verification",
+      "No original DOS/Amiga data",
+      ".githooks/pre-commit",
+      "PMO status/evidence files are updated",
     ],
   ],
 ]);
@@ -106,7 +159,9 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log("serfbound-docs-ok: player, developer, and static hosting docs cover required release topics.");
+console.log(
+  "serfbound-docs-ok: player, developer, static hosting, contributor, and GitHub templates cover required topics.",
+);
 
 function readDoc(path) {
   return readFileSync(join(workspaceRoot, path), "utf8");

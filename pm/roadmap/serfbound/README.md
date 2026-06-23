@@ -31,7 +31,8 @@ and the gamification gate proved the whole loop on the public
 backbone with the privacy sweep green (see
 [phase-30-rankings-gamification/final-summary.md](./phase-30-rankings-gamification/final-summary.md)).
 Remaining: realtime WebRTC online play (27), open-source readiness
-(28), product experience (32 — at the maintainer gate), and
+(28 — contributor onramp done; fresh-clone gate left), product
+experience (32 — at the maintainer gate), and
 the social realm (33 — scaffolded from the maintainer's product
 evolution: opt-in social Serfbound with familiar sign-in; supersedes
 the Phase 25 identity decision by recorded direction).
@@ -155,7 +156,7 @@ and either prove the new behavior intentionally or defer the decision.
 | 25 | Community and identity: profiles, accounts, challenges, mailbox, ladder | complete | [phase-25-community-identity](./phase-25-community-identity/) |
 | 26 | Data breadth and localization: Amiga evaluation, language tables | complete | [phase-26-data-breadth-localization](./phase-26-data-breadth-localization/) |
 | 27 | Realtime online play: WebRTC transport, signaling, resilience | scaffolded | [phase-27-realtime-online-play](./phase-27-realtime-online-play/) |
-| 28 | Open-source readiness: README, e2e screenshots, contributor onramp | scaffolded | [phase-28-open-source-readiness](./phase-28-open-source-readiness/) |
+| 28 | Open-source readiness: README, e2e screenshots, contributor onramp | in progress | [phase-28-open-source-readiness](./phase-28-open-source-readiness/) |
 | 29 | Hosting backbone: serfbound.com, LKE cluster, online surface | complete | [phase-29-hosting-backbone](./phase-29-hosting-backbone/) |
 | 30 | Rankings and gamification: leaderboard, profiles, achievements | complete | [phase-30-rankings-gamification](./phase-30-rankings-gamification/) |
 | 31 | Licensed asset delivery: documented permission, hosted converted assets | complete | [phase-31-licensed-asset-delivery](./phase-31-licensed-asset-delivery/) |
@@ -322,7 +323,10 @@ For Serfbound specifically, every implementation story must identify:
   local data import, start/play, save/load/reset, troubleshooting, and browser
   origin storage behavior; `serfbound/docs/developer-guide.md` documents setup,
   CI-safe vs local/manual tests, oracle fixtures, PMO flow, and release
-  commands. `npm run test:docs` verifies required release documentation topics.
+  commands; `serfbound/CONTRIBUTING.md` documents fresh-clone setup, the PMO
+  contract hook, the issue/PR path, and the contribution asset boundary.
+  `npm run test:docs` verifies required release and contributor documentation
+  topics.
 - **Current release readiness:** `pm/roadmap/serfbound/phase-9-release-operations/release-readiness-report.md`
   records the final Phase 9 checklist, phase gate audit, browser matrix,
   performance snapshot, asset-boundary audit, issue intake, known limitations,

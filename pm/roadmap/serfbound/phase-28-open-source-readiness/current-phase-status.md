@@ -1,6 +1,6 @@
 # Phase 28 — Open-Source Readiness
 
-**Last updated:** 2026-06-11 (after SB-28-01/02).
+**Last updated:** 2026-06-22 (after SB-28-03).
 **Status:** in progress.
 
 ## Goal
@@ -39,7 +39,7 @@ OSS-readiness gate proven from the outside looking in.
 - [x] The README sells the project: hero, screenshots, feature
   showcase with evidence-grounded claims, play-now and quickstart
   paths. (SB-28-02)
-- [ ] A contributor onramp exists: CONTRIBUTING, templates, repo
+- [x] A contributor onramp exists: CONTRIBUTING, templates, repo
   metadata, hook setup documented. (SB-28-03)
 - [ ] A fresh-clone dry run goes clone → install → test → e2e green
   with no local data, and the GitHub landing page is captured as the
@@ -51,19 +51,21 @@ OSS-readiness gate proven from the outside looking in.
 |---|---|---|---|---|
 | SB-28-01 | Gameplay media pipeline | done | story-01-gameplay-media-pipeline.md | evidence-story-01.md |
 | SB-28-02 | README overhaul | done | story-02-readme-overhaul.md | evidence-story-02.md |
-| SB-28-03 | Contributor onramp | backlog | story-03-contributor-onramp.md | — |
+| SB-28-03 | Contributor onramp | done | story-03-contributor-onramp.md | evidence-story-03.md |
 | SB-28-04 | OSS readiness gate | backlog | story-04-oss-readiness-gate.md | — |
 
 ## Where we are
 
-Scaffolded 2026-06-11 from user direction: README needs to be
-enticing, call out features, carry screenshots of an active game
-captured via e2e. Independent of Phase 27 — can proceed in parallel
-or after it. Ordering note (2026-06-11): Phase 32 (product
-experience) should land before this phase's shell-visible media —
-in-game screenshots are unaffected, but landing/shell captures and
-the social preview should show the redesigned chrome, and SB-28-02's
-play-now path now points at `https://serfbound.com`.
+SB-28-03 now adds the outsider onramp: root `CONTRIBUTING.md`, GitHub
+issue forms, the PR template, docs-gate coverage for those files, the
+repo metadata topics, and five seeded `good first issue` items. The
+phase's remaining work is SB-28-04: the fresh-clone dry run, link/media
+integrity gate, changelog pass, and rendered GitHub landing-page
+capture. Ordering note (2026-06-11): Phase 32 (product experience)
+should land before this phase's shell-visible media — in-game
+screenshots are unaffected, but landing/shell captures and the social
+preview should show the redesigned chrome, and SB-28-02's play-now path
+now points at `https://serfbound.com`.
 
 ## Active risks
 
@@ -75,7 +77,11 @@ play-now path now points at `https://serfbound.com`.
 
 ## Decisions made (this phase)
 
-- none yet.
+- SB-28-03 uses `docs/media/social-preview.png` as the prepared
+  repository social-preview image. GitHub exposes description,
+  homepage, and topics through `gh repo edit`; the social-preview image
+  itself remains a repository settings upload because GitHub does not
+  expose a supported CLI/API setter for that image.
 
 ## Decisions deferred
 

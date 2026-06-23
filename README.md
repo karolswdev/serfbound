@@ -1,5 +1,7 @@
 # Serfbound
 
+[![CI](https://github.com/karolswdev/serfbound/actions/workflows/ci.yml/badge.svg)](https://github.com/karolswdev/serfbound/actions/workflows/ci.yml)
+
 **The complete classic Settlers, running in your browser — play it now
 at [serfbound.com](https://serfbound.com).**
 
@@ -83,12 +85,13 @@ npm run build:web        # static artifact in dist/
 ```
 
 The [developer guide](docs/developer-guide.md) covers the package
-boundaries, the opt-in real-data tests, and the delivery process. This
+boundaries, the opt-in real-data tests, and the delivery process. The
+[contributor guide](CONTRIBUTING.md) covers first setup, the PMO
+contract hook, issue/PR templates, and the asset boundary. This
 project is delivered through the PMO roadmap at
 [`pm/roadmap/serfbound/`](pm/roadmap/serfbound/) — every shipped story
-carries evidence. Contributors: enable the contract hook with
-`git config core.hooksPath .githooks`. (Heavy visual-evidence artifacts
-from earlier phases remain in the archive repository noted below.)
+carries evidence. (Heavy visual-evidence artifacts from earlier phases
+remain in the archive repository noted below.)
 
 The screenshots above (and the repository's social preview,
 docs/media/social-preview.png) regenerate deterministically from one

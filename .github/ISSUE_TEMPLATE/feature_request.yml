@@ -1,0 +1,49 @@
+name: Serfbound feature request
+description: Suggest a player-facing, developer, or PMO improvement.
+title: "[feature] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: player-value
+    attributes:
+      label: Player value
+      description: What becomes better for a player or contributor?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the smallest useful version.
+    validations:
+      required: true
+  - type: input
+    id: pmo-pointer
+    attributes:
+      label: PMO or evidence pointer
+      description: Link a phase, story, evidence file, or issue if one exists.
+      placeholder: "pm/roadmap/serfbound/phase-*/story-*.md"
+  - type: dropdown
+    id: boundary
+    attributes:
+      label: Main boundary
+      options:
+        - Engine
+        - Rendering
+        - Audio
+        - Input or touch
+        - Persistence or IndexedDB
+        - Network or services
+        - Packaging or release
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+  - type: checkboxes
+    id: asset-boundary
+    attributes:
+      label: Asset boundary
+      options:
+        - label: This request does not require Serfbound to bundle, host, or redistribute original DOS/Amiga game data.
+          required: true
