@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import {
   deleteMap,
+  createStoredCommunityMapRecord,
   fetchMap,
   generateIdentityKeys,
   listMaps,
@@ -14,6 +15,7 @@ import {
   rateMap,
   renderMapThumbnail,
   reportMapPlayed,
+  saveCommunityMapRecord,
 } from "@serfbound/app";
 import { MapEditor, encodeCustomMap, generateClassicMap, mapTerrain } from "@serfbound/engine";
 
@@ -64,6 +66,26 @@ async function authoredMap(keys, title) {
     { title, authorKeyId: await fingerprint(keys), authorName: "MAKER", createdAtIso: "2026-06-13T00:00:00.000Z" },
     { playerCount: 1, starts: [] },
   );
+}
+
+class MemoryCommunityMapLibraryStore {
+  records = new Map();
+
+  async list() {
+    return [...this.records.values()];
+  }
+
+  async save(record) {
+    this.records.set(record.mapId, JSON.parse(JSON.stringify(record)));
+  }
+
+  async delete(mapId) {
+    this.records.delete(mapId);
+  }
+
+  async clear() {
+    this.records.clear();
+  }
 }
 
 test("the maps client publishes, browses, fetches, rates, and counts a play (SB-43-03)", async () => {
@@ -141,4 +163,40 @@ test("the thumbnail is sprite-free false-color terrain (SB-43-03)", () => {
     }
   }
   assert.equal(magenta.length >= 1, true, "the start is marked");
+});
+
+test("the community map library stores downloaded maps locally (SB-43-07)", async () => {
+  const author = await generateIdentityKeys();
+  const map = await authoredMap(author, "LIBRARY GATE");
+  const view = {
+    mapId: "map-one",
+    title: map.meta.title,
+    authorName: map.meta.authorName,
+    authorKeyId: map.meta.authorKeyId,
+    size: map.size,
+    playerCount: map.playerCount,
+    contentHash: map.contentHash,
+    thumbnail: map.meta.thumbnail ?? null,
+    rating: 0,
+    ratingCount: 0,
+    downloads: 1,
+    timesPlayed: 0,
+    publishedAtIso: "2026-06-22T00:00:00.000Z",
+  };
+  const record = createStoredCommunityMapRecord({
+    mapId: view.mapId,
+    map,
+    view,
+    downloadedAtIso: "2026-06-22T01:00:00.000Z",
+  });
+
+  assert.equal(record.schemaVersion, 1);
+  assert.equal(record.storageKey, "map-one");
+  assert.equal(record.view.title, "LIBRARY GATE");
+
+  const store = new MemoryCommunityMapLibraryStore();
+  assert.deepEqual(await saveCommunityMapRecord(store, record), { state: "persisted" });
+  const [stored] = await store.list();
+  assert.equal(stored.map.contentHash, map.contentHash);
+  assert.equal(stored.downloadedAtIso, "2026-06-22T01:00:00.000Z");
 });

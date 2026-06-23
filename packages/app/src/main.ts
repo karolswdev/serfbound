@@ -50,6 +50,7 @@ import {
   serfBodyOffset,
   serfboundMissions,
   startSerfboundMission,
+  decodeCustomMapLandscape,
   restoreSerfboundLocalGame,
   SerfboundCommandRouter,
   startSerfboundLocalGame,
@@ -94,13 +95,33 @@ import {
   type StoredLicensedAssetPackageRecord,
 } from "./licensed-asset-delivery.js";
 import {
+  BrowserIndexedDbCommunityMapLibraryStore,
+  createStoredCommunityMapRecord,
+  saveCommunityMapRecord,
+  type StoredCommunityMapRecord,
+} from "./community-map-library-store.js";
+import {
+  fetchMap,
+  listMaps,
+  publishMap,
+  rateMap,
+  reportMap,
+  reportMapPlayed,
+  type MapGalleryEntry,
+} from "./maps-client.js";
+import {
+  markThumbnailStarts,
+  renderMapThumbnail,
+  type MapThumbnail,
+} from "./map-thumbnail.js";
+import {
   buildLandscapeRenderAssets,
   createLandscapeScene,
   screenToMapTile,
   type LandscapeRenderAssets,
   type MapScroll,
 } from "./landscape-scene.js";
-import { MapEditorScreen } from "./editor-screen.js";
+import { MapEditorScreen, editorToCustomMap } from "./editor-screen.js";
 import { mountRigHud, type RigSequenceEntry } from "./rig-hud.js";
 import { mountBuildingEditor } from "./building-editor.js";
 
@@ -175,6 +196,7 @@ export * from "./profile-store.js";
 export * from "./identity-client.js";
 export * from "./mailbox-client.js";
 export * from "./maps-client.js";
+export * from "./community-map-library-store.js";
 export * from "./editor-screen.js";
 export * from "./map-thumbnail.js";
 export * from "./online-config.js";
@@ -373,6 +395,32 @@ export function formatBuildStamp(raw: unknown): string {
   return shortCommit ? `${label} · ${shortCommit}` : label;
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function mapThumbnailDataUrl(thumbnail: MapThumbnail): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = thumbnail.width;
+  canvas.height = thumbnail.height;
+  canvas
+    .getContext("2d")
+    ?.putImageData(
+      new ImageData(
+        new Uint8ClampedArray(thumbnail.rgba),
+        thumbnail.width,
+        thumbnail.height,
+      ),
+      0,
+      0,
+    );
+  return canvas.toDataURL("image/png");
+}
+
 function recordError(message: string, stack: string | undefined): void {
   errorBuffer.push({
     message: message.slice(0, 500),
@@ -407,6 +455,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     options.localGameSaveStore ?? new BrowserIndexedDbLocalGameSaveStore();
   const licensedAssetPackageStore =
     options.licensedAssetPackageStore ?? new BrowserIndexedDbLicensedAssetPackageStore();
+  const communityMapLibraryStore = new BrowserIndexedDbCommunityMapLibraryStore();
   const queryLicensedAssetDelivery = resolveLicensedAssetDeliveryConfig();
   const licensedAssetDelivery =
     options.licensedAssetDelivery === undefined
@@ -691,6 +740,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
                 <button class="secondary-action" data-testid="editor-copy-button" type="button">Copy region</button>
                 <button class="secondary-action" data-testid="editor-paste-button" type="button">Paste</button>
                 <button class="secondary-action" data-testid="editor-validate-button" type="button">Validate</button>
+                <button class="secondary-action" data-testid="editor-publish-button" type="button" disabled>Publish</button>
                 <button class="primary-action" data-testid="editor-play-button" type="button">Play this map</button>
                 <button class="secondary-action" data-testid="editor-exit-button" type="button">Back</button>
               </div>
@@ -934,6 +984,58 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
               hidden
             >Attest result: I lost</button>
           </div>
+        </section>
+        <section class="panel-group panel-group--community">
+          <h2 class="panel-group__title">Community maps</h2>
+          <div>
+            <p class="status-panel__label">Gallery</p>
+            <p class="status-panel__value" data-testid="maps-state">Not loaded</p>
+          </div>
+          <p class="status-panel__detail" data-testid="maps-detail">Browse without game data; play downloaded maps with your own data.</p>
+          <div class="community-map-controls">
+            <input
+              class="community-map-title"
+              data-testid="maps-title-input"
+              type="text"
+              maxlength="40"
+              value="COMMUNITY MAP"
+              aria-label="Community map title"
+            />
+            <div class="community-map-filters">
+              <select data-testid="maps-filter-players" aria-label="Players">
+                <option value="">All players</option>
+                <option value="1">1 player</option>
+                <option value="2">2 players</option>
+                <option value="3">3 players</option>
+                <option value="4">4 players</option>
+              </select>
+              <select data-testid="maps-sort" aria-label="Sort maps">
+                <option value="popular">Popular</option>
+                <option value="rating">Rating</option>
+                <option value="recent">Recent</option>
+              </select>
+            </div>
+          </div>
+          <div class="panel-group__actions">
+            <button
+              class="secondary-action"
+              data-testid="maps-signin-button"
+              type="button"
+            >Sign in for maps</button>
+            <button
+              class="secondary-action"
+              data-testid="maps-refresh-button"
+              type="button"
+            >Browse gallery</button>
+            <button
+              class="primary-action"
+              data-testid="maps-publish-button"
+              type="button"
+              disabled
+            >Publish open map</button>
+          </div>
+          <div class="community-map-gallery" data-testid="maps-gallery"></div>
+          <div class="community-map-library" data-testid="maps-library"></div>
         </section>
         <section class="panel-group panel-group--service">
           <h2 class="panel-group__title">Housekeeping</h2>
@@ -1267,6 +1369,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       }
     }
   };
+  let syncCommunityMapsState = () => {};
   const syncOnboarding = () => {
     const banner = root.querySelector<HTMLElement>("[data-testid='onboarding-banner']");
     if (banner !== null) {
@@ -1814,6 +1917,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     getCommandDetailElement(root).textContent = "Select a tile to inspect available actions.";
     getBuildFlagButton(root).disabled = true;
     syncLocalGameSaveControls(root, currentLocalGameSnapshot, currentSavedLocalGame, currentImportedDataSource);
+    syncCommunityMapsState();
     renderCurrentScene();
   };
   const renderCatalogScene = (
@@ -1832,6 +1936,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     currentImportedDataSource = localGameDataSourceFromCatalog(catalog, archiveName);
     root.dataset.serfboundActiveDataSource = "imported-dos-pa";
     syncLocalGameSaveControls(root, currentLocalGameSnapshot, currentSavedLocalGame, currentImportedDataSource);
+    syncCommunityMapsState();
     renderCurrentScene();
   };
 
@@ -1882,6 +1987,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     syncGameReadiness(root);
     setResetEnabled(root, true);
     syncLocalGameSaveControls(root, currentLocalGameSnapshot, currentSavedLocalGame, currentImportedDataSource);
+    syncCommunityMapsState();
     renderCurrentScene();
     return true;
   };
@@ -2732,6 +2838,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     syncWorldState(root, currentWorld);
     syncBuildFlagEnabled(root, selectedInteraction, currentBuiltStructures);
     syncLocalGameSaveControls(root, currentLocalGameSnapshot, currentSavedLocalGame, currentImportedDataSource);
+    syncCommunityMapsState();
   };
   startGameNowRef = startGameNow;
 
@@ -2748,6 +2855,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     if (editorSurface !== null) {
       editorSurface.hidden = true;
     }
+    syncCommunityMapsState();
     renderCurrentScene();
   };
   root
@@ -2785,6 +2893,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         },
         onExit: () => closeEditor(),
       });
+      syncCommunityMapsState();
     });
   root
     .querySelector<HTMLButtonElement>("[data-testid='editor-play-button']")
@@ -3129,6 +3238,379 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   const onlineMatchStrip = root.querySelector<HTMLElement>("[data-testid='online-match-strip']");
   const onlineMatchLine = root.querySelector<HTMLElement>("[data-testid='online-match-line']");
   const onlineSealLabel = root.querySelector<HTMLElement>("[data-testid='online-seal-label']");
+  const mapsStateElement = root.querySelector<HTMLElement>("[data-testid='maps-state']");
+  const mapsDetailElement = root.querySelector<HTMLElement>("[data-testid='maps-detail']");
+  const mapsTitleInput = root.querySelector<HTMLInputElement>("[data-testid='maps-title-input']");
+  const mapsFilterPlayers = root.querySelector<HTMLSelectElement>(
+    "[data-testid='maps-filter-players']",
+  );
+  const mapsSort = root.querySelector<HTMLSelectElement>("[data-testid='maps-sort']");
+  const mapsSigninButton = root.querySelector<HTMLButtonElement>(
+    "[data-testid='maps-signin-button']",
+  );
+  const mapsRefreshButton = root.querySelector<HTMLButtonElement>(
+    "[data-testid='maps-refresh-button']",
+  );
+  const mapsPublishButton = root.querySelector<HTMLButtonElement>(
+    "[data-testid='maps-publish-button']",
+  );
+  const editorPublishButton = root.querySelector<HTMLButtonElement>(
+    "[data-testid='editor-publish-button']",
+  );
+  const mapsGalleryElement = root.querySelector<HTMLElement>("[data-testid='maps-gallery']");
+  const mapsLibraryElement = root.querySelector<HTMLElement>("[data-testid='maps-library']");
+  type CommunityMapsStatus =
+    | "idle"
+    | "loading"
+    | "ready"
+    | "published"
+    | "downloaded"
+    | "playing"
+    | "rated"
+    | "reported"
+    | "unavailable";
+  let communityMapsStatus: CommunityMapsStatus = "idle";
+  let communityMapsDetail =
+    "Browse without game data; play downloaded maps with your own data.";
+  let communityMapsBusy = false;
+  let communityGallery: readonly MapGalleryEntry[] = [];
+  let communityLibrary: readonly StoredCommunityMapRecord[] = [];
+  let activeCommunityMapId: string | null = null;
+  const canUseSignedCommunityActions = () =>
+    onlineSurface.status === "signed-in" && onlineSurface.keys !== undefined;
+  const selectedPlayersFilter = () => {
+    const value = mapsFilterPlayers?.value ?? "";
+    const parsed = Number(value);
+    return value === "" || !Number.isInteger(parsed) ? undefined : parsed;
+  };
+  const communityGalleryFilter = () => {
+    const players = selectedPlayersFilter();
+    return players === undefined ? {} : { players };
+  };
+  const selectedGallerySort = () => mapsSort?.value ?? "popular";
+  const sortedCommunityGallery = (): readonly MapGalleryEntry[] => {
+    const entries = [...communityGallery];
+    const sort = selectedGallerySort();
+    if (sort === "recent") {
+      return entries.sort((a, b) => b.publishedAtIso.localeCompare(a.publishedAtIso));
+    }
+    if (sort === "rating") {
+      return entries.sort((a, b) => b.rating - a.rating || b.ratingCount - a.ratingCount);
+    }
+    return entries.sort(
+      (a, b) =>
+        b.timesPlayed - a.timesPlayed ||
+        b.downloads - a.downloads ||
+        b.rating - a.rating ||
+        b.publishedAtIso.localeCompare(a.publishedAtIso),
+    );
+  };
+  const renderCommunityThumbnail = (thumbnail: string | null | undefined): string =>
+    thumbnail === undefined || thumbnail === null || thumbnail.length === 0
+      ? `<div class="community-map-thumb community-map-thumb--empty" aria-hidden="true"></div>`
+      : `<img class="community-map-thumb" src="${escapeHtml(thumbnail)}" alt="" width="96" height="96" />`;
+  const renderCommunityCard = (entry: MapGalleryEntry): string => {
+    const signed = canUseSignedCommunityActions();
+    const canPlay = currentImportedDataSource !== undefined && currentWorld === undefined;
+    const title = escapeHtml(entry.title);
+    const author = escapeHtml(entry.authorName);
+    const mapId = escapeHtml(entry.mapId);
+    const rating =
+      entry.ratingCount === 0
+        ? "Unrated"
+        : `${entry.rating.toFixed(entry.rating % 1 === 0 ? 0 : 1)} from ${entry.ratingCount}`;
+    return `
+      <div class="community-map-card" data-map-id="${mapId}">
+        ${renderCommunityThumbnail(entry.thumbnail)}
+        <div class="community-map-card__body">
+          <p class="community-map-card__title">${title}</p>
+          <p class="community-map-card__meta">${author} · size ${entry.size} · ${entry.playerCount}P</p>
+          <p class="community-map-card__meta">${rating} · ${entry.downloads} downloads · ${entry.timesPlayed} plays</p>
+          <div class="community-map-card__actions">
+            <button class="secondary-action" data-testid="maps-download-button" data-map-id="${mapId}" data-action="download" type="button">Download</button>
+            <button class="primary-action" data-testid="maps-play-button" data-map-id="${mapId}" data-action="play-gallery" type="button" ${canPlay ? "" : "disabled"}>Play</button>
+            <button class="secondary-action" data-testid="maps-rate-button" data-map-id="${mapId}" data-action="rate" data-stars="5" type="button" ${signed ? "" : "disabled"}>5 stars</button>
+            <button class="secondary-action" data-testid="maps-report-button" data-map-id="${mapId}" data-action="report" type="button" ${signed ? "" : "disabled"}>Report</button>
+          </div>
+        </div>
+      </div>`;
+  };
+  const renderCommunityLibraryCard = (record: StoredCommunityMapRecord): string => {
+    const canPlay = currentImportedDataSource !== undefined && currentWorld === undefined;
+    const mapId = escapeHtml(record.mapId);
+    return `
+      <div class="community-map-card community-map-card--library" data-map-id="${mapId}">
+        ${renderCommunityThumbnail(record.view.thumbnail ?? record.map.meta.thumbnail ?? null)}
+        <div class="community-map-card__body">
+          <p class="community-map-card__title">${escapeHtml(record.view.title)}</p>
+          <p class="community-map-card__meta">In library · ${record.downloadedAtIso.slice(0, 10)}</p>
+          <div class="community-map-card__actions">
+            <button class="primary-action" data-testid="maps-library-play-button" data-map-id="${mapId}" data-action="play-library" type="button" ${canPlay ? "" : "disabled"}>Play from library</button>
+          </div>
+        </div>
+      </div>`;
+  };
+  syncCommunityMapsState = () => {
+    root.dataset.serfboundMapsStatus = communityMapsStatus;
+    root.dataset.serfboundMapsGalleryCount = String(communityGallery.length);
+    root.dataset.serfboundMapsLibraryCount = String(communityLibrary.length);
+    if (activeCommunityMapId === null) {
+      delete root.dataset.serfboundCommunityMapId;
+    } else {
+      root.dataset.serfboundCommunityMapId = activeCommunityMapId;
+    }
+
+    if (mapsStateElement !== null) {
+      mapsStateElement.textContent =
+        communityMapsStatus === "loading"
+          ? "Loading"
+          : communityMapsStatus === "published"
+            ? "Published"
+            : communityMapsStatus === "downloaded"
+              ? "Downloaded"
+              : communityMapsStatus === "playing"
+                ? "Playing community map"
+                : communityMapsStatus === "rated"
+                  ? "Rated"
+                  : communityMapsStatus === "reported"
+                    ? "Reported"
+                    : communityMapsStatus === "unavailable"
+                      ? "Gallery unavailable"
+                      : communityGallery.length > 0
+                        ? `${communityGallery.length} maps`
+                        : "Ready to browse";
+    }
+
+    if (mapsDetailElement !== null) {
+      mapsDetailElement.textContent = communityMapsDetail;
+    }
+
+    const publishDisabled =
+      communityMapsBusy || currentEditor === undefined || !canUseSignedCommunityActions();
+    if (mapsPublishButton !== null) {
+      mapsPublishButton.disabled = publishDisabled;
+    }
+    if (editorPublishButton !== null) {
+      editorPublishButton.disabled = publishDisabled;
+    }
+    if (mapsSigninButton !== null) {
+      mapsSigninButton.disabled =
+        communityMapsBusy || onlineSurface.status === "signed-in" || onlineSurface.status === "signing-in";
+    }
+    if (mapsRefreshButton !== null) {
+      mapsRefreshButton.disabled = communityMapsBusy;
+    }
+
+    if (mapsGalleryElement !== null) {
+      mapsGalleryElement.innerHTML =
+        communityGallery.length === 0
+          ? `<p class="status-panel__detail">No community maps loaded.</p>`
+          : sortedCommunityGallery().map(renderCommunityCard).join("");
+    }
+
+    if (mapsLibraryElement !== null) {
+      mapsLibraryElement.innerHTML =
+        communityLibrary.length === 0
+          ? `<p class="status-panel__detail">Local library empty.</p>`
+          : `<p class="status-panel__label">Local library</p>${communityLibrary
+              .map(renderCommunityLibraryCard)
+              .join("")}`;
+    }
+  };
+  const loadCommunityLibrary = async (): Promise<void> => {
+    try {
+      communityLibrary = await communityMapLibraryStore.list();
+    } catch {
+      communityLibrary = [];
+    }
+    syncCommunityMapsState();
+  };
+  const loadCommunityGallery = async (): Promise<void> => {
+    communityMapsBusy = true;
+    communityMapsStatus = "loading";
+    communityMapsDetail = "Reading the gallery.";
+    syncCommunityMapsState();
+    try {
+      communityGallery = await listMaps(onlineConfig.mapsUrl, communityGalleryFilter());
+      communityMapsStatus = "ready";
+      communityMapsDetail =
+        communityGallery.length === 0
+          ? "The gallery is quiet."
+          : "Choose a map to download, rate, report, or play.";
+    } catch {
+      communityMapsStatus = "unavailable";
+      communityMapsDetail = "The maps service is unreachable. Local play is unaffected.";
+    } finally {
+      communityMapsBusy = false;
+      syncCommunityMapsState();
+    }
+  };
+  const thumbnailDataUrlForMap = (map: SerfboundCustomMap): string | undefined => {
+    try {
+      const landscape = decodeCustomMapLandscape(map);
+      const thumbnail = markThumbnailStarts(renderMapThumbnail(landscape, 96), landscape, map.starts);
+      return mapThumbnailDataUrl(thumbnail);
+    } catch {
+      return undefined;
+    }
+  };
+  const publishCurrentEditorMap = async (): Promise<void> => {
+    const keys = onlineSurface.keys;
+    const authorKeyId = onlineSurface.accountId;
+    if (currentEditor === undefined || keys === undefined || authorKeyId === undefined) {
+      communityMapsStatus = "idle";
+      communityMapsDetail = "Sign in and open the map editor before publishing.";
+      syncCommunityMapsState();
+      return;
+    }
+
+    communityMapsBusy = true;
+    communityMapsStatus = "loading";
+    communityMapsDetail = "Publishing the open map.";
+    syncCommunityMapsState();
+    const title = mapsTitleInput?.value.trim() || "COMMUNITY MAP";
+    let map = editorToCustomMap(
+      currentEditor.editor,
+      title,
+      authorKeyId,
+      onlineSurface.accountName ?? currentProfile.name,
+      new Date().toISOString(),
+    );
+    const thumbnail = thumbnailDataUrlForMap(map);
+    if (thumbnail !== undefined) {
+      map = { ...map, meta: { ...map.meta, thumbnail } };
+    }
+
+    try {
+      const mapId = await publishMap(onlineConfig.mapsUrl, keys, map);
+      activeCommunityMapId = mapId;
+      communityMapsStatus = "published";
+      communityMapsDetail = `${map.meta.title} is in the gallery.`;
+      communityGallery = await listMaps(onlineConfig.mapsUrl, communityGalleryFilter());
+    } catch (error) {
+      communityMapsStatus = "unavailable";
+      communityMapsDetail = errorMessage(error);
+    } finally {
+      communityMapsBusy = false;
+      syncCommunityMapsState();
+    }
+  };
+  const saveFetchedCommunityMap = async (mapId: string): Promise<StoredCommunityMapRecord | null> => {
+    communityMapsBusy = true;
+    communityMapsStatus = "loading";
+    communityMapsDetail = "Downloading map.";
+    syncCommunityMapsState();
+    try {
+      const fetched = await fetchMap(onlineConfig.mapsUrl, mapId);
+      const thumbnail = fetched.map.meta.thumbnail ?? thumbnailDataUrlForMap(fetched.map);
+      const view: MapGalleryEntry = {
+        ...fetched.view,
+        thumbnail: fetched.view.thumbnail ?? thumbnail ?? null,
+      };
+      const map =
+        thumbnail === undefined || fetched.map.meta.thumbnail !== undefined
+          ? fetched.map
+          : { ...fetched.map, meta: { ...fetched.map.meta, thumbnail } };
+      const record = createStoredCommunityMapRecord({ mapId, map, view });
+      const result = await saveCommunityMapRecord(communityMapLibraryStore, record);
+      if (result.state === "error") {
+        throw new Error(result.message);
+      }
+      activeCommunityMapId = mapId;
+      communityMapsStatus = "downloaded";
+      communityMapsDetail = `${view.title} is in your library.`;
+      await loadCommunityLibrary();
+      return record;
+    } catch (error) {
+      communityMapsStatus = "unavailable";
+      communityMapsDetail = errorMessage(error);
+      return null;
+    } finally {
+      communityMapsBusy = false;
+      syncCommunityMapsState();
+    }
+  };
+  const playCommunityMap = async (record: StoredCommunityMapRecord): Promise<void> => {
+    if (currentImportedDataSource === undefined || currentWorld !== undefined) {
+      communityMapsDetail = "Import game data and return to the title before playing a community map.";
+      syncCommunityMapsState();
+      return;
+    }
+
+    activeCommunityMapId = record.mapId;
+    communityMapsStatus = "playing";
+    communityMapsDetail = `Playing ${record.view.title}.`;
+    if (currentEditor !== undefined) {
+      closeEditor();
+    }
+    startGameNow({ customMap: record.map });
+    if (onlineSurface.keys !== undefined) {
+      void reportMapPlayed(onlineConfig.mapsUrl, onlineSurface.keys, record.mapId)
+        .then((played) => {
+          communityGallery = communityGallery.map((entry) =>
+            entry.mapId === record.mapId ? { ...entry, timesPlayed: played.timesPlayed } : entry,
+          );
+          syncCommunityMapsState();
+        })
+        .catch(() => {});
+    }
+    syncCommunityMapsState();
+  };
+  const rateCommunityMap = async (mapId: string, stars: number): Promise<void> => {
+    const keys = onlineSurface.keys;
+    if (keys === undefined) {
+      return;
+    }
+
+    communityMapsBusy = true;
+    communityMapsStatus = "loading";
+    communityMapsDetail = "Rating map.";
+    syncCommunityMapsState();
+    try {
+      const rated = await rateMap(onlineConfig.mapsUrl, keys, mapId, stars);
+      communityGallery = communityGallery.map((entry) =>
+        entry.mapId === mapId
+          ? { ...entry, rating: rated.rating, ratingCount: rated.ratingCount }
+          : entry,
+      );
+      communityMapsStatus = "rated";
+      communityMapsDetail = "Rating saved.";
+    } catch (error) {
+      communityMapsStatus = "unavailable";
+      communityMapsDetail = errorMessage(error);
+    } finally {
+      communityMapsBusy = false;
+      syncCommunityMapsState();
+    }
+  };
+  const reportCommunityMap = async (mapId: string): Promise<void> => {
+    const keys = onlineSurface.keys;
+    if (keys === undefined) {
+      return;
+    }
+
+    communityMapsBusy = true;
+    communityMapsStatus = "loading";
+    communityMapsDetail = "Reporting map.";
+    syncCommunityMapsState();
+    try {
+      const reported = await reportMap(onlineConfig.mapsUrl, keys, mapId);
+      if (reported.quarantined) {
+        communityGallery = communityGallery.filter((entry) => entry.mapId !== mapId);
+      }
+      communityMapsStatus = "reported";
+      communityMapsDetail = reported.quarantined
+        ? "Report saved; the map is quarantined."
+        : "Report saved for maintainer review.";
+    } catch (error) {
+      communityMapsStatus = "unavailable";
+      communityMapsDetail = errorMessage(error);
+    } finally {
+      communityMapsBusy = false;
+      syncCommunityMapsState();
+    }
+  };
+  void loadCommunityLibrary();
   let lastYourTurnCount = 0;
   const syncOnlineState = () => {
     root.dataset.serfboundOnlineStatus = onlineSurface.status;
@@ -3216,6 +3698,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     }
 
     syncLadderState();
+    syncCommunityMapsState();
   };
   // The ladder (SB-30-01): the Phase 25 Elo table, finally visible.
   // Loads on explicit request; your row carries the gold accent;
@@ -3387,18 +3870,19 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     syncWorldState(root, currentWorld);
     renderCurrentScene();
   };
-  root
-    .querySelector<HTMLButtonElement>("[data-testid='online-signin-button']")
-    ?.addEventListener("click", () => {
-      void onlineSurface.signIn(currentProfile.name).then(async (ok) => {
-        if (ok) {
-          await onlineSurface.refresh();
-        }
+  const signInOnline = (options: { readonly refreshMailbox?: boolean } = {}) => {
+    void onlineSurface.signIn(currentProfile.name).then(async (ok) => {
+      if (ok && options.refreshMailbox !== false) {
+        await onlineSurface.refresh();
+      }
 
-        syncOnlineState();
-      });
       syncOnlineState();
     });
+    syncOnlineState();
+  };
+  root
+    .querySelector<HTMLButtonElement>("[data-testid='online-signin-button']")
+    ?.addEventListener("click", () => signInOnline());
   root
     .querySelector<HTMLButtonElement>("[data-testid='online-refresh-button']")
     ?.addEventListener("click", () => {
@@ -3438,6 +3922,56 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   });
   onlineAttestLossButton?.addEventListener("click", () => {
     void currentOnline?.attest(1 - currentOnline.localPlayer).then(syncOnlineMatchState);
+  });
+  mapsSigninButton?.addEventListener("click", () => signInOnline({ refreshMailbox: false }));
+  mapsRefreshButton?.addEventListener("click", () => {
+    void loadCommunityGallery();
+  });
+  mapsPublishButton?.addEventListener("click", () => {
+    void publishCurrentEditorMap();
+  });
+  editorPublishButton?.addEventListener("click", () => {
+    void publishCurrentEditorMap();
+  });
+  mapsFilterPlayers?.addEventListener("change", () => {
+    void loadCommunityGallery();
+  });
+  mapsSort?.addEventListener("change", syncCommunityMapsState);
+  mapsGalleryElement?.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-action]");
+    const mapId = button?.dataset["mapId"];
+    const action = button?.dataset["action"];
+    if (button === null || button === undefined || mapId === undefined || action === undefined) {
+      return;
+    }
+
+    if (action === "download") {
+      void saveFetchedCommunityMap(mapId);
+    } else if (action === "play-gallery") {
+      void saveFetchedCommunityMap(mapId).then((record) => {
+        if (record !== null) {
+          void playCommunityMap(record);
+        }
+      });
+    } else if (action === "rate") {
+      void rateCommunityMap(mapId, Number(button.dataset["stars"] ?? "5"));
+    } else if (action === "report") {
+      void reportCommunityMap(mapId);
+    }
+  });
+  mapsLibraryElement?.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+      "[data-action='play-library']",
+    );
+    const mapId = button?.dataset["mapId"];
+    if (button === null || button === undefined || mapId === undefined) {
+      return;
+    }
+
+    const record = communityLibrary.find((entry) => entry.mapId === mapId);
+    if (record !== undefined) {
+      void playCommunityMap(record);
+    }
   });
   // The slow online timer: poll the active match's mailbox view, and —
   // for a signed-in player — keep the lobby and your-turn badge fresh.

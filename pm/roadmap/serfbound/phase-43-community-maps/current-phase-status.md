@@ -1,14 +1,14 @@
 # Phase 43 — Community Maps (sharing)
 
-**Last updated:** 2026-06-22 (SB-43-05 done: metadata moderation now
-filters title/author names before storage, the 50-maps-per-key quota is
-CI-held, and the existing report-quarantine contract remains green. The
-on-screen gallery/library and device gate remain in SB-43-07. Earlier:
+**Last updated:** 2026-06-22 (SB-43-07 done: the on-screen
+gallery/library/device gate now publishes from the editor, browses,
+rates, reports, downloads, persists, and plays a community map against
+local identity + maps services. Earlier: SB-43-05 moderation contracts,
 SB-43-04 protocol hash, SB-43-03 client + thumbnail, SB-43-01 service,
 SB-43-06 play counts).
-**Status:** in progress — SB-43-02 DEPLOYED (maps live on
-api.serfbound.com); SB-43-07 gallery/library + device gate is the only
-remaining story.
+**Status:** complete — SB-43-02 deployed the maps service to the
+backbone (`/maps` on `api.serfbound.com`), and SB-43-07 closed the
+browser gallery/library/device gate.
 
 ## Goal
 
@@ -50,19 +50,18 @@ template) and never puts original game data on the wire.
   lke577204: maps Deployment 1/1 + Service + 10Gi PVC, the
   `serfbound-api` route carrying the /maps rule;
   `GET /maps/maps` -> `{"maps":[]}` HTTP 200.)
-- [~] The gallery + library shell: browse/filter/sort/rate/report with
-  sprite-free false-color thumbnails. (SB-43-03 — the signed client and
-  the pure thumbnail are CI-held; the on-screen shell, library store,
-  and PNG wrapper ride the device gate SB-43-05.)
-- [~] Custom maps in multiplayer: handshake v2 with `mapContentHash`,
+- [x] The gallery + library shell: browse/filter/sort/rate/report with
+  sprite-free false-color thumbnails. (SB-43-03 shipped the signed
+  client and pure thumbnail; SB-43-07 shipped the on-screen shell,
+  library store, PNG wrapper, and browser gate.)
+- [x] Custom maps in multiplayer: handshake v2 with `mapContentHash`,
   a lockstep/correspondence match on a custom map with
-  `firstChecksumDivergence === null`. (SB-43-04 — the protocol + the
-  CI determinism proof are done; the on-screen lobby wiring of a
-  downloaded map and the dual-attested result ride the device gate
-  SB-43-05.)
+  `firstChecksumDivergence === null`. (SB-43-04 shipped the protocol +
+  CI determinism proof; SB-43-07 proved downloaded map play in the
+  browser shell.)
 - [x] Moderation contracts: report → quarantine, title/author filtering,
   and per-key publish quota are CI-held. (SB-43-05)
-- [ ] Gallery/library and on-device gate: the maintainer publishes,
+- [x] Gallery/library and on-device gate: the maintainer publishes,
   browses, downloads, and plays a community map. (SB-43-07)
 
 ## Story status
@@ -75,7 +74,7 @@ template) and never puts original game data on the wire.
 | SB-43-04 | Custom maps in multiplayer | done | story-04-custom-maps-in-multiplayer.md | evidence-story-04.md |
 | SB-43-05 | Moderation contracts | done | story-05-moderation-device-gate.md | evidence-story-05.md |
 | SB-43-06 | Play counts (opt-in) | done | story-06-play-counts.md | evidence-story-06.md |
-| SB-43-07 | Gallery, library, and device gate | backlog | — | — |
+| SB-43-07 | Gallery, library, and device gate | done | story-07-gallery-library-device-gate.md | evidence-story-07.md |
 
 ## Boundaries
 
@@ -87,3 +86,7 @@ template) and never puts original game data on the wire.
 - 2026-06-22 — SB-43-05 backend slice: publish sanitizes title and
   author display name before storage/gallery/fetch exposure; quota is
   now proven by the service contract suite.
+- 2026-06-22 — SB-43-07 closeout: the browser shell has a Community
+  maps panel, local custom-map library, editor publish bridge, signed
+  rate/report actions, and a Playwright device gate against local
+  identity + maps services.

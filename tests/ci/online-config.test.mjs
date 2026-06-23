@@ -10,20 +10,23 @@ test("defaults to the deployed backbone with the gateway path split", () => {
   const config = resolveOnlineConfig("");
   assert.equal(config.identityUrl, `${defaultOnlineApiBase}/identity`);
   assert.equal(config.mailboxUrl, `${defaultOnlineApiBase}/mailbox`);
+  assert.equal(config.mapsUrl, `${defaultOnlineApiBase}/maps`);
 });
 
 test("?api= overrides the base and trims trailing slashes", () => {
   const config = resolveOnlineConfig("?api=https://example.test/");
   assert.equal(config.identityUrl, "https://example.test/identity");
   assert.equal(config.mailboxUrl, "https://example.test/mailbox");
+  assert.equal(config.mapsUrl, "https://example.test/maps");
 });
 
 test("explicit per-service params win (tests run split local ports)", () => {
   const config = resolveOnlineConfig(
-    "?identityApi=http://127.0.0.1:4310&mailboxApi=http://127.0.0.1:4320/",
+    "?identityApi=http://127.0.0.1:4310&mailboxApi=http://127.0.0.1:4320/&mapsApi=http://127.0.0.1:4330/",
   );
   assert.equal(config.identityUrl, "http://127.0.0.1:4310");
   assert.equal(config.mailboxUrl, "http://127.0.0.1:4320");
+  assert.equal(config.mapsUrl, "http://127.0.0.1:4330");
 });
 
 test("a persisted base applies when no param overrides it", () => {
@@ -33,6 +36,10 @@ test("a persisted base applies when no param overrides it", () => {
   assert.equal(
     resolveOnlineConfig("", storage).identityUrl,
     "https://self-hosted.test/identity",
+  );
+  assert.equal(
+    resolveOnlineConfig("", storage).mapsUrl,
+    "https://self-hosted.test/maps",
   );
   assert.equal(
     resolveOnlineConfig("?api=https://param.test", storage).identityUrl,
@@ -47,4 +54,5 @@ test("a throwing storage degrades to the default, never throws", () => {
     },
   };
   assert.equal(resolveOnlineConfig("", storage).identityUrl, `${defaultOnlineApiBase}/identity`);
+  assert.equal(resolveOnlineConfig("", storage).mapsUrl, `${defaultOnlineApiBase}/maps`);
 });
