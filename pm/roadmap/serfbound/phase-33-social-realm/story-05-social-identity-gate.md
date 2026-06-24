@@ -35,7 +35,7 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
   attestation, and a rated ladder result without device-key payloads.
 - [x] Browser passkey proof and local persistence are implemented and
   gate-tested for community-map social writes without device-key payloads.
-- [ ] Browser passkey accounts can reach a correspondence match, dual
+- [x] Browser passkey accounts can reach a correspondence match, dual
   attestation, and a rated ladder result without device-key payloads.
 - [ ] Live provider handoff is configured for at least one provider and
   gate-tested without accepting raw provider tokens in the browser.
@@ -53,7 +53,7 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
     email and passkey v2 session map publish/rate/report/play-count writes
     without device keys.
   - `tests/browser/online-play.spec.ts` — existing device-key rated match plus
-    email v2 session correspondence/rating without device keys.
+    email and passkey v2 session correspondence/rating without device keys.
   - `tests/browser/online-states.spec.ts` — v2 email shell moment + legacy
     correspondence bridge state.
   - `tests/browser/gamification-gate.spec.ts` — current rated-match gamification
@@ -65,10 +65,9 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
     attestation, and rated ladder identity without device keys.
   - `tests/ci/service-maps.test.mjs` — v2 session publish, rate, report,
     play count, and delete without device keys.
-- Remaining before closure: passkey rated correspondence, live provider
-  handoff, provider coverage for social writes and rated matches, native
-  provider/WebAuthn handoff decisions, and full sign-in-method-to-rated-match
-  e2e.
+- Remaining before closure: live provider handoff, provider coverage for social
+  writes and rated matches, native provider/WebAuthn handoff decisions, and
+  full sign-in-method-to-rated-match e2e.
 
 ## Notes / open questions
 

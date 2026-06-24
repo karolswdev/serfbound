@@ -18,7 +18,7 @@ zero-network.
 | V2 social authorization adapter | `tests/ci/service-mailbox.test.mjs` and `tests/ci/service-maps.test.mjs` prove identity-issued v2 session proofs authorize mailbox, maps, and rating writes without device keys while the Phase 25 bridge remains available. | proven at service level |
 | Browser passkey proof and persistence | `tests/browser/community-maps.spec.ts` proves the passkey path creates a local v2 credential, signs in again after reload through `/v2/sessions/passkey`, and never stores a private key as JWK. | proven for service-compatible passkey proof |
 | Browser v2 community-map writes | `tests/browser/community-maps.spec.ts` proves email and passkey v2 sessions can publish, rate, report, and count a played map without device-key payloads. | proven for email and passkey maps |
-| Browser v2 rated correspondence | `tests/browser/online-play.spec.ts` proves two email v2 accounts can post/accept a challenge, exchange moves, dual-attest, and rate without device-key payloads. | proven for email v2 |
+| Browser v2 rated correspondence | `tests/browser/online-play.spec.ts` proves email and passkey v2 accounts can post/accept a challenge, exchange moves, dual-attest, and rate without device-key payloads. | proven for email and passkey v2 |
 | Current rated-match path | `tests/browser/online-play.spec.ts` and `tests/browser/gamification-gate.spec.ts` prove the existing correspondence/rating path through the temporary Phase 25 local match key bridge. | proven as bridge |
 
 ## Not yet gate-complete
@@ -27,7 +27,7 @@ zero-network.
 |---|---|
 | Native WebAuthn/provider ceremony decision | The browser now has a persisted service-compatible passkey proof; if launch requires OS/browser WebAuthn attestation, that handoff still needs implementation and coverage. |
 | Live provider handoff | At least one real provider registration and OIDC gateway handoff must be configured and tested without accepting raw provider tokens in browser payloads. |
-| Provider/passkey v2 correspondence/rating journey | Email v2 is wired in-browser, but provider and passkey accounts still need browser coverage for correspondence matches and rated results. |
+| Provider v2 correspondence/rating journey | Email and passkey v2 are wired in-browser, but provider accounts still need browser coverage for correspondence matches and rated results. |
 | Provider social-write coverage | Email and passkey maps are proven in-browser; provider accounts still need browser coverage for the same social-write boundary. |
 | Full journey e2e | The gate needs one end-to-end browser proof per sign-in method: sign in -> correspondence match -> dual attestation -> rated result. |
 
@@ -43,11 +43,10 @@ zero-network.
 
 ## Next sequence
 
-1. Add passkey v2 correspondence/rating coverage through the same browser path.
-2. Add a provider handoff harness for the first configured provider assertion.
-3. Extend the browser v2 social-write and rated-match proofs across provider
+1. Add a provider handoff harness for the first configured provider assertion.
+2. Extend the browser v2 social-write and rated-match proofs across provider
    accounts.
-4. Decide whether the launch gate requires native WebAuthn attestation beyond
+3. Decide whether the launch gate requires native WebAuthn attestation beyond
    the current service-compatible passkey proof.
-5. Land the full sign-in-method-to-rated-match e2e gate and only then close
+4. Land the full sign-in-method-to-rated-match e2e gate and only then close
    SB-33-05.
