@@ -1,6 +1,6 @@
 # Serfbound — Roadmap
 
-**Last updated:** 2026-06-22.
+**Last updated:** 2026-06-23.
 **Current phase:** [33 — The Social Realm](./phase-33-social-realm/)
 **Status:** Phases 0–23 complete; Serfbound v0.1.0 shipped launch-ready
 (see [phase-20-launch-operations/final-summary.md](./phase-20-launch-operations/final-summary.md)).
@@ -33,7 +33,8 @@ backbone with the privacy sweep green (see
 Remaining: realtime WebRTC online play (27), product experience
 (32 — at the maintainer gate), and the social realm (33 — in progress:
 SB-33-01 accepted the identity v2 schema/privacy posture and retired the
-Phase 25 four-field ceiling as a limit; SB-33-02 is the next service slice).
+Phase 25 four-field ceiling as a limit; SB-33-02 shipped the v2 account
+service contract; SB-33-03 is the next sign-in UX slice).
 
 ## Vision
 

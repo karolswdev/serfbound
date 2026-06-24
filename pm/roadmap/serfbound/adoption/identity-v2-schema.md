@@ -29,7 +29,8 @@ The v2 account record carries:
 - `credentials` — one or more credential records.
 - `legacyStandingClaim` — optional one-time migration proof from a Phase 25
   device-key account; it preserves standing but is not a sign-in credential.
-- `recovery` — optional recovery state; never plaintext secrets.
+- `recovery` — optional recovery state; stores only recovery hash metadata,
+  never plaintext secrets.
 
 Forbidden account fields: original game data, raw archives, analytics ids, and
 tracking ids. Local import, local saves, campaign play, and accountless play do
@@ -50,6 +51,13 @@ Device keys are explicitly absent from the v2 credential list. The migration
 claim may remember `legacyKeyId`, `claimedAtIso`, and `migrationBatchId`, but it
 must not store public or private key material and must not be accepted for
 sign-in.
+
+## Recovery
+
+Password recovery stores `recoveryCodeHash`, `recoveryAlgorithm`, and
+`configuredAtIso`. It must not store a plaintext recovery code, password reset
+token, or any provider token. Recovery rotates the password hash; it does not
+create a new credential kind.
 
 ## Player-Visible Privacy Posture
 

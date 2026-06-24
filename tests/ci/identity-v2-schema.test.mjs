@@ -28,6 +28,14 @@ test("identity v2 retires the four-field ceiling without breaking accountless pl
   assert.equal(schema.legacyStandingClaim.storedFields.includes("legacyKeyId"), true);
   assert.equal(schema.legacyStandingClaim.forbiddenFields.includes("publicKeyJwk"), true);
   assert.equal(schema.legacyStandingClaim.forbiddenFields.includes("privateKeyJwk"), true);
+  assert.deepEqual(schema.recovery.storedFields, [
+    "recoveryCodeHash",
+    "recoveryAlgorithm",
+    "configuredAtIso",
+  ]);
+  assert.equal(schema.recovery.plaintextSecrets, false);
+  assert.equal(schema.recovery.forbiddenFields.includes("recoveryCode"), true);
+  assert.equal(schema.recovery.forbiddenFields.includes("passwordResetToken"), true);
 
   assert.equal(schema.accountlessPlay.requiresAccount, false);
   assert.equal(schema.accountlessPlay.requiresNetwork, false);

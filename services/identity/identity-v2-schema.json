@@ -94,6 +94,11 @@
     "forbiddenFields": ["privateKeyJwk", "publicKeyJwk", "seed", "mnemonic"],
     "signInCredential": false
   },
+  "recovery": {
+    "storedFields": ["recoveryCodeHash", "recoveryAlgorithm", "configuredAtIso"],
+    "forbiddenFields": ["recoveryCode", "plainRecoveryCode", "passwordResetToken"],
+    "plaintextSecrets": false
+  },
   "mailboxChallenge": {
     "requiresChallengerName": true,
     "lobbyFields": ["challengeId", "terms", "challengerName", "challengerKeyId", "openedAtIso"],

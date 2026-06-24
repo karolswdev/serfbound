@@ -1,8 +1,8 @@
 # Phase 33 — The Social Realm
 
 **Last updated:** 2026-06-23.
-**Status:** in progress (SB-33-01 complete; service implementation starts at
-SB-33-02).
+**Status:** in progress (SB-33-01 and SB-33-02 complete; the player-facing
+sign-in moment starts at SB-33-03).
 
 ## Goal
 
@@ -30,7 +30,7 @@ stated plainly where players see it.
 - [x] The v2 identity schema and privacy posture are documented,
   contract-tested, and printed consistently everywhere players read
   them. (SB-33-01)
-- [ ] A player signs in with email+password, with at least one
+- [x] A player signs in with email+password, with at least one
   federated provider, and with a passkey — and migrates existing
   device-key standing without keeping device keys as v2 credentials.
   (SB-33-02)
@@ -46,7 +46,7 @@ stated plainly where players see it.
 | ID | Story | Status | Story file | Evidence |
 |---|---|---|---|---|
 | SB-33-01 | Identity v2 schema and the honest posture | done | story-01-identity-v2-posture.md | evidence-story-01.md |
-| SB-33-02 | Accounts v2: credentials, providers, passkeys, migration | backlog | story-02-accounts-v2-service.md | — |
+| SB-33-02 | Accounts v2: credentials, providers, passkeys, migration | done | story-02-accounts-v2-service.md | evidence-story-02.md |
 | SB-33-03 | The sign-in moment | backlog | story-03-sign-in-moment.md | — |
 | SB-33-04 | The social experience, defined | backlog | story-04-social-experience-definition.md | — |
 | SB-33-05 | Social identity gate | backlog | story-05-social-identity-gate.md | — |
@@ -57,12 +57,15 @@ Scaffolded 2026-06-11, the day the maintainer evolved the product. SB-33-01
 started the phase on 2026-06-23 by accepting the v2 identity schema contract,
 rewriting the privacy posture in README/player-guide/shell copy, and folding in
 the SB-30-04 service hardening pair (nameless challenges reject; lobby entries
-carry `challengerKeyId`).
+carry `challengerKeyId`). SB-33-02 then shipped the service-side v2 account
+contract: password hashing/recovery, configured OIDC assertion handoff,
+passkey public-key proof/sign-count checks, and one-time legacy standing
+migration without retaining device keys as v2 credentials.
 
-Next practical start: SB-33-02. OAuth provider registrations (Apple Developer,
+Next practical start: SB-33-03. OAuth provider registrations (Apple Developer,
 Google Cloud, Meta) remain maintainer prerequisites for provider-backed
-sign-in, but the email/password, passkey, and one-time standing migration
-contracts can move in parallel against `../adoption/identity-v2-schema.md`.
+sign-in; the service refuses provider claims unless an OIDC assertion handoff
+secret is configured.
 
 ## Active risks
 
@@ -84,10 +87,13 @@ contracts can move in parallel against `../adoption/identity-v2-schema.md`.
 - 2026-06-23 — Maintainer decision: device keys do not survive as v2
   credentials. The Phase 25 device-key service is a legacy bridge only; v2
   accepts at most a one-time standing migration.
+- 2026-06-23 — SB-33-02 service contract: OIDC provider claims require a
+  configured assertion handoff; the service rejects provider token fields and
+  refuses OIDC account creation when the assertion secret is absent.
 
 ## Decisions deferred
 
-- Which provider ships first (likely passkeys + email, then Google,
-  then Apple/Meta per registration friction) — SB-33-02.
+- Which live provider registration ships first (likely Google, then
+  Apple/Meta per registration friction) — SB-33-03/SB-33-05.
 - Exact standing-migration cutoff and whether the legacy bridge remains online
   read-only after v2 launch — SB-33-02.

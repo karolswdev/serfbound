@@ -23,8 +23,10 @@
 - **Social realm (Phase 33)**: the identity v2 schema/privacy posture contract
   is accepted; README/player-guide/shell copy now state the optional online
   identity data honestly; device keys are legacy standing migration only, not
-  v2 credentials; nameless mailbox challenges reject; and lobby entries carry
-  challenger key ids for unambiguous challenge/rating joins.
+  v2 credentials; nameless mailbox challenges reject; lobby entries carry
+  challenger key ids for unambiguous challenge/rating joins; and the identity
+  service now exposes v2 password, recovery, OIDC assertion, passkey, and
+  one-time legacy standing migration contracts.
 - **Release-gate hardening**: corrupt imported-data recovery now keeps its
   reset UI instead of being overwritten by an in-flight hosted licensed package
   activation.

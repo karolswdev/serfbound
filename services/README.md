@@ -17,6 +17,11 @@ Storage is one JSON file per service (set `*_STORE`). Any host with
 Node 22 still works — the deployment below is the maintainer's
 activation, not a requirement.
 
+For identity v2 provider handoff tests or a real OIDC gateway, set
+`SERFBOUND_IDENTITY_OIDC_ASSERTION_SECRET`; without it, `/v2/accounts/oidc`
+returns `oidc-not-configured` instead of accepting unverifiable provider
+claims.
+
 ## The actual deployment (SB-29-03)
 
 The services run on the maintainer's shared LKE cluster (`lke577204`,
@@ -63,10 +68,15 @@ Teardown: `kubectl delete ns serfbound`, remove the two
 
 ## What they hold (and don't)
 
-- **Identity**: `accountId` (key fingerprint), `publicKeyJwk`, `name`,
-  `createdAtIso` — nothing else, enforced by contract test (unexpected
-  registration fields reject). No emails, no passwords, no sessions,
-  no logs of play.
+- **Identity**: legacy `/accounts` records still hold the Phase 25
+  device-key bridge (`accountId`, `publicKeyJwk`, `name`,
+  `createdAtIso`). Identity v2 lives under `/v2`: password credentials
+  store email plus scrypt hashes/recovery hashes, OIDC credentials store
+  provider + subject after a configured assertion handoff, passkeys store
+  public-key credential metadata, and legacy standing claims store only
+  `legacyKeyId`, `claimedAtIso`, and `migrationBatchId`. No plaintext
+  passwords, reset codes, provider tokens, private keys, analytics ids,
+  sessions, or game data.
 - **Mailbox**: challenges (terms + challenger key/name), matches
   (players' keys/names, the move list — world actions and checksums
   only, size-capped — deadlines, state, attestations, ratings).
@@ -90,6 +100,9 @@ Teardown: `kubectl delete ns serfbound`, remove the two
 
 ## Recovery
 
-Lost identity key = lost account (by design; the decision record).
-Lost service storage file = lost ladder/open matches; finished games
-live in players' local histories and their own match replays.
+Lost legacy device key = lost legacy account unless standing was already
+claimed into v2. V2 password accounts can rotate through the hashed
+recovery flow; passkey/OIDC recovery depends on the chosen credential
+provider. Lost service storage file = lost hosted accounts, ladder/open
+matches, and v2 standing claims; finished games live in players' local
+histories and their own match replays.

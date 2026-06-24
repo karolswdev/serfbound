@@ -14,6 +14,7 @@ const IDENTITY_PORT = 43110;
 const MAILBOX_PORT = 43120;
 const IDENTITY_NAME = "serfbound-identity-test";
 const MAILBOX_NAME = "serfbound-mailbox-test";
+const OIDC_ASSERTION_SECRET = "service-container-oidc";
 const volumeRoot = join(repoRoot, ".tmp", `service-containers-${process.pid}`);
 
 function run(command, args, options = {}) {
@@ -67,6 +68,7 @@ try {
   docker(
     "run", "-d", "--name", IDENTITY_NAME,
     "-p", `127.0.0.1:${IDENTITY_PORT}:4310`,
+    "-e", `SERFBOUND_IDENTITY_OIDC_ASSERTION_SECRET=${OIDC_ASSERTION_SECRET}`,
     "-v", `${join(volumeRoot, "identity")}:/data`,
     "serfbound-identity:test",
   );
@@ -92,7 +94,11 @@ try {
 
   console.log("== running the contract suites against the containers");
   run("node", ["--test", "tests/ci/service-identity.test.mjs"], {
-    env: { ...process.env, SERFBOUND_IDENTITY_URL: identityUrl },
+    env: {
+      ...process.env,
+      SERFBOUND_IDENTITY_URL: identityUrl,
+      SERFBOUND_IDENTITY_OIDC_ASSERTION_SECRET: OIDC_ASSERTION_SECRET,
+    },
   });
   await freshMailbox();
   run("node", ["--test", "tests/ci/service-mailbox.test.mjs"], {
