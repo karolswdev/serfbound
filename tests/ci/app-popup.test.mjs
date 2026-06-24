@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   buildDecodedRenderAssets,
   buildLandscapeRenderAssets,
+  buildPopupKindForBuildPossibility,
   buildPopupPages,
   createLandscapeScene,
   mapBuildingSprite,
@@ -63,6 +64,15 @@ test("the build pages carry the reference building positions", () => {
     buildPopupPages.buildAdv2.find((item) => item.building === 22),
     { building: 22, x: 72, y: 93 },
   );
+});
+
+test("build possibility opens the matching build menu page", () => {
+  assert.equal(buildPopupKindForBuildPossibility("small"), "buildBasic");
+  assert.equal(buildPopupKindForBuildPossibility("large"), "buildAdv1");
+  assert.equal(buildPopupKindForBuildPossibility("flag"), undefined);
+  assert.equal(buildPopupKindForBuildPossibility("road"), undefined);
+  assert.equal(buildPopupKindForBuildPossibility("castle"), undefined);
+  assert.equal(buildPopupKindForBuildPossibility("none"), undefined);
 });
 
 test("the resources box mirrors DrawResourcesBox exactly", () => {

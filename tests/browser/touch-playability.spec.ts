@@ -121,6 +121,32 @@ async function foundCastle(
   throw new Error("no castle site reachable in the probe window");
 }
 
+async function selectBuildablePlot(page: import("@playwright/test").Page): Promise<void> {
+  const app = page.locator("#app");
+  const canvas = page.getByTestId("terrain-preview");
+  const box = await canvas.boundingBox();
+  if (box === null) {
+    throw new Error("no canvas box");
+  }
+
+  const columns = 7;
+  const rows = 7;
+  const stepX = Math.floor((box.width - 80) / (columns - 1));
+  const stepY = Math.floor((box.height - 260) / (rows - 1));
+  for (let attempt = 0; attempt < columns * rows; attempt += 1) {
+    const x = box.x + 40 + (attempt % columns) * stepX;
+    const y = box.y + 90 + Math.floor(attempt / columns) * stepY;
+    await page.touchscreen.tap(x, y);
+    const buildButton = Number(((await app.getAttribute("data-serfbound-panel-buttons")) ?? "0")
+      .split(",")[0]);
+    if (buildButton === 3 || buildButton === 4) {
+      return;
+    }
+  }
+
+  throw new Error("no visible small or large build plot reachable in the probe window");
+}
+
 // The published rect ("x,y,w,h" in canvas CSS space — SB-34-03) is the
 // hit truth the chrome itself uses; taps derived from it must land.
 async function publishedRect(
@@ -315,7 +341,8 @@ test("the road builder: tap the flag, extend, plant a flag, the road is laid", a
 
   expect(laid, "extend + plant-a-flag lays a real road").toBe(true);
   await expect(app).toHaveAttribute("data-serfbound-road-mode", "idle");
-  await expect(app).toHaveAttribute("data-serfbound-notification", "THE ROAD IS LAID");
+  await expect(app).toHaveAttribute("data-serfbound-command-type", "game.build-road");
+  await expect(app).toHaveAttribute("data-serfbound-last-effect", "road-built");
 });
 
 test("punch 6: the build popup fits and its content is hit-true at DPR 3", async ({ page }) => {
@@ -329,6 +356,7 @@ test("punch 6: the build popup fits and its content is hit-true at DPR 3", async
   }
 
   // Open the build popup from the panel bar's build slot (slot 0).
+  await selectBuildablePlot(page);
   const panel = await publishedRect(page, "data-serfbound-panel-rect");
   const chromeScale = panel.width / 320;
   await page.touchscreen.tap(

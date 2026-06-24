@@ -1,9 +1,10 @@
 # Phase 34 — Touch Playability
 
-**Last updated:** 2026-06-11 (after SB-34-10: serfs dress for their
-professions and carry visibly, flags stack their resources,
-harvesters work in the open; the seventh device pass is the open
-gate). SB-34-05 status: looped — rounds 2–6 rejected.
+**Last updated:** 2026-06-24 (after the gameplay usability punch:
+high-quality build sites open the advanced page, still cycle back to
+basic, and terrain double-clicks invoke the same primary action as
+the build slot). SB-34-05 status: looped — rounds 2–6 rejected; the
+device sign-off gate remains open.
 **Status:** in progress — opened by the maintainer's real-device
 play test, which the previous touch gates failed to predict.
 
@@ -17,6 +18,34 @@ Real phone, real fingers: "LITERALLY unplayable."
 4. Zero animations — flags don't wave.
 5. Could not build a road — "could not even click into it."
 6. The build-building menu shows buildings cropped after ~5 pixels.
+
+## Round 9 (gameplay usability punch, 2026-06-24)
+
+The build slot and terrain double-click path were still violating
+the reference-style primary action contract:
+
+20. High-quality build plots advertised the large-site button, but
+    the build slot always opened the basic building page.
+21. Double-clicking terrain only selected/inspected it; it did not
+    invoke the obvious action for buildable land, flag placement, or
+    owned-flag road building.
+22. The fix must not collapse high-quality plots into "advanced
+    only"; a player still needs to flip back to the basic building
+    page and place a basic service on the same good plot.
+
+Shipped: selected terrain now has one primary build action across
+the panel slot and double-click. Large sites open `buildAdv1`, small
+sites open `buildBasic`, flag sites build a flag, and owned flags
+enter road mode. The build popup flip remains the escape valve:
+`buildAdv1` → `buildAdv2` → `buildBasic`, with a browser gate proving
+a basic lumberjack can still be placed on a large/high-quality plot.
+
+Evidence: `tests/browser/build-primary-actions.spec.ts` covers the
+large-site advanced entry, the advanced-to-basic cycle, basic
+placement on the large site, flag double-click, road-mode
+double-click, and direct advanced double-click. The DPR-3 touch punch
+and decoded-scene gates now select an actual small/large plot before
+asserting which build page opens.
 
 ## Round 8 (seventh device pass, 2026-06-11) — escalated to the audit
 
@@ -166,7 +195,7 @@ their device and saying so.
 | SB-34-02 | Founding confirmation on touch | done | story-02-founding-confirmation.md | evidence-story-02.md |
 | SB-34-03 | DPR-3 coordinate spaces: cursor, panel, popups | done | story-03-dpr3-coordinate-truth.md | evidence-story-03.md |
 | SB-34-04 | Selection bleed + on-device animation | done | story-04-selection-bleed-and-motion.md | evidence-story-04.md |
-| SB-34-05 | The device gate | looped — rounds 2–5 rejected; round 6 shipped, sixth pass pending | — | — |
+| SB-34-05 | The device gate | looped — rounds 2–6 rejected; gameplay usability punch shipped, device sign-off still open | — | — |
 | SB-34-06 | The visible world: cursor, construction, waving flags | done | story-06-the-visible-world.md | evidence-story-06.md |
 | SB-34-07 | The road and the true tap | done | story-07-the-road-and-the-true-tap.md | evidence-story-07.md |
 | SB-34-08 | The road builder | done | story-08-the-road-builder.md | evidence-story-08.md |
@@ -205,3 +234,8 @@ their device and saying so.
   sprite-id constant must exist in the DOS archives (the fixture
   mirrors the real entry counts), so a phantom id fails in CI the
   way it fails on a phone.
+- 2026-06-24 — The selected terrain primary action is one contract
+  across the panel build slot and desktop double-click: large site →
+  `buildAdv1`, small site → `buildBasic`, flag site → build flag,
+  owned flag → road builder. The build popup flip must still let a
+  large/high-quality plot cycle back to basic buildings.

@@ -267,8 +267,25 @@ test("importing a decodable archive renders the decoded sprite scene", async ({ 
   await canvas.click({ position: { x: 30, y: 300 }, force: true });
   await expect(page.locator("#app")).not.toHaveAttribute("data-serfbound-popup", /.+/);
   const buildSlot = { x: panelX + 64 * 2 + 32, y: panelY + 4 * 2 + 32 };
+  let expectedBuildPopup = "buildBasic";
+  let buildablePlotSelected = false;
+  for (let attempt = 0; attempt < probeColumns * probeRows; attempt += 1) {
+    const x = 40 + (attempt % probeColumns) * probeStepX;
+    const y = 90 + Math.floor(attempt / probeColumns) * probeStepY;
+    await canvas.click({ position: { x, y }, force: true });
+    const buildButton = Number(
+      ((await page.locator("#app").getAttribute("data-serfbound-panel-buttons")) ?? "0")
+        .split(",")[0],
+    );
+    if (buildButton === 3 || buildButton === 4) {
+      expectedBuildPopup = buildButton === 4 ? "buildAdv1" : "buildBasic";
+      buildablePlotSelected = true;
+      break;
+    }
+  }
+  expect(buildablePlotSelected, "a visible small or large build plot is selected").toBe(true);
   await canvas.click({ position: buildSlot, force: true });
-  await expect(page.locator("#app")).toHaveAttribute("data-serfbound-popup", "buildBasic");
+  await expect(page.locator("#app")).toHaveAttribute("data-serfbound-popup", expectedBuildPopup);
   await canvas.click({ position: { x: 30, y: 300 }, force: true });
   await expect(page.locator("#app")).not.toHaveAttribute("data-serfbound-popup", /.+/);
 

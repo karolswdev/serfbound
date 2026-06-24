@@ -114,6 +114,22 @@ export const buildPopupPageOrder: readonly PopupKind[] = [
   "buildAdv2",
 ];
 
+type BuildPopupPossibility = "large" | "small" | "mine" | "flag" | "road" | "castle" | "none";
+
+export function buildPopupKindForBuildPossibility(
+  possibility: BuildPopupPossibility,
+): PopupKind | undefined {
+  if (possibility === "large") {
+    return "buildAdv1";
+  }
+
+  if (possibility === "small") {
+    return "buildBasic";
+  }
+
+  return undefined;
+}
+
 // The flip button at (8, 137) cycles the build pages.
 export const popupFlipButton = { x: 8, y: 137, width: 16, height: 16 } as const;
 

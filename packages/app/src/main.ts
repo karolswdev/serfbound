@@ -178,6 +178,7 @@ import {
   type PanelBuildPossibility,
 } from "./panel-bar.js";
 import {
+  buildPopupKindForBuildPossibility,
   buildPopupPageOrder,
   knightOccupationCycle,
   minimapTileAt,
@@ -352,6 +353,7 @@ type PointerMapInteractionHandlers = {
   readonly landscapeContext: () => PointerLandscapeContext | undefined;
   readonly worldCastlePending: () => boolean;
   readonly panelClick: (interaction: PointerMapInteraction) => boolean;
+  readonly primaryTerrainAction: (interaction: PointerMapInteraction) => boolean;
   readonly roadModeClick: (interaction: PointerMapInteraction) => boolean;
   readonly onWorldChanged: () => void;
   readonly onSelection: (interaction: PointerMapInteraction) => void;
@@ -1485,9 +1487,11 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   };
   // The authentic panel bar's build slot mirrors what the selected tile
   // allows (reference Interface.BuildPossibility, condensed).
-  const computeBuildPossibility = (): PanelBuildPossibility => {
+  const computeBuildPossibilityFor = (
+    interaction: PointerMapInteraction | undefined = selectedInteraction,
+  ): PanelBuildPossibility => {
     const world = currentWorld;
-    const tile = selectedInteraction?.tile;
+    const tile = interaction?.tile;
     if (world === undefined || tile === undefined || root.dataset.serfboundGameState !== "running") {
       return "none";
     }
@@ -1510,6 +1514,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     if (world.canBuildFlag(position, 0)) return "flag";
     return "none";
   };
+  const computeBuildPossibility = (): PanelBuildPossibility => computeBuildPossibilityFor();
   const computePanelButtons = (): number[] | undefined => {
     if (currentWorld === undefined || currentLandscapeAssets === undefined) {
       return undefined;
@@ -2248,6 +2253,64 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
     return result.status === "accepted";
   };
+  const dispatchConstructionLogisticsForNewestBuilding = () => {
+    if (currentWorld === undefined || currentSerfEngine === undefined) {
+      return;
+    }
+
+    const newest = [...currentWorld.buildings.values()].reduce((a, b) =>
+      a.index > b.index ? a : b,
+    );
+    currentSerfEngine.dispatchConstructionLogistics(newest, commandRouter.state.tick);
+  };
+  const syncWorldCommandResult = (result: ReturnType<SerfboundCommandRouter["dispatch"]>) => {
+    currentLocalGameSnapshot = refreshLocalGameSnapshot(currentLocalGameSnapshot, commandRouter);
+    applyCommandResultState(root, result);
+    syncWorldState(root, currentWorld);
+    syncLocalGameSaveControls(
+      root,
+      currentLocalGameSnapshot,
+      currentSavedLocalGame,
+      currentImportedDataSource,
+    );
+  };
+  const invokePrimaryBuildAction = (interaction: PointerMapInteraction): boolean => {
+    const possibility = computeBuildPossibilityFor(interaction);
+    if (possibility === "castle") {
+      const result = commandRouter.dispatch({
+        type: "game.build-castle",
+        source: "pointer",
+        tile: interaction.tile,
+      });
+      syncWorldCommandResult(result);
+      return true;
+    }
+
+    if (possibility === "flag") {
+      const result = commandRouter.dispatch({
+        type: "game.build-flag",
+        source: "pointer",
+        tile: interaction.tile,
+      });
+      syncWorldCommandResult(result);
+      return true;
+    }
+
+    if (possibility === "road") {
+      beginRoadBuilding(interaction.tile.position);
+      audioService.playSfx(sfxType.click);
+      return true;
+    }
+
+    const popup = buildPopupKindForBuildPossibility(possibility);
+    if (popup !== undefined) {
+      setPopup(popup);
+      audioService.playSfx(sfxType.click);
+      return true;
+    }
+
+    return false;
+  };
   setRoadMode("idle");
   setGameSpeed(1);
 
@@ -2359,18 +2422,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
                 hit.building !== "flag" &&
                 currentSerfEngine !== undefined
               ) {
-                const newest = [...currentWorld.buildings.values()].reduce((a, b) =>
-                  a.index > b.index ? a : b,
-                );
-                currentSerfEngine.dispatchConstructionLogistics(newest, commandRouter.state.tick);
+                dispatchConstructionLogisticsForNewestBuilding();
               }
 
-              currentLocalGameSnapshot = refreshLocalGameSnapshot(
-                currentLocalGameSnapshot,
-                commandRouter,
-              );
-              applyCommandResultState(root, result);
-              syncWorldState(root, currentWorld);
+              syncWorldCommandResult(result);
               setPopup(undefined);
             }
           }
@@ -2447,24 +2502,10 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       if (slot === 0) {
         // Build: place the castle directly during founding; on an own
         // flag the build act is a road from it (SB-34 round 4, the
-        // reference flow); with a castle standing, the build popup
-        // offers the building menu.
-        const possibility = computeBuildPossibility();
-        const tile = selectedInteraction?.tile;
-        if (tile !== undefined && possibility === "castle") {
-          const result = commandRouter.dispatch({
-            type: "game.build-castle",
-            source: "pointer",
-            tile,
-          });
-          applyCommandResultState(root, result);
-          syncWorldState(root, currentWorld);
-        } else if (possibility === "road" && selectedInteraction !== undefined) {
-          // The road builder starts at the selected flag (SB-34-08).
-          beginRoadBuilding(selectedInteraction.tile.position);
-          audioService.playSfx(sfxType.click);
-        } else if (currentWorld.players[0]?.hasCastle === true) {
-          setPopup("buildBasic");
+        // reference flow); small/large sites open the appropriate build
+        // menu page for that site.
+        if (selectedInteraction !== undefined) {
+          invokePrimaryBuildAction(selectedInteraction);
         }
       } else if (slot === 2) {
         setPopup("map");
@@ -2494,6 +2535,14 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
       renderCurrentScene();
       return true;
+    },
+    primaryTerrainAction(interaction) {
+      if (invokePrimaryBuildAction(interaction)) {
+        renderCurrentScene();
+        return true;
+      }
+
+      return false;
     },
     roadModeClick(interaction) {
       const mode = root.dataset.serfboundRoadMode;
@@ -5481,14 +5530,38 @@ function attachPointerMapInteraction(
     }
   };
   const touchSlopCssPixels = 12;
+  const doubleClickWindowMs = 450;
+  let lastPrimaryTerrainClick:
+    | {
+        readonly column: number;
+        readonly row: number;
+        readonly at: number;
+      }
+    | undefined;
 
-  const performInteraction = (event: Pick<PointerEvent, "clientX" | "clientY" | "pointerType">): void => {
+  const performInteraction = (
+    event: Pick<PointerEvent, "clientX" | "clientY" | "pointerType"> &
+      Partial<Pick<PointerEvent, "button" | "timeStamp">>,
+  ): void => {
     const interaction = resolveCanvasPointer(canvas, event, handlers.landscapeContext());
 
     // The panel bar sits above the map: its clicks never reach the world.
     if (handlers.panelClick(interaction)) {
       return;
     }
+
+    const now = event.timeStamp ?? Date.now();
+    const primaryButton = event.button ?? 0;
+    const isDoublePrimaryTerrainClick =
+      event.pointerType !== "touch" &&
+      primaryButton === 0 &&
+      lastPrimaryTerrainClick !== undefined &&
+      lastPrimaryTerrainClick.column === interaction.tile.column &&
+      lastPrimaryTerrainClick.row === interaction.tile.row &&
+      now - lastPrimaryTerrainClick.at <= doubleClickWindowMs;
+    lastPrimaryTerrainClick = isDoublePrimaryTerrainClick
+      ? undefined
+      : { column: interaction.tile.column, row: interaction.tile.row, at: now };
 
     applyPointerHoverState(root, interaction, event.pointerType);
     applyPointerSelectionState(root, interaction);
@@ -5540,6 +5613,11 @@ function attachPointerMapInteraction(
         delete root.dataset.serfboundCastleConfirm;
       }
 
+      handlers.onSelection(interaction);
+      return;
+    }
+
+    if (isDoublePrimaryTerrainClick && handlers.primaryTerrainAction(interaction)) {
       handlers.onSelection(interaction);
       return;
     }
