@@ -47,6 +47,14 @@ double-click, and direct advanced double-click. The DPR-3 touch punch
 and decoded-scene gates now select an actual small/large plot before
 asserting which build page opens.
 
+Regression follow-up: the reference has two basic building popups.
+`BasicBld` is the plain small-site page and hides the building-page
+flip; `BasicBldFlip` is the large-site page and may cycle through
+advanced pages and back to basic. The browser gate now proves small
+terrain stays on `buildBasic`, while large terrain keeps the
+advanced-to-basic escape route. The flip uses the reference building
+button icon (`61`) rather than the adjacent exit-looking icon.
+
 ## Round 8 (seventh device pass, 2026-06-11) — escalated to the audit
 
 "The lumberjack is teleporting to the tree in a couple of
@@ -239,3 +247,7 @@ their device and saying so.
   `buildAdv1`, small site → `buildBasic`, flag site → build flag,
   owned flag → road builder. The build popup flip must still let a
   large/high-quality plot cycle back to basic buildings.
+- 2026-06-24 — Small-site `BasicBld` and large-site `BasicBldFlip`
+  are distinct UI states: a basic plot cannot flip into advanced
+  building pages, and the large-site cycle remains the only advanced
+  page path.

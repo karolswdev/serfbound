@@ -178,6 +178,7 @@ import {
   type PanelBuildPossibility,
 } from "./panel-bar.js";
 import {
+  buildPopupCanFlip,
   buildPopupKindForBuildPossibility,
   buildPopupPageOrder,
   knightOccupationCycle,
@@ -1320,6 +1321,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   let currentSavedLocalGame: StoredLocalGameSaveRecord | undefined;
   let selectedInteraction: PointerMapInteraction | undefined;
   let currentPopup: PopupKind | undefined;
+  let currentBuildPopupPossibility: PanelBuildPossibility | undefined;
   let currentAiPlayers: SerfboundAiPlayer[] = [];
   // Loopback multiplayer (SB-22-04): the active session and which world
   // player this tab controls.
@@ -1361,8 +1363,15 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
     root.dataset.serfboundAiCount = String(currentAiPlayers.length);
   };
-  const setPopup = (popup: PopupKind | undefined) => {
+  const setPopup = (
+    popup: PopupKind | undefined,
+    buildPossibility?: PanelBuildPossibility,
+  ) => {
     currentPopup = popup;
+    currentBuildPopupPossibility =
+      popup?.startsWith("build") === true
+        ? (buildPossibility ?? currentBuildPopupPossibility ?? computeBuildPossibility())
+        : undefined;
     if (popup === undefined) {
       delete root.dataset.serfboundPopup;
     } else {
@@ -1515,6 +1524,11 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     return "none";
   };
   const computeBuildPossibility = (): PanelBuildPossibility => computeBuildPossibilityFor();
+  const currentBuildPopupCanFlip = (
+    popup: PopupKind | undefined = currentPopup,
+  ): boolean =>
+    popup !== undefined &&
+    buildPopupCanFlip(popup, currentBuildPopupPossibility ?? computeBuildPossibility());
   const computePanelButtons = (): number[] | undefined => {
     if (currentWorld === undefined || currentLandscapeAssets === undefined) {
       return undefined;
@@ -1640,6 +1654,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       currentBuiltStructures,
       panelButtons,
       currentPopup,
+      currentBuildPopupCanFlip(),
       currentNotice,
       initScreenSettings(),
       { sfxMuted: audioService.sfxMuted, musicMuted: audioService.musicMuted },
@@ -2304,7 +2319,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
     const popup = buildPopupKindForBuildPossibility(possibility);
     if (popup !== undefined) {
-      setPopup(popup);
+      setPopup(popup, possibility);
       audioService.playSfx(sfxType.click);
       return true;
     }
@@ -2399,12 +2414,21 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         }
 
         if (currentPopup.startsWith("build")) {
+          const flipEnabled = currentBuildPopupCanFlip();
           const hit = popupBuildItemAt(
-            popup, uiScale, currentPopup, interaction.screen.x, interaction.screen.y,
+            popup,
+            uiScale,
+            currentPopup,
+            interaction.screen.x,
+            interaction.screen.y,
+            { flipEnabled },
           );
           if (hit === "flip") {
             const pageIndex = buildPopupPageOrder.indexOf(currentPopup);
-            setPopup(buildPopupPageOrder[(pageIndex + 1) % buildPopupPageOrder.length]);
+            setPopup(
+              buildPopupPageOrder[(pageIndex + 1) % buildPopupPageOrder.length],
+              currentBuildPopupPossibility,
+            );
           } else if (hit !== null) {
             const tile = selectedInteraction?.tile;
             if (tile !== undefined) {
@@ -5419,6 +5443,7 @@ function renderScene(
   builtStructures: readonly SerfboundBuiltStructure[] = [],
   panelButtons?: readonly number[],
   popup?: PopupKind,
+  buildFlipEnabled = false,
   notice?: string,
   initScreen?: InitScreenSettings,
   audio?: { sfxMuted: boolean; musicMuted: boolean },
@@ -5442,7 +5467,7 @@ function renderScene(
           ...(world === undefined ? {} : { world }),
           ...(serfs === undefined ? {} : { serfs }),
           ...(panelButtons === undefined ? {} : { panel: { buttons: panelButtons } }),
-          ...(popup === undefined ? {} : { popup: { kind: popup } }),
+          ...(popup === undefined ? {} : { popup: { kind: popup, buildFlipEnabled } }),
           ...(notice === undefined ? {} : { notice }),
           ...(audio === undefined ? {} : { audio }),
           ...(selected === undefined ? {} : { selected }),

@@ -4,12 +4,15 @@ import { test } from "node:test";
 import {
   buildDecodedRenderAssets,
   buildLandscapeRenderAssets,
+  buildPopupCanFlip,
   buildPopupKindForBuildPossibility,
   buildPopupPages,
   createLandscapeScene,
   mapBuildingSprite,
   popupBorderLayout,
   popupBuildItemAt,
+  popupFlipButton,
+  popupFlipIcon,
   popupInterior,
   popupRect,
   resourceStatsLayout,
@@ -75,6 +78,16 @@ test("build possibility opens the matching build menu page", () => {
   assert.equal(buildPopupKindForBuildPossibility("none"), undefined);
 });
 
+test("only large-site build popups expose the building-page flip", () => {
+  assert.deepEqual(popupFlipButton, { x: 8, y: 137, width: 16, height: 16 });
+  assert.equal(popupFlipIcon, 61);
+  assert.equal(buildPopupCanFlip("buildBasic", "small"), false);
+  assert.equal(buildPopupCanFlip("buildBasic", "large"), true);
+  assert.equal(buildPopupCanFlip("buildAdv1", "large"), true);
+  assert.equal(buildPopupCanFlip("buildAdv2", "large"), true);
+  assert.equal(buildPopupCanFlip("stats", "large"), false);
+});
+
 test("the resources box mirrors DrawResourcesBox exactly", () => {
   assert.equal(resourceStatsLayout.length, 26, "all 26 resources listed");
   const lumber = resourceStatsLayout.find((entry) => entry.resource === 6);
@@ -94,8 +107,26 @@ test("popup hit testing finds build items and the flip button", () => {
   assert.deepEqual(lumberjack, { building: 2, x: 8, y: 67 });
   // The flip button at (8, 137).
   assert.equal(
-    popupBuildItemAt(rect, 2, "buildBasic", rect.x + 8 * 2 + 4, rect.y + 137 * 2 + 4),
+    popupBuildItemAt(
+      rect,
+      2,
+      "buildBasic",
+      rect.x + 8 * 2 + 4,
+      rect.y + 137 * 2 + 4,
+      { flipEnabled: true },
+    ),
     "flip",
+  );
+  assert.equal(
+    popupBuildItemAt(
+      rect,
+      2,
+      "buildBasic",
+      rect.x + 8 * 2 + 4,
+      rect.y + 137 * 2 + 4,
+      { flipEnabled: false },
+    ),
+    null,
   );
   // Open space hits nothing.
   assert.equal(popupBuildItemAt(rect, 2, "buildBasic", rect.x + 4, rect.y + 4), null);

@@ -7,6 +7,7 @@ import {
   popupBackgroundIcon,
   popupBorderLayout,
   popupFlipButton,
+  popupFlipIcon,
   popupHeight,
   popupInterior,
   popupRect,
@@ -554,7 +555,7 @@ export type LandscapeSceneOptions = {
   // (SB-16-02; computed from game state by the shell).
   readonly panel?: { readonly buttons: readonly number[] };
   // The open popup, if any (SB-16-03).
-  readonly popup?: { readonly kind: PopupKind };
+  readonly popup?: { readonly kind: PopupKind; readonly buildFlipEnabled?: boolean };
   // A notification banner in the game font (SB-16-04).
   readonly notice?: string;
   // Audio settings shown in the sett popup (SB-17-03).
@@ -1039,11 +1040,15 @@ export function createLandscapeScene(options: LandscapeSceneOptions): FirstRende
         );
       }
 
-      // The flip button cycles the pages.
-      pushUiSprite(
-        sprites, atlas, "uii:60",
-        rect.x + popupFlipButton.x * uiScale, rect.y + popupFlipButton.y * uiScale, uiScale,
-      );
+      if (options.popup.buildFlipEnabled === true) {
+        // The flip button cycles the pages.
+        pushUiSprite(
+          sprites, atlas, `uii:${popupFlipIcon}`,
+          rect.x + popupFlipButton.x * uiScale,
+          rect.y + popupFlipButton.y * uiScale,
+          uiScale,
+        );
+      }
     } else if (kind === "stats") {
       const inventory = options.world.inventoryForPlayer(0);
       for (const entry of resourceStatsLayout) {

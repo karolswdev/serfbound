@@ -149,6 +149,24 @@ test("large terrain opens advanced buildings but can cycle back to basic", async
   );
 });
 
+test("small terrain opens basic buildings without the advanced-page flip", async ({ page }) => {
+  test.setTimeout(120_000);
+  const app = page.locator("#app");
+  const canvas = await importAndStart(page);
+  await foundCastle(page, canvas);
+
+  const smallSite = await findTerrainPointForBuildButton(page, canvas, 3);
+  await page.waitForTimeout(500);
+  await canvas.dblclick({ position: smallSite, force: true });
+  await expect(app).toHaveAttribute("data-serfbound-popup", "buildBasic");
+
+  const popup = await publishedRect(page, "data-serfbound-popup-rect");
+  const scale = popup.width / 144;
+  const disabledFlip = { x: popup.x + 16 * scale, y: popup.y + 145 * scale };
+  await canvas.click({ position: disabledFlip, force: true });
+  await expect(app).toHaveAttribute("data-serfbound-popup", "buildBasic");
+});
+
 test("terrain double-click invokes flag and road primary actions", async ({ page }) => {
   test.setTimeout(120_000);
   const app = page.locator("#app");

@@ -121,7 +121,7 @@ async function foundCastle(
   throw new Error("no castle site reachable in the probe window");
 }
 
-async function selectBuildablePlot(page: import("@playwright/test").Page): Promise<void> {
+async function selectBuildablePlot(page: import("@playwright/test").Page): Promise<number> {
   const app = page.locator("#app");
   const canvas = page.getByTestId("terrain-preview");
   const box = await canvas.boundingBox();
@@ -140,7 +140,7 @@ async function selectBuildablePlot(page: import("@playwright/test").Page): Promi
     const buildButton = Number(((await app.getAttribute("data-serfbound-panel-buttons")) ?? "0")
       .split(",")[0]);
     if (buildButton === 3 || buildButton === 4) {
-      return;
+      return buildButton;
     }
   }
 
@@ -356,7 +356,7 @@ test("punch 6: the build popup fits and its content is hit-true at DPR 3", async
   }
 
   // Open the build popup from the panel bar's build slot (slot 0).
-  await selectBuildablePlot(page);
+  const selectedBuildButton = await selectBuildablePlot(page);
   const panel = await publishedRect(page, "data-serfbound-panel-rect");
   const chromeScale = panel.width / 320;
   await page.touchscreen.tap(
@@ -440,13 +440,19 @@ test("punch 6: the build popup fits and its content is hit-true at DPR 3", async
     0.12,
   );
 
-  // Content hit-truth: the flip button (reference 16x16 at (8,137))
-  // cycles the build pages.
+  // Content hit-truth: the reference building-page flip button
+  // (16x16 at 8,137) cycles only when the selected plot is a large
+  // build site. Small/basic terrain must not tunnel into advanced
+  // buildings through this control.
   const before = await app.getAttribute("data-serfbound-popup");
   await page.touchscreen.tap(
     box.x + popup.x + (8 + 8) * interiorScale,
     box.y + popup.y + (137 + 8) * interiorScale,
   );
-  await expect(app).not.toHaveAttribute("data-serfbound-popup", before ?? "");
-  await expect(app).toHaveAttribute("data-serfbound-popup", /build/);
+  if (selectedBuildButton === 4) {
+    await expect(app).not.toHaveAttribute("data-serfbound-popup", before ?? "");
+    await expect(app).toHaveAttribute("data-serfbound-popup", /build/);
+  } else {
+    await expect(app).toHaveAttribute("data-serfbound-popup", before ?? "");
+  }
 });

@@ -114,7 +114,14 @@ export const buildPopupPageOrder: readonly PopupKind[] = [
   "buildAdv2",
 ];
 
-type BuildPopupPossibility = "large" | "small" | "mine" | "flag" | "road" | "castle" | "none";
+export type BuildPopupPossibility =
+  | "large"
+  | "small"
+  | "mine"
+  | "flag"
+  | "road"
+  | "castle"
+  | "none";
 
 export function buildPopupKindForBuildPossibility(
   possibility: BuildPopupPossibility,
@@ -130,8 +137,17 @@ export function buildPopupKindForBuildPossibility(
   return undefined;
 }
 
-// The flip button at (8, 137) cycles the build pages.
+export function buildPopupCanFlip(
+  page: PopupKind,
+  possibility: BuildPopupPossibility,
+): boolean {
+  return page.startsWith("build") && possibility === "large";
+}
+
+// Freeserf.Core PopupBox.Draw*BuildingBox: building-menu page flip at
+// (8, 137), icon 61. BasicBld hides it; BasicBldFlip/advanced pages show it.
 export const popupFlipButton = { x: 8, y: 137, width: 16, height: 16 } as const;
+export const popupFlipIcon = 61;
 
 export type ResourceStatsEntry = {
   readonly resource: number;
@@ -187,6 +203,7 @@ export function popupBuildItemAt(
   page: PopupKind,
   pointX: number,
   pointY: number,
+  options: { readonly flipEnabled: boolean } = { flipEnabled: true },
 ): BuildPopupItem | "flip" | null {
   const items = buildPopupPages[page];
   if (items === undefined) {
@@ -196,6 +213,7 @@ export function popupBuildItemAt(
   const flipX = rect.x + popupFlipButton.x * scale;
   const flipY = rect.y + popupFlipButton.y * scale;
   if (
+    options.flipEnabled &&
     pointX >= flipX &&
     pointX < flipX + popupFlipButton.width * scale &&
     pointY >= flipY &&
