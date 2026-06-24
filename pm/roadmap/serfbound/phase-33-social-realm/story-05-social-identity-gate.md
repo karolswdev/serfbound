@@ -29,6 +29,9 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
   rated match.
 - [x] Service-level identity v2 sessions authorize mailbox, maps, and rating
   writes without device keys, while the Phase 25 bridge remains available.
+- [x] Browser community-map publish, rate, report, and play-count writes can
+  use an email v2 session proof without device keys, while the legacy online
+  correspondence surface remains signed out.
 - [ ] Browser passkey ceremony and persistence are implemented and gate-tested.
 - [ ] Live provider handoff is configured for at least one provider and
   gate-tested without accepting raw provider tokens in the browser.
@@ -42,6 +45,9 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
 - Browser:
   - `tests/browser/social-identity-gate.spec.ts` — accountless zero-network
     regression.
+  - `tests/browser/community-maps.spec.ts` — existing device-key map flow plus
+    email v2 session map publish/rate/report/play-count writes without device
+    keys.
   - `tests/browser/online-states.spec.ts` — v2 email shell moment + legacy
     correspondence bridge state.
   - `tests/browser/online-play.spec.ts` and `tests/browser/gamification-gate.spec.ts`
@@ -54,7 +60,8 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
   - `tests/ci/service-maps.test.mjs` — v2 session publish, rate, report,
     play count, and delete without device keys.
 - Remaining before closure: browser passkey, live provider handoff, browser v2
-  mailbox/maps/rating journey, full sign-in-method-to-rated-match e2e.
+  correspondence/rated-match journey, provider/passkey coverage for social
+  writes, and full sign-in-method-to-rated-match e2e.
 
 ## Notes / open questions
 

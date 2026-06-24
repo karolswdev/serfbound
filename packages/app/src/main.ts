@@ -110,9 +110,13 @@ import {
   fetchMap,
   listMaps,
   publishMap,
+  publishMapWithIdentityV2,
   rateMap,
+  rateMapWithIdentityV2,
   reportMap,
   reportMapPlayed,
+  reportMapPlayedWithIdentityV2,
+  reportMapWithIdentityV2,
   type MapGalleryEntry,
 } from "./maps-client.js";
 import {
@@ -3388,8 +3392,15 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   let communityGallery: readonly MapGalleryEntry[] = [];
   let communityLibrary: readonly StoredCommunityMapRecord[] = [];
   let activeCommunityMapId: string | null = null;
+  const identityV2Session = () => identityV2Account?.session;
+  const communityMapsAuthMode = () =>
+    identityV2Session() !== undefined
+      ? "identity-v2"
+      : onlineSurface.status === "signed-in" && onlineSurface.keys !== undefined
+        ? "device-key"
+        : "signed-out";
   const canUseSignedCommunityActions = () =>
-    onlineSurface.status === "signed-in" && onlineSurface.keys !== undefined;
+    communityMapsAuthMode() !== "signed-out";
   const selectedPlayersFilter = () => {
     const value = mapsFilterPlayers?.value ?? "";
     const parsed = Number(value);
@@ -3466,6 +3477,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     root.dataset.serfboundMapsStatus = communityMapsStatus;
     root.dataset.serfboundMapsGalleryCount = String(communityGallery.length);
     root.dataset.serfboundMapsLibraryCount = String(communityLibrary.length);
+    root.dataset.serfboundMapsAuth = communityMapsAuthMode();
     if (activeCommunityMapId === null) {
       delete root.dataset.serfboundCommunityMapId;
     } else {
@@ -3507,7 +3519,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     }
     if (mapsSigninButton !== null) {
       mapsSigninButton.disabled =
-        communityMapsBusy || onlineSurface.status === "signed-in" || onlineSurface.status === "signing-in";
+        communityMapsBusy || canUseSignedCommunityActions() || onlineSurface.status === "signing-in";
     }
     if (mapsRefreshButton !== null) {
       mapsRefreshButton.disabled = communityMapsBusy;
@@ -3567,9 +3579,14 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     }
   };
   const publishCurrentEditorMap = async (): Promise<void> => {
+    const session = identityV2Session();
     const keys = onlineSurface.keys;
-    const authorKeyId = onlineSurface.accountId;
-    if (currentEditor === undefined || keys === undefined || authorKeyId === undefined) {
+    const authorKeyId = session?.accountId ?? onlineSurface.accountId;
+    if (
+      currentEditor === undefined ||
+      authorKeyId === undefined ||
+      (session === undefined && keys === undefined)
+    ) {
       communityMapsStatus = "idle";
       communityMapsDetail = "Sign in and open the map editor before publishing.";
       syncCommunityMapsState();
@@ -3585,7 +3602,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       currentEditor.editor,
       title,
       authorKeyId,
-      onlineSurface.accountName ?? currentProfile.name,
+      session?.displayName ?? onlineSurface.accountName ?? currentProfile.name,
       new Date().toISOString(),
     );
     const thumbnail = thumbnailDataUrlForMap(map);
@@ -3594,7 +3611,14 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     }
 
     try {
-      const mapId = await publishMap(onlineConfig.mapsUrl, keys, map);
+      let mapId: string;
+      if (session !== undefined) {
+        mapId = await publishMapWithIdentityV2(onlineConfig.mapsUrl, session, map);
+      } else if (keys !== undefined) {
+        mapId = await publishMap(onlineConfig.mapsUrl, keys, map);
+      } else {
+        return;
+      }
       activeCommunityMapId = mapId;
       communityMapsStatus = "published";
       communityMapsDetail = `${map.meta.title} is in the gallery.`;
@@ -3656,7 +3680,17 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       closeEditor();
     }
     startGameNow({ customMap: record.map });
-    if (onlineSurface.keys !== undefined) {
+    const session = identityV2Session();
+    if (session !== undefined) {
+      void reportMapPlayedWithIdentityV2(onlineConfig.mapsUrl, session, record.mapId)
+        .then((played) => {
+          communityGallery = communityGallery.map((entry) =>
+            entry.mapId === record.mapId ? { ...entry, timesPlayed: played.timesPlayed } : entry,
+          );
+          syncCommunityMapsState();
+        })
+        .catch(() => {});
+    } else if (onlineSurface.keys !== undefined) {
       void reportMapPlayed(onlineConfig.mapsUrl, onlineSurface.keys, record.mapId)
         .then((played) => {
           communityGallery = communityGallery.map((entry) =>
@@ -3669,8 +3703,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     syncCommunityMapsState();
   };
   const rateCommunityMap = async (mapId: string, stars: number): Promise<void> => {
+    const session = identityV2Session();
     const keys = onlineSurface.keys;
-    if (keys === undefined) {
+    if (session === undefined && keys === undefined) {
       return;
     }
 
@@ -3679,7 +3714,14 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     communityMapsDetail = "Rating map.";
     syncCommunityMapsState();
     try {
-      const rated = await rateMap(onlineConfig.mapsUrl, keys, mapId, stars);
+      let rated: { rating: number; ratingCount: number };
+      if (session !== undefined) {
+        rated = await rateMapWithIdentityV2(onlineConfig.mapsUrl, session, mapId, stars);
+      } else if (keys !== undefined) {
+        rated = await rateMap(onlineConfig.mapsUrl, keys, mapId, stars);
+      } else {
+        return;
+      }
       communityGallery = communityGallery.map((entry) =>
         entry.mapId === mapId
           ? { ...entry, rating: rated.rating, ratingCount: rated.ratingCount }
@@ -3696,8 +3738,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     }
   };
   const reportCommunityMap = async (mapId: string): Promise<void> => {
+    const session = identityV2Session();
     const keys = onlineSurface.keys;
-    if (keys === undefined) {
+    if (session === undefined && keys === undefined) {
       return;
     }
 
@@ -3706,7 +3749,14 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     communityMapsDetail = "Reporting map.";
     syncCommunityMapsState();
     try {
-      const reported = await reportMap(onlineConfig.mapsUrl, keys, mapId);
+      let reported: { quarantined: boolean; reports: number };
+      if (session !== undefined) {
+        reported = await reportMapWithIdentityV2(onlineConfig.mapsUrl, session, mapId);
+      } else if (keys !== undefined) {
+        reported = await reportMap(onlineConfig.mapsUrl, keys, mapId);
+      } else {
+        return;
+      }
       if (reported.quarantined) {
         communityGallery = communityGallery.filter((entry) => entry.mapId !== mapId);
       }
@@ -3727,6 +3777,11 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     root.dataset.serfboundSigninStatus = signInMomentStatus;
     if (identityV2Account !== undefined) {
       root.dataset.serfboundIdentityV2AccountId = identityV2Account.accountId;
+      root.dataset.serfboundIdentityV2Session =
+        identityV2Account.session === undefined ? "false" : "true";
+    } else {
+      delete root.dataset.serfboundIdentityV2AccountId;
+      delete root.dataset.serfboundIdentityV2Session;
     }
 
     for (const button of signInMethodButtons) {
@@ -3827,6 +3882,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     signInMomentStatus = "ready";
     signInMomentMessage = `V2 account ready for ${identityV2Account.displayName}. Local play stays open.`;
     syncSignInMoment();
+    syncCommunityMapsState();
   };
   void loadCommunityLibrary();
   let lastYourTurnCount = 0;
