@@ -2,10 +2,10 @@
 
 - **Project:** serfbound
 - **Phase:** 33
-- **Status:** backlog
+- **Status:** done
 - **Depends on:** SB-33-03
 - **Unblocks:** SB-33-05
-- **Owner:** unassigned
+- **Owner:** KC (agent-assisted)
 
 ## Problem
 
@@ -18,13 +18,28 @@ The discovery story: what the completely new settlers experience IS for opted-in
 
 ## Acceptance criteria
 
-- [ ] Detailed at phase start per the decision record; the unbreakables hold.
+- [x] `../adoption/social-experience-definition.md` exists as the accepted
+  planning boundary for friends, guild rosters, presence, and the social hub.
+- [x] The record states the two unbreakables: accountless local play remains
+  first-class, and collected social data is named plainly.
+- [x] The record scopes the next candidate social phases after the Phase 33
+  gate without implementing feature code.
+- [x] The record forbids original game data, local saves, provider tokens,
+  analytics/tracking ids, address books, browser fingerprints, exact presence
+  history, and device keys as v2 credentials.
+- [x] CI guards the definition so later edits cannot silently erase the
+  unbreakables, pillars, data posture, or phase scope.
 
 ## Test plan
 
-- Defined at phase start; the gate (SB-33-05) carries the journey e2e and the accountless regression.
+- Unit/docs guard: `tests/ci/social-experience-definition.test.mjs`.
+- PMO/docs checks: `npm run test:unit`, `npm run test:docs`, and
+  `npm run check:links`.
+- Gate note: SB-33-05 still carries the sign-in journey e2e and accountless
+  zero-network regression.
 
 ## Notes / open questions
 
 - Canon: `../adoption/social-identity-decision.md` (supersedes Phase 25
   identity by maintainer direction, 2026-06-11).
+- New canon: `../adoption/social-experience-definition.md`.

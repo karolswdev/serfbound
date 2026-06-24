@@ -1,8 +1,8 @@
 # Phase 33 — The Social Realm
 
 **Last updated:** 2026-06-23.
-**Status:** in progress (SB-33-01 through SB-33-03 complete; the social
-experience definition starts at SB-33-04).
+**Status:** in progress (SB-33-01 through SB-33-04 complete; the social
+identity gate starts at SB-33-05).
 
 ## Goal
 
@@ -36,7 +36,7 @@ stated plainly where players see it.
   (SB-33-02)
 - [x] The shell's sign-in moment is designed per the standard;
   accountless play remains visually primary. (SB-33-03)
-- [ ] The social-experience definition exists with the maintainer's
+- [x] The social-experience definition exists with the maintainer's
   sign-off, scoping the phases after this one. (SB-33-04)
 - [ ] The gate: the full opt-in journey e2e + the accountless
   regression (zero walls, zero degradation, zero network). (SB-33-05)
@@ -48,7 +48,7 @@ stated plainly where players see it.
 | SB-33-01 | Identity v2 schema and the honest posture | done | story-01-identity-v2-posture.md | evidence-story-01.md |
 | SB-33-02 | Accounts v2: credentials, providers, passkeys, migration | done | story-02-accounts-v2-service.md | evidence-story-02.md |
 | SB-33-03 | The sign-in moment | done | story-03-sign-in-moment.md | evidence-story-03.md |
-| SB-33-04 | The social experience, defined | backlog | story-04-social-experience-definition.md | — |
+| SB-33-04 | The social experience, defined | done | story-04-social-experience-definition.md | evidence-story-04.md |
 | SB-33-05 | Social identity gate | backlog | story-05-social-identity-gate.md | — |
 
 ## Where we are
@@ -70,11 +70,19 @@ tokens; the collected-data sentence remains visible; and accountless play is
 called out beside the controls. The Phase 25 correspondence key is now labeled
 as a temporary bridge instead of a v2 credential.
 
-Next practical start: SB-33-04, the social-experience definition. OAuth
-provider registrations (Apple Developer, Google Cloud, Meta) and browser
-passkey ceremonies remain maintainer/platform prerequisites for the SB-33-05
-gate; the service refuses provider claims unless an OIDC assertion handoff
-secret is configured.
+SB-33-04 then accepted `../adoption/social-experience-definition.md` as the
+planning boundary for the opt-in social game: friends, real guild rosters,
+presence, and a compact social hub. The record reserves candidate Phases 45-48
+for the social graph, guild rosters, presence/hub, and social safety gate, and
+forbids social storage from collecting original game data, local saves,
+provider tokens, analytics/tracking ids, address books, browser fingerprints,
+exact presence history, or device keys as v2 credentials. A CI guard now keeps
+that boundary from drifting.
+
+Next practical start: SB-33-05, the social identity gate. OAuth provider
+registrations (Apple Developer, Google Cloud, Meta) and browser passkey
+ceremonies remain maintainer/platform prerequisites; the service refuses
+provider claims unless an OIDC assertion handoff secret is configured.
 
 ## Active risks
 
@@ -103,6 +111,10 @@ secret is configured.
   current correspondence bridge are distinct shell surfaces. Email is live
   against identity v2; passkey/provider controls stay designed but non-claiming
   until the SB-33-05 gate.
+- 2026-06-23 — SB-33-04 accepted
+  `../adoption/social-experience-definition.md` as the social realm boundary:
+  friends, guilds, presence, and hub are later phases; accountless local play
+  remains outside the social dependency graph.
 
 ## Decisions deferred
 

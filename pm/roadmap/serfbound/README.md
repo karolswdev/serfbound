@@ -35,7 +35,8 @@ Remaining: realtime WebRTC online play (27), product experience
 SB-33-01 accepted the identity v2 schema/privacy posture and retired the
 Phase 25 four-field ceiling as a limit; SB-33-02 shipped the v2 account
 service contract; SB-33-03 shipped the player-facing sign-in moment with
-live email v2 readiness; SB-33-04 defines the social experience next).
+live email v2 readiness; SB-33-04 accepted the social-experience definition;
+SB-33-05 is the identity gate next).
 
 ## Vision
 
@@ -111,6 +112,10 @@ not contain .NET runtime code, desktop-shell code, or a desktop deliverable.
 - `pm/roadmap/serfbound/adoption/identity-v2-schema.md` - the Phase 33
   identity v2 contract: credential kinds, privacy posture, accountless
   guarantees, legacy device-key linking, and mailbox hardening.
+- `pm/roadmap/serfbound/adoption/social-experience-definition.md` - the Phase
+  33 opt-in social realm boundary: friends, guild rosters, presence, social
+  hub, allowed social records, forbidden collected fields, and candidate
+  Phases 45-48.
 - `pm/roadmap/serfbound/adoption/map-builder-and-community-maps-decision.md` -
   the 2026-06-13 product expansion: an in-browser map editor (real tiles via
   the production renderer, import-gated like playing) and community map sharing
