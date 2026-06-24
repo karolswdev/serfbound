@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-06-23.
 **Status:** in progress (SB-33-01 through SB-33-04 complete; SB-33-05 has
-started with the accountless zero-network gate slice).
+started with accountless zero-network proof and the v2 service auth adapter).
 
 ## Goal
 
@@ -85,9 +85,15 @@ what is proven versus still blocking closure, and
 -> save emits zero online requests even when online endpoints are configured.
 The service contract and shell coverage already prove v2 email readiness,
 provider/passkey service boundaries, and the current rated-match bridge.
+The next SB-33-05 slice added non-stored identity v2 session proofs: identity
+issues `sbv2` bearer proofs when a shared session secret is configured, and
+mailbox/maps/rating accept those proofs beside the Phase 25 signed-key bridge.
+The service contracts now prove v2 session challenge, move posting, dual
+attestation, rating, map publishing, map rating/reporting, play counts, and
+delete without device keys as v2 credentials.
 
 The full gate is still open: browser passkey ceremony and persistence, live
-provider handoff, v2 mailbox/maps/rating authorization, and the complete
+provider handoff, browser wiring for v2 mailbox/maps/rating, and the complete
 sign-in-method-to-rated-match e2e remain required before SB-33-05 can close.
 
 ## Active risks
@@ -124,6 +130,10 @@ sign-in-method-to-rated-match e2e remain required before SB-33-05 can close.
 - 2026-06-23 — SB-33-05 gate split: accountless zero-network proof is
   executable now; full closure waits for browser passkeys, live provider
   handoff, and v2 mailbox/maps/rating authorization.
+- 2026-06-23 — SB-33-05 service auth adapter: identity v2 sessions are
+  non-stored HMAC bearer proofs (`SERFBOUND_IDENTITY_V2_SESSION_SECRET`);
+  mailbox/maps/rating accept them beside the legacy bridge without treating
+  device keys as v2 credentials.
 
 ## Decisions deferred
 

@@ -76,6 +76,19 @@ test("identity v2 credential kinds are explicit and do not store secrets", () =>
   );
 });
 
+test("identity v2 session proofs are non-stored social authorization proofs", () => {
+  assert.equal(schema.sessionProof.kind, "identity-v2-session");
+  assert.equal(schema.sessionProof.issuedWhenConfiguredBy, "SERFBOUND_IDENTITY_V2_SESSION_SECRET");
+  assert.deepEqual(schema.sessionProof.storedFields, []);
+  assert.ok(schema.sessionProof.acceptedBy.includes("mailbox"));
+  assert.ok(schema.sessionProof.acceptedBy.includes("maps"));
+  assert.ok(schema.sessionProof.acceptedBy.includes("rating"));
+  assert.ok(schema.sessionProof.payloadFields.includes("accountId"));
+  assert.ok(schema.sessionProof.payloadFields.includes("expiresAtIso"));
+  assert.equal(schema.sessionProof.forbiddenFields.includes("idToken"), true);
+  assert.equal(schema.sessionProof.forbiddenFields.includes("deviceKey"), true);
+});
+
 test("identity v2 privacy posture is printed where players read it", () => {
   const required = [
     "Online identity is optional",

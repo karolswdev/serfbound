@@ -4,16 +4,28 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { generateIdentityKeys, signIdentityPayload } from "@serfbound/app";
+import {
+  createPasswordIdentityV2Account,
+  deleteMapWithIdentityV2,
+  generateIdentityKeys,
+  publishMapWithIdentityV2,
+  rateMapWithIdentityV2,
+  reportMapPlayedWithIdentityV2,
+  reportMapWithIdentityV2,
+  signIdentityPayload,
+} from "@serfbound/app";
 import { MapEditor, encodeCustomMap, generateClassicMap } from "@serfbound/engine";
 
 // SB-43-01: the maps service contract — publish/list/fetch/rate/report/
 // delete against the real zero-dep server, signature-verified, and the
 // "no original-data field" guarantee.
 
+let identityServer;
 let server;
+let identityUrl;
 let serviceUrl;
 let storeDir;
+const v2SessionSecret = "service-maps-test-v2-session";
 
 before(async () => {
   if (process.env.SERFBOUND_MAPS_URL) {
@@ -22,19 +34,36 @@ before(async () => {
   }
 
   storeDir = mkdtempSync(join(tmpdir(), "serfbound-maps-"));
+  process.env.SERFBOUND_IDENTITY_AUTOSTART = "0";
+  process.env.SERFBOUND_IDENTITY_STORE = join(storeDir, "identity.json");
+  process.env.SERFBOUND_IDENTITY_V2_SESSION_SECRET = v2SessionSecret;
   process.env.SERFBOUND_MAPS_AUTOSTART = "0";
   process.env.SERFBOUND_MAPS_STORE = join(storeDir, "maps.json");
+  ({ server: identityServer } = await import("../../services/identity/server.mjs"));
   ({ server } = await import("../../services/maps/server.mjs"));
+  await new Promise((resolve) => identityServer.listen(0, resolve));
   await new Promise((resolve) => server.listen(0, resolve));
+  identityUrl = `http://127.0.0.1:${identityServer.address().port}`;
   serviceUrl = `http://127.0.0.1:${server.address().port}`;
 });
 
 after(() => {
+  identityServer?.close();
   server?.close();
   if (storeDir) {
     rmSync(storeDir, { recursive: true, force: true });
   }
 });
+
+async function createV2Session(email, displayName) {
+  const account = await createPasswordIdentityV2Account(identityUrl, {
+    email,
+    password: "long-enough-password",
+    displayName,
+  });
+  assert.equal(account.session?.kind, "identity-v2-session");
+  return account.session;
+}
 
 async function fingerprint(keys) {
   // Mirror the service's keyFingerprint over the public JWK.
@@ -63,6 +92,25 @@ async function authoredMap(keys, title = "TEST MAP", authorName = "TESTER") {
       authorKeyId,
       authorName,
       createdAtIso: "2026-06-13T00:00:00.000Z",
+    },
+    { playerCount: 1, starts: [] },
+  );
+}
+
+function authoredV2Map(accountId, title = "V2 MAP", authorName = "V2MAKER") {
+  const base = generateClassicMap(3, [1, 2, 3]);
+  const editor = new MapEditor(base);
+  editor.heights.fill(4);
+  editor.typesUp.fill(5);
+  editor.typesDown.fill(5);
+  editor.objects.fill(0);
+  return encodeCustomMap(
+    editor.toLandscape(),
+    {
+      title,
+      authorKeyId: accountId,
+      authorName,
+      createdAtIso: "2026-06-23T00:00:00.000Z",
     },
     { playerCount: 1, starts: [] },
   );
@@ -97,6 +145,49 @@ test("a signed map publishes, lists, and fetches back whole (SB-43-01)", async (
   assert.equal(fetched.map.contentHash, map.contentHash, "the fetched map is whole");
   assert.equal(fetched.view.downloads, 1, "the download counter bumped");
 });
+
+test(
+  "v2 identity sessions publish, rate, report, count plays, and delete maps",
+  { skip: process.env.SERFBOUND_MAPS_URL ? "URL-override mode does not start identity v2." : false },
+  async () => {
+    const author = await createV2Session("map-author-v2@example.com", "mapmaker");
+    const map = authoredV2Map(author.accountId, "V2 HARBOR", "ignored");
+    const mapId = await publishMapWithIdentityV2(serviceUrl, author, map);
+    assert.match(mapId, /^[0-9a-f-]{36}$/);
+
+    const gallery = await (await fetch(`${serviceUrl}/maps`)).json();
+    const listed = gallery.maps.find((m) => m.mapId === mapId);
+    assert.equal(listed.authorKeyId, author.accountId);
+    assert.equal(listed.authorName, "MAPMAKER", "the service uses the v2 display name");
+
+    const rater = await createV2Session("map-rater-v2@example.com", "rater");
+    const rated = await rateMapWithIdentityV2(serviceUrl, rater, mapId, 4);
+    assert.equal(rated.rating, 4);
+    assert.equal(rated.ratingCount, 1);
+
+    const played = await reportMapPlayedWithIdentityV2(serviceUrl, rater, mapId);
+    assert.equal(played.timesPlayed, 1);
+
+    const reported = await reportMapWithIdentityV2(serviceUrl, rater, mapId);
+    assert.equal(reported.reports, 1);
+    assert.equal(reported.quarantined, false);
+
+    const bad = await fetch(`${serviceUrl}/maps/${mapId}/rate`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer sbv2.bad.bad",
+      },
+      body: JSON.stringify({ stars: 5 }),
+    });
+    assert.equal(bad.status, 401);
+    assert.equal((await bad.json()).error, "bad-v2-session");
+
+    await deleteMapWithIdentityV2(serviceUrl, author, mapId);
+    const afterDelete = await (await fetch(`${serviceUrl}/maps`)).json();
+    assert.equal(afterDelete.maps.some((entry) => entry.mapId === mapId), false);
+  },
+);
 
 test("a bad signature and an over-cap payload are refused (SB-43-01)", async () => {
   const keys = await generateIdentityKeys();

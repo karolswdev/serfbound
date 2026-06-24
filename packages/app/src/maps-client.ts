@@ -1,5 +1,6 @@
 import type { SerfboundCustomMap } from "@serfbound/engine";
 import { IdentityServiceError, signIdentityPayload, type IdentityKeys } from "./identity-client.js";
+import { identityV2AuthorizationHeaders, type IdentityV2Session } from "./identity-v2-client.js";
 
 // The community-maps client (SB-43-03): publish/browse/fetch/rate/
 // report/delete authored maps and report plays, against the maps
@@ -40,6 +41,20 @@ export async function publishMap(
     signedAtIso,
     signature,
   })) as { mapId: string };
+  return result.mapId;
+}
+
+export async function publishMapWithIdentityV2(
+  serviceUrl: string,
+  session: IdentityV2Session,
+  map: SerfboundCustomMap,
+): Promise<string> {
+  const result = (await requestJson(
+    `${serviceUrl}/maps`,
+    "POST",
+    { map },
+    identityV2AuthorizationHeaders(session),
+  )) as { mapId: string };
   return result.mapId;
 }
 
@@ -84,6 +99,20 @@ export async function rateMap(
   })) as { rating: number; ratingCount: number };
 }
 
+export async function rateMapWithIdentityV2(
+  serviceUrl: string,
+  session: IdentityV2Session,
+  mapId: string,
+  stars: number,
+): Promise<{ rating: number; ratingCount: number }> {
+  return (await requestJson(
+    `${serviceUrl}/maps/${mapId}/rate`,
+    "POST",
+    { stars },
+    identityV2AuthorizationHeaders(session),
+  )) as { rating: number; ratingCount: number };
+}
+
 export async function reportMap(
   serviceUrl: string,
   keys: IdentityKeys,
@@ -96,6 +125,19 @@ export async function reportMap(
     signedAtIso,
     signature,
   })) as { quarantined: boolean; reports: number };
+}
+
+export async function reportMapWithIdentityV2(
+  serviceUrl: string,
+  session: IdentityV2Session,
+  mapId: string,
+): Promise<{ quarantined: boolean; reports: number }> {
+  return (await requestJson(
+    `${serviceUrl}/maps/${mapId}/report`,
+    "POST",
+    {},
+    identityV2AuthorizationHeaders(session),
+  )) as { quarantined: boolean; reports: number };
 }
 
 // A signed-in player opting to report a match they played (SB-43-06).
@@ -113,6 +155,19 @@ export async function reportMapPlayed(
   })) as { timesPlayed: number };
 }
 
+export async function reportMapPlayedWithIdentityV2(
+  serviceUrl: string,
+  session: IdentityV2Session,
+  mapId: string,
+): Promise<{ timesPlayed: number }> {
+  return (await requestJson(
+    `${serviceUrl}/maps/${mapId}/played`,
+    "POST",
+    {},
+    identityV2AuthorizationHeaders(session),
+  )) as { timesPlayed: number };
+}
+
 export async function deleteMap(
   serviceUrl: string,
   keys: IdentityKeys,
@@ -127,14 +182,33 @@ export async function deleteMap(
   });
 }
 
-async function requestJson(url: string, method: string, body?: unknown): Promise<unknown> {
+export async function deleteMapWithIdentityV2(
+  serviceUrl: string,
+  session: IdentityV2Session,
+  mapId: string,
+): Promise<void> {
+  await requestJson(
+    `${serviceUrl}/maps/${mapId}`,
+    "DELETE",
+    {},
+    identityV2AuthorizationHeaders(session),
+  );
+}
+
+async function requestJson(
+  url: string,
+  method: string,
+  body?: unknown,
+  headers: Record<string, string> = {},
+): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(url, {
       method,
       ...(body === undefined
         ? {}
-        : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+        : { headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) }),
+      ...(body === undefined && Object.keys(headers).length > 0 ? { headers } : {}),
     });
   } catch {
     throw new IdentityServiceError("unreachable", "The maps service is unreachable.");

@@ -6,14 +6,20 @@ import { join } from "node:path";
 
 import {
   acceptChallenge,
+  acceptChallengeWithIdentityV2,
+  createPasswordIdentityV2Account,
   createChallenge,
+  createChallengeWithIdentityV2,
   fetchMatch,
   generateIdentityKeys,
   identityAccountId,
   listChallenges,
   listMatchesForKey,
+  listMatchesForIdentityV2,
   postMove,
+  postMoveWithIdentityV2,
   signIdentityPayload,
+  submitResultWithIdentityV2,
 } from "@serfbound/app";
 import { CorrespondenceMatch } from "@serfbound/engine";
 
@@ -40,9 +46,12 @@ const terms = {
   pickupSeconds: 3600,
 };
 
+let identityServer;
 let server;
+let identityUrl;
 let serviceUrl;
 let storeDir;
+const v2SessionSecret = "service-mailbox-test-v2-session";
 
 before(async () => {
   // SB-29-02: with SERFBOUND_MAILBOX_URL set, the same contract suite
@@ -53,19 +62,36 @@ before(async () => {
   }
 
   storeDir = mkdtempSync(join(tmpdir(), "serfbound-mailbox-"));
+  process.env.SERFBOUND_IDENTITY_AUTOSTART = "0";
+  process.env.SERFBOUND_IDENTITY_STORE = join(storeDir, "identity.json");
+  process.env.SERFBOUND_IDENTITY_V2_SESSION_SECRET = v2SessionSecret;
   process.env.SERFBOUND_MAILBOX_AUTOSTART = "0";
   process.env.SERFBOUND_MAILBOX_STORE = join(storeDir, "matches.json");
+  ({ server: identityServer } = await import("../../services/identity/server.mjs"));
   ({ server } = await import("../../services/mailbox/server.mjs"));
+  await new Promise((resolve) => identityServer.listen(0, resolve));
   await new Promise((resolve) => server.listen(0, resolve));
+  identityUrl = `http://127.0.0.1:${identityServer.address().port}`;
   serviceUrl = `http://127.0.0.1:${server.address().port}`;
 });
 
 after(() => {
+  identityServer?.close();
   server?.close();
   if (storeDir) {
     rmSync(storeDir, { recursive: true, force: true });
   }
 });
+
+async function createV2Session(email, displayName) {
+  const account = await createPasswordIdentityV2Account(identityUrl, {
+    email,
+    password: "long-enough-password",
+    displayName,
+  });
+  assert.equal(account.session?.kind, "identity-v2-session");
+  return account.session;
+}
 
 function gameFromTerms() {
   return new CorrespondenceMatch({
@@ -149,6 +175,81 @@ test("a real correspondence match plays through the mailbox", async () => {
   assert.equal(aliceMatches[0].yourSeat, 0);
   assert.equal(aliceMatches[0].nextPlayer, 0, "it is Alice's turn again");
 });
+
+test(
+  "v2 identity sessions can create, play, and rate a correspondence match",
+  { skip: process.env.SERFBOUND_MAILBOX_URL ? "URL-override mode does not start identity v2." : false },
+  async () => {
+    const alice = await createV2Session("alice-v2@example.com", "alice");
+    const bob = await createV2Session("bob-v2@example.com", "bob");
+
+    const challengeId = await createChallengeWithIdentityV2(serviceUrl, alice, terms);
+    const lobby = await listChallenges(serviceUrl);
+    const lobbyEntry = lobby.find((entry) => entry.challengeId === challengeId);
+    assert.equal(lobbyEntry.challengerName, "ALICE");
+    assert.equal(lobbyEntry.challengerKeyId, alice.accountId);
+
+    const match = await acceptChallengeWithIdentityV2(serviceUrl, bob, challengeId);
+    assert.deepEqual(
+      match.players.map((player) => player.keyId),
+      [alice.accountId, bob.accountId],
+    );
+
+    const aliceGame = gameFromTerms();
+    const bobGame = gameFromTerms();
+
+    const move0 = playWindow(aliceGame);
+    const afterMove0 = await postMoveWithIdentityV2(serviceUrl, alice, match.matchId, move0);
+    assert.equal(afterMove0.nextPlayer, 1);
+    assert.deepEqual(bobGame.applyMove((await fetchMatch(serviceUrl, match.matchId)).moves[0]), {
+      ok: true,
+    });
+
+    const move1 = playWindow(bobGame);
+    await postMoveWithIdentityV2(serviceUrl, bob, match.matchId, move1);
+    assert.deepEqual(aliceGame.applyMove((await fetchMatch(serviceUrl, match.matchId)).moves[1]), {
+      ok: true,
+    });
+    assert.equal(aliceGame.checksum(), bobGame.checksum());
+
+    const aliceMatches = await listMatchesForIdentityV2(serviceUrl, alice);
+    assert.equal(aliceMatches.length, 1);
+    assert.equal(aliceMatches[0].yourSeat, 0);
+
+    await submitResultWithIdentityV2(
+      serviceUrl,
+      alice,
+      match.matchId,
+      0,
+      0,
+      aliceGame.checksum(),
+    );
+    const ended = await submitResultWithIdentityV2(
+      serviceUrl,
+      bob,
+      match.matchId,
+      1,
+      0,
+      bobGame.checksum(),
+    );
+    assert.equal(ended.state, "ended");
+    assert.equal(ended.winnerSeat, 0);
+
+    const ladder = await (await fetch(`${serviceUrl}/ladder`)).json();
+    assert.equal(ladder.ladder.some((entry) => entry.keyId === alice.accountId), true);
+
+    const bad = await fetch(`${serviceUrl}/challenges`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer sbv2.bad.bad",
+      },
+      body: JSON.stringify({ terms }),
+    });
+    assert.equal(bad.status, 401);
+    assert.equal((await bad.json()).error, "bad-v2-session");
+  },
+);
 
 test("nameless challenges and acceptances reject", async () => {
   const alice = await generateIdentityKeys();

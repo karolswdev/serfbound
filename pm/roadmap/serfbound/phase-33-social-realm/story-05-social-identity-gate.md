@@ -27,11 +27,13 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
 - [x] Existing browser coverage proves the email v2 shell moment can create or
   open an account, and the legacy correspondence bridge can still reach a
   rated match.
+- [x] Service-level identity v2 sessions authorize mailbox, maps, and rating
+  writes without device keys, while the Phase 25 bridge remains available.
 - [ ] Browser passkey ceremony and persistence are implemented and gate-tested.
 - [ ] Live provider handoff is configured for at least one provider and
   gate-tested without accepting raw provider tokens in the browser.
-- [ ] The mailbox/maps/rating bridge accepts v2 identity for email, provider,
-  and passkey accounts, with no device key as a v2 credential.
+- [ ] The browser mailbox/maps/rating journey uses v2 identity for email,
+  provider, and passkey accounts, with no device key as a v2 credential.
 - [ ] Full opt-in journey e2e passes: each sign-in method -> correspondence
   match -> dual attestation -> rated result.
 
@@ -46,9 +48,13 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
     — current rated-match path through the legacy bridge.
 - Service:
   - `tests/ci/service-identity.test.mjs` — v2 password, OIDC assertion,
-    passkey, recovery, and legacy standing claim contracts.
-- Remaining before closure: browser passkey, live provider handoff, v2 mailbox
-  identity bridge, full sign-in-method-to-rated-match e2e.
+    passkey, recovery, session proof, and legacy standing claim contracts.
+  - `tests/ci/service-mailbox.test.mjs` — v2 session challenge, moves, dual
+    attestation, and rated ladder identity without device keys.
+  - `tests/ci/service-maps.test.mjs` — v2 session publish, rate, report,
+    play count, and delete without device keys.
+- Remaining before closure: browser passkey, live provider handoff, browser v2
+  mailbox/maps/rating journey, full sign-in-method-to-rated-match e2e.
 
 ## Notes / open questions
 

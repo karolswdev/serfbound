@@ -7,11 +7,13 @@
 
 import { createServer } from "node:http";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { randomBytes, scryptSync, timingSafeEqual, webcrypto } from "node:crypto";
+import { createHmac, randomBytes, scryptSync, timingSafeEqual, webcrypto } from "node:crypto";
 
 const port = Number(process.env.SERFBOUND_IDENTITY_PORT ?? "4310");
 const storePath = process.env.SERFBOUND_IDENTITY_STORE ?? ".tmp/identity-accounts.json";
 const oidcAssertionSecret = process.env.SERFBOUND_IDENTITY_OIDC_ASSERTION_SECRET ?? "";
+const v2SessionSecret = process.env.SERFBOUND_IDENTITY_V2_SESSION_SECRET ?? "";
+const v2SessionTtlSeconds = 7 * 24 * 60 * 60;
 const identityV2Schema = JSON.parse(
   readFileSync(new URL("./identity-v2-schema.json", import.meta.url), "utf8"),
 );
@@ -312,6 +314,41 @@ function publicV2Account(account) {
   };
 }
 
+function signV2SessionPayload(encodedPayload) {
+  return createHmac("sha256", v2SessionSecret).update(encodedPayload).digest("base64url");
+}
+
+function createV2Session(account) {
+  if (v2SessionSecret === "") {
+    return undefined;
+  }
+
+  const issuedAtMs = Date.now();
+  const payload = {
+    schemaVersion: 1,
+    audience: "serfbound-social",
+    accountId: account.accountId,
+    displayName: account.displayName,
+    issuedAtIso: new Date(issuedAtMs).toISOString(),
+    expiresAtIso: new Date(issuedAtMs + v2SessionTtlSeconds * 1000).toISOString(),
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  return {
+    kind: "identity-v2-session",
+    token: `sbv2.${encodedPayload}.${signV2SessionPayload(encodedPayload)}`,
+    accountId: account.accountId,
+    displayName: account.displayName,
+    issuedAtIso: payload.issuedAtIso,
+    expiresAtIso: payload.expiresAtIso,
+  };
+}
+
+function publicV2AccountWithSession(account) {
+  const publicAccount = publicV2Account(account);
+  const session = createV2Session(account);
+  return session === undefined ? publicAccount : { ...publicAccount, session };
+}
+
 function requireOidcAssertion(request, response) {
   if (oidcAssertionSecret === "") {
     send(response, 503, {
@@ -335,7 +372,7 @@ function send(response, status, body) {
     "content-type": "application/json",
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-headers": "content-type,authorization",
   });
   response.end(text);
 }
@@ -412,7 +449,7 @@ export const server = createServer(async (request, response) => {
 
       store.v2.accounts[account.accountId] = account;
       saveStore(store);
-      send(response, 201, publicV2Account(account));
+      send(response, 201, publicV2AccountWithSession(account));
       return;
     }
 
@@ -442,7 +479,7 @@ export const server = createServer(async (request, response) => {
       credential.lastUsedAtIso = atIso;
       account.updatedAtIso = atIso;
       saveStore(store);
-      send(response, 200, publicV2Account(account));
+      send(response, 200, publicV2AccountWithSession(account));
       return;
     }
 
@@ -477,7 +514,7 @@ export const server = createServer(async (request, response) => {
       credential.lastUsedAtIso = atIso;
       account.updatedAtIso = atIso;
       saveStore(store);
-      send(response, 200, publicV2Account(account));
+      send(response, 200, publicV2AccountWithSession(account));
       return;
     }
 
@@ -513,7 +550,7 @@ export const server = createServer(async (request, response) => {
         credential.lastUsedAtIso = atIso;
         account.updatedAtIso = atIso;
         saveStore(store);
-        send(response, 200, publicV2Account(account));
+        send(response, 200, publicV2AccountWithSession(account));
         return;
       }
 
@@ -530,7 +567,7 @@ export const server = createServer(async (request, response) => {
       });
       store.v2.accounts[account.accountId] = account;
       saveStore(store);
-      send(response, 201, publicV2Account(account));
+      send(response, 201, publicV2AccountWithSession(account));
       return;
     }
 
@@ -591,7 +628,7 @@ export const server = createServer(async (request, response) => {
       });
       store.v2.accounts[account.accountId] = account;
       saveStore(store);
-      send(response, 201, publicV2Account(account));
+      send(response, 201, publicV2AccountWithSession(account));
       return;
     }
 
@@ -635,7 +672,7 @@ export const server = createServer(async (request, response) => {
       credential.lastUsedAtIso = atIso;
       account.updatedAtIso = atIso;
       saveStore(store);
-      send(response, 200, publicV2Account(account));
+      send(response, 200, publicV2AccountWithSession(account));
       return;
     }
 

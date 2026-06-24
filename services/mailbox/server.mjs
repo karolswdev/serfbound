@@ -7,10 +7,11 @@
 
 import { createServer } from "node:http";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { randomUUID, webcrypto } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual, webcrypto } from "node:crypto";
 
 const port = Number(process.env.SERFBOUND_MAILBOX_PORT ?? "4320");
 const storePath = process.env.SERFBOUND_MAILBOX_STORE ?? ".tmp/mailbox-matches.json";
+const v2SessionSecret = process.env.SERFBOUND_IDENTITY_V2_SESSION_SECRET ?? "";
 const moveByteCap = 256 * 1024;
 const playerNameMaxLength = 12;
 
@@ -98,6 +99,76 @@ function normalizePlayerName(input) {
   }
 
   return name.length > 0 ? name : null;
+}
+
+function sanitizeV2DisplayName(input) {
+  return normalizePlayerName(input) ?? "PLAYER";
+}
+
+function signV2SessionPayload(encodedPayload) {
+  return createHmac("sha256", v2SessionSecret).update(encodedPayload).digest("base64url");
+}
+
+function timingSafeTextEqual(left, right) {
+  const leftBytes = Buffer.from(String(left));
+  const rightBytes = Buffer.from(String(right));
+  return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);
+}
+
+function verifyV2SessionToken(token) {
+  if (v2SessionSecret === "" || typeof token !== "string" || !token.startsWith("sbv2.")) {
+    return null;
+  }
+
+  const parts = token.split(".");
+  if (parts.length !== 3) {
+    return null;
+  }
+
+  const [, encodedPayload, signature] = parts;
+  if (!timingSafeTextEqual(signature, signV2SessionPayload(encodedPayload))) {
+    return null;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+
+  if (
+    payload?.schemaVersion !== 1 ||
+    payload.audience !== "serfbound-social" ||
+    typeof payload.accountId !== "string" ||
+    !/^acct_[0-9a-f]{32}$/.test(payload.accountId) ||
+    typeof payload.displayName !== "string" ||
+    typeof payload.expiresAtIso !== "string" ||
+    Date.parse(payload.expiresAtIso) <= Date.now()
+  ) {
+    return null;
+  }
+
+  return {
+    accountId: payload.accountId,
+    displayName: sanitizeV2DisplayName(payload.displayName),
+  };
+}
+
+function v2SessionFromRequest(request) {
+  const authorization = request.headers.authorization;
+  if (typeof authorization !== "string" || !authorization.startsWith("Bearer ")) {
+    return null;
+  }
+
+  return verifyV2SessionToken(authorization.slice("Bearer ".length).trim());
+}
+
+function sendBadV2Session(response) {
+  send(response, 401, {
+    error: "bad-v2-session",
+    message: "The identity v2 session did not verify.",
+  });
 }
 
 // The wire carries world actions and checksums only — structurally
@@ -190,7 +261,7 @@ function send(response, status, body) {
     "content-type": "application/json",
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-headers": "content-type,authorization",
   });
   response.end(JSON.stringify(body));
 }
@@ -223,13 +294,20 @@ export const server = createServer(async (request, response) => {
     // POST /challenges — open a challenge with match terms.
     if (request.method === "POST" && url.pathname === "/challenges") {
       const body = JSON.parse((await readBody(request)) || "{}");
+      const v2Session = v2SessionFromRequest(request);
+      if (request.headers.authorization !== undefined && v2Session === null) {
+        sendBadV2Session(response);
+        return;
+      }
+
       const { publicKeyJwk, name, terms, signedAtIso, signature } = body;
       if (!validTerms(terms)) {
         send(response, 400, { error: "invalid-terms", message: "Challenge terms are malformed." });
         return;
       }
 
-      const challengerName = normalizePlayerName(name);
+      const challengerName =
+        v2Session === null ? normalizePlayerName(name) : sanitizeV2DisplayName(v2Session.displayName);
       if (challengerName === null) {
         send(response, 400, {
           error: "missing-name",
@@ -238,17 +316,24 @@ export const server = createServer(async (request, response) => {
         return;
       }
 
-      const payload = `challenge|${JSON.stringify(terms)}|${signedAtIso}`;
-      if (!(await verifySignature(publicKeyJwk, payload, signature))) {
-        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
-        return;
+      let challenger;
+      if (v2Session === null) {
+        const payload = `challenge|${JSON.stringify(terms)}|${signedAtIso}`;
+        if (!(await verifySignature(publicKeyJwk, payload, signature))) {
+          send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+          return;
+        }
+
+        challenger = { publicKeyJwk, name: challengerName, keyId: await keyFingerprint(publicKeyJwk) };
+      } else {
+        challenger = { name: challengerName, keyId: v2Session.accountId, identityVersion: 2 };
       }
 
       const challengeId = randomUUID();
       store.challenges[challengeId] = {
         challengeId,
         terms,
-        challenger: { publicKeyJwk, name: challengerName, keyId: await keyFingerprint(publicKeyJwk) },
+        challenger,
         openedAtIso: new Date().toISOString(),
       };
       saveStore(store);
@@ -281,8 +366,15 @@ export const server = createServer(async (request, response) => {
       }
 
       const body = JSON.parse((await readBody(request)) || "{}");
+      const v2Session = v2SessionFromRequest(request);
+      if (request.headers.authorization !== undefined && v2Session === null) {
+        sendBadV2Session(response);
+        return;
+      }
+
       const { publicKeyJwk, name, signedAtIso, signature } = body;
-      const accepterName = normalizePlayerName(name);
+      const accepterName =
+        v2Session === null ? normalizePlayerName(name) : sanitizeV2DisplayName(v2Session.displayName);
       if (accepterName === null) {
         send(response, 400, {
           error: "missing-name",
@@ -291,20 +383,24 @@ export const server = createServer(async (request, response) => {
         return;
       }
 
-      const payload = `accept|${challenge.challengeId}|${signedAtIso}`;
-      if (!(await verifySignature(publicKeyJwk, payload, signature))) {
-        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
-        return;
+      let accepter;
+      if (v2Session === null) {
+        const payload = `accept|${challenge.challengeId}|${signedAtIso}`;
+        if (!(await verifySignature(publicKeyJwk, payload, signature))) {
+          send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+          return;
+        }
+
+        accepter = { publicKeyJwk, name: accepterName, keyId: await keyFingerprint(publicKeyJwk) };
+      } else {
+        accepter = { name: accepterName, keyId: v2Session.accountId, identityVersion: 2 };
       }
 
       const matchId = randomUUID();
       const match = {
         matchId,
         terms: challenge.terms,
-        players: [
-          challenge.challenger,
-          { publicKeyJwk, name: accepterName, keyId: await keyFingerprint(publicKeyJwk) },
-        ],
+        players: [challenge.challenger, accepter],
         moves: [],
         state: "active",
         nextDeadlineIso: new Date(
@@ -352,6 +448,12 @@ export const server = createServer(async (request, response) => {
         }
 
         const body = JSON.parse((await readBody(request)) || "{}");
+        const v2Session = v2SessionFromRequest(request);
+        if (request.headers.authorization !== undefined && v2Session === null) {
+          sendBadV2Session(response);
+          return;
+        }
+
         const { move, signedAtIso, signature } = body;
         if (!validMove(move)) {
           send(response, 400, { error: "invalid-move", message: "The move payload is malformed." });
@@ -368,10 +470,17 @@ export const server = createServer(async (request, response) => {
         }
 
         const signer = match.players[expectedPlayer];
-        const payload = `move|${match.matchId}|${move.window}|${move.endChecksum}|${signedAtIso}`;
-        if (!(await verifySignature(signer.publicKeyJwk, payload, signature))) {
-          send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
-          return;
+        if (signer.identityVersion === 2) {
+          if (v2Session === null || v2Session.accountId !== signer.keyId) {
+            sendBadV2Session(response);
+            return;
+          }
+        } else {
+          const payload = `move|${match.matchId}|${move.window}|${move.endChecksum}|${signedAtIso}`;
+          if (!(await verifySignature(signer.publicKeyJwk, payload, signature))) {
+            send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+            return;
+          }
         }
 
         match.moves.push(move);
@@ -407,6 +516,12 @@ export const server = createServer(async (request, response) => {
       }
 
       const body = JSON.parse((await readBody(request)) || "{}");
+      const v2Session = v2SessionFromRequest(request);
+      if (request.headers.authorization !== undefined && v2Session === null) {
+        sendBadV2Session(response);
+        return;
+      }
+
       const { seat, winnerSeat, finalChecksum, signedAtIso, signature } = body;
       if (![0, 1].includes(seat) || ![0, 1].includes(winnerSeat) || !Number.isInteger(finalChecksum)) {
         send(response, 400, { error: "malformed", message: "Missing result fields." });
@@ -414,10 +529,17 @@ export const server = createServer(async (request, response) => {
       }
 
       const signer = match.players[seat];
-      const payload = `result|${match.matchId}|${winnerSeat}|${finalChecksum}|${signedAtIso}`;
-      if (!(await verifySignature(signer.publicKeyJwk, payload, signature))) {
-        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
-        return;
+      if (signer.identityVersion === 2) {
+        if (v2Session === null || v2Session.accountId !== signer.keyId) {
+          sendBadV2Session(response);
+          return;
+        }
+      } else {
+        const payload = `result|${match.matchId}|${winnerSeat}|${finalChecksum}|${signedAtIso}`;
+        if (!(await verifySignature(signer.publicKeyJwk, payload, signature))) {
+          send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+          return;
+        }
       }
 
       match.attestations ??= {};
@@ -448,7 +570,7 @@ export const server = createServer(async (request, response) => {
 
     // GET /players/:keyId/matches — a player's open matches ("your turn"
     // surfacing).
-    const playerRoute = url.pathname.match(/^\/players\/([0-9a-f]{64})\/matches$/);
+    const playerRoute = url.pathname.match(/^\/players\/([A-Za-z0-9_:-]+)\/matches$/);
     if (request.method === "GET" && playerRoute !== null) {
       const keyId = playerRoute[1];
       const matches = Object.values(store.matches)

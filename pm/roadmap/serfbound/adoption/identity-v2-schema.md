@@ -59,6 +59,15 @@ Password recovery stores `recoveryCodeHash`, `recoveryAlgorithm`, and
 token, or any provider token. Recovery rotates the password hash; it does not
 create a new credential kind.
 
+## Session Proofs
+
+When `SERFBOUND_IDENTITY_V2_SESSION_SECRET` is configured, successful v2
+sign-up/sign-in responses include a short-lived `identity-v2-session` proof:
+`sbv2.<payload>.<hmac>`. The identity service does not store these proofs.
+Mailbox, maps, and rating services may verify the shared HMAC and authorize the
+public `accountId`/`displayName` in the payload. The proof is not a provider
+token, not a device key, and not a v2 credential kind.
+
 ## Player-Visible Privacy Posture
 
 Online identity is optional. Serfbound stores only the credential data required

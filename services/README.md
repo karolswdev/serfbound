@@ -22,6 +22,12 @@ For identity v2 provider handoff tests or a real OIDC gateway, set
 returns `oidc-not-configured` instead of accepting unverifiable provider
 claims.
 
+For identity v2 sessions that can authorize mailbox/maps/rating without device
+keys, set the same `SERFBOUND_IDENTITY_V2_SESSION_SECRET` on identity,
+mailbox, and maps. Identity then issues short-lived `sbv2` HMAC bearer proofs
+on v2 sign-up/sign-in responses; mailbox and maps verify those proofs beside
+the legacy signed-key bridge.
+
 ## The actual deployment (SB-29-03)
 
 The services run on the maintainer's shared LKE cluster (`lke577204`,
@@ -76,10 +82,13 @@ Teardown: `kubectl delete ns serfbound`, remove the two
   public-key credential metadata, and legacy standing claims store only
   `legacyKeyId`, `claimedAtIso`, and `migrationBatchId`. No plaintext
   passwords, reset codes, provider tokens, private keys, analytics ids,
-  sessions, or game data.
+  stored sessions, or game data. When configured, v2 session proofs are issued
+  in responses only and are not account records.
 - **Mailbox**: challenges (terms + challenger key/name), matches
   (players' keys/names, the move list — world actions and checksums
   only, size-capped — deadlines, state, attestations, ratings).
+  The legacy bridge still verifies device-key signatures; the v2 path verifies
+  `sbv2` bearer proofs and stores the v2 `accountId` as the player/rating id.
   **Original game data cannot reach these services**: the wire format
   has no field for it.
 

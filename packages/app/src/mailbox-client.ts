@@ -1,5 +1,6 @@
 import type { CorrespondenceWindowMove } from "@serfbound/engine";
 import { IdentityServiceError, signIdentityPayload, type IdentityKeys } from "./identity-client.js";
+import { identityV2AuthorizationHeaders, type IdentityV2Session } from "./identity-v2-client.js";
 
 // The turn-mailbox client (SB-25-03): challenges with match terms,
 // posting/fetching window moves, and "your turn" listings. The mailbox
@@ -50,6 +51,20 @@ export async function createChallenge(
   return result.challengeId;
 }
 
+export async function createChallengeWithIdentityV2(
+  serviceUrl: string,
+  session: IdentityV2Session,
+  terms: MatchTerms,
+): Promise<string> {
+  const result = (await requestJson(
+    `${serviceUrl}/challenges`,
+    "POST",
+    { terms },
+    identityV2AuthorizationHeaders(session),
+  )) as { challengeId: string };
+  return result.challengeId;
+}
+
 export async function listChallenges(serviceUrl: string): Promise<
   readonly {
     readonly challengeId: string;
@@ -86,6 +101,20 @@ export async function acceptChallenge(
   return result.match;
 }
 
+export async function acceptChallengeWithIdentityV2(
+  serviceUrl: string,
+  session: IdentityV2Session,
+  challengeId: string,
+): Promise<MailboxMatchView> {
+  const result = (await requestJson(
+    `${serviceUrl}/challenges/${challengeId}/accept`,
+    "POST",
+    {},
+    identityV2AuthorizationHeaders(session),
+  )) as { match: MailboxMatchView };
+  return result.match;
+}
+
 export async function fetchMatch(serviceUrl: string, matchId: string): Promise<MailboxMatchView> {
   const result = (await requestJson(`${serviceUrl}/matches/${matchId}`, "GET")) as {
     match: MailboxMatchView;
@@ -112,6 +141,21 @@ export async function postMove(
   return result.match;
 }
 
+export async function postMoveWithIdentityV2(
+  serviceUrl: string,
+  session: IdentityV2Session,
+  matchId: string,
+  move: CorrespondenceWindowMove,
+): Promise<MailboxMatchView> {
+  const result = (await requestJson(
+    `${serviceUrl}/matches/${matchId}/moves`,
+    "POST",
+    { move },
+    identityV2AuthorizationHeaders(session),
+  )) as { match: MailboxMatchView };
+  return result.match;
+}
+
 export async function submitResult(
   serviceUrl: string,
   keys: IdentityKeys,
@@ -132,6 +176,23 @@ export async function submitResult(
     signedAtIso,
     signature,
   })) as { match: MailboxMatchView };
+  return result.match;
+}
+
+export async function submitResultWithIdentityV2(
+  serviceUrl: string,
+  session: IdentityV2Session,
+  matchId: string,
+  seat: number,
+  winnerSeat: number,
+  finalChecksum: number,
+): Promise<MailboxMatchView> {
+  const result = (await requestJson(
+    `${serviceUrl}/matches/${matchId}/results`,
+    "POST",
+    { seat, winnerSeat, finalChecksum },
+    identityV2AuthorizationHeaders(session),
+  )) as { match: MailboxMatchView };
   return result.match;
 }
 
@@ -157,14 +218,27 @@ export async function listMatchesForKey(
   return result.matches;
 }
 
-async function requestJson(url: string, method: string, body?: unknown): Promise<unknown> {
+export async function listMatchesForIdentityV2(
+  serviceUrl: string,
+  session: IdentityV2Session,
+): Promise<readonly MailboxMatchView[]> {
+  return listMatchesForKey(serviceUrl, session.accountId);
+}
+
+async function requestJson(
+  url: string,
+  method: string,
+  body?: unknown,
+  headers: Record<string, string> = {},
+): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(url, {
       method,
       ...(body === undefined
         ? {}
-        : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+        : { headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) }),
+      ...(body === undefined && Object.keys(headers).length > 0 ? { headers } : {}),
     });
   } catch {
     throw new IdentityServiceError("unreachable", "The mailbox service is unreachable.");

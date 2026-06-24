@@ -9,10 +9,11 @@
 
 import { createServer } from "node:http";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { randomUUID, webcrypto } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual, webcrypto } from "node:crypto";
 
 const port = Number(process.env.SERFBOUND_MAPS_PORT ?? "4330");
 const storePath = process.env.SERFBOUND_MAPS_STORE ?? ".tmp/maps.json";
+const v2SessionSecret = process.env.SERFBOUND_IDENTITY_V2_SESSION_SECRET ?? "";
 // A map payload caps at 512 KB encoded (covers up to ~size 10); larger
 // is a recorded later decision. The body cap leaves slack for metadata.
 const bodyByteCap = 768 * 1024;
@@ -168,6 +169,72 @@ function sanitizeAuthorName(name) {
   return sanitizeMapText(name, "PLAYER", authorNameMaxLength);
 }
 
+function signV2SessionPayload(encodedPayload) {
+  return createHmac("sha256", v2SessionSecret).update(encodedPayload).digest("base64url");
+}
+
+function timingSafeTextEqual(left, right) {
+  const leftBytes = Buffer.from(String(left));
+  const rightBytes = Buffer.from(String(right));
+  return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);
+}
+
+function verifyV2SessionToken(token) {
+  if (v2SessionSecret === "" || typeof token !== "string" || !token.startsWith("sbv2.")) {
+    return null;
+  }
+
+  const parts = token.split(".");
+  if (parts.length !== 3) {
+    return null;
+  }
+
+  const [, encodedPayload, signature] = parts;
+  if (!timingSafeTextEqual(signature, signV2SessionPayload(encodedPayload))) {
+    return null;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+
+  if (
+    payload?.schemaVersion !== 1 ||
+    payload.audience !== "serfbound-social" ||
+    typeof payload.accountId !== "string" ||
+    !/^acct_[0-9a-f]{32}$/.test(payload.accountId) ||
+    typeof payload.displayName !== "string" ||
+    typeof payload.expiresAtIso !== "string" ||
+    Date.parse(payload.expiresAtIso) <= Date.now()
+  ) {
+    return null;
+  }
+
+  return {
+    accountId: payload.accountId,
+    displayName: sanitizeAuthorName(payload.displayName),
+  };
+}
+
+function v2SessionFromRequest(request) {
+  const authorization = request.headers.authorization;
+  if (typeof authorization !== "string" || !authorization.startsWith("Bearer ")) {
+    return null;
+  }
+
+  return verifyV2SessionToken(authorization.slice("Bearer ".length).trim());
+}
+
+function sendBadV2Session(response) {
+  send(response, 401, {
+    error: "bad-v2-session",
+    message: "The identity v2 session did not verify.",
+  });
+}
+
 function averageRating(entry) {
   const stars = Object.values(entry.ratings ?? {});
   if (stars.length === 0) {
@@ -200,7 +267,7 @@ function send(response, status, body) {
     "content-type": "application/json",
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-headers": "content-type,authorization",
   });
   response.end(JSON.stringify(body));
 }
@@ -233,20 +300,35 @@ export const server = createServer(async (request, response) => {
     // POST /maps — publish a signed map.
     if (request.method === "POST" && url.pathname === "/maps") {
       const body = JSON.parse((await readBody(request)) || "{}");
+      const v2Session = v2SessionFromRequest(request);
+      if (request.headers.authorization !== undefined && v2Session === null) {
+        sendBadV2Session(response);
+        return;
+      }
+
       const { map, publicKeyJwk, signedAtIso, signature } = body;
       if (!validMapRecord(map)) {
         send(response, 400, { error: "invalid-map", message: "The map record is malformed." });
         return;
       }
 
-      const payload = `publish|${map.contentHash}|${signedAtIso}`;
-      if (!(await verifySignature(publicKeyJwk, payload, signature))) {
-        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
-        return;
+      let authorKeyId;
+      let authorName;
+      if (v2Session === null) {
+        const payload = `publish|${map.contentHash}|${signedAtIso}`;
+        if (!(await verifySignature(publicKeyJwk, payload, signature))) {
+          send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+          return;
+        }
+
+        authorKeyId = await keyFingerprint(publicKeyJwk);
+        authorName = map.meta.authorName;
+      } else {
+        authorKeyId = v2Session.accountId;
+        authorName = v2Session.displayName;
       }
 
-      const keyId = await keyFingerprint(publicKeyJwk);
-      if (map.meta.authorKeyId !== keyId) {
+      if (map.meta.authorKeyId !== authorKeyId) {
         send(response, 401, {
           error: "author-mismatch",
           message: "The map's author key does not match the signer.",
@@ -255,7 +337,7 @@ export const server = createServer(async (request, response) => {
       }
 
       const ownedCount = Object.values(store.maps).filter(
-        (entry) => entry.map.meta.authorKeyId === keyId,
+        (entry) => entry.map.meta.authorKeyId === authorKeyId,
       ).length;
       if (ownedCount >= mapsPerKey) {
         send(response, 429, {
@@ -271,7 +353,7 @@ export const server = createServer(async (request, response) => {
         meta: {
           ...map.meta,
           title: sanitizeTitle(map.meta.title),
-          authorName: sanitizeAuthorName(map.meta.authorName),
+          authorName: sanitizeAuthorName(authorName),
         },
       };
       store.maps[mapId] = {
@@ -330,19 +412,30 @@ export const server = createServer(async (request, response) => {
       }
 
       const body = JSON.parse((await readBody(request)) || "{}");
+      const v2Session = v2SessionFromRequest(request);
+      if (request.headers.authorization !== undefined && v2Session === null) {
+        sendBadV2Session(response);
+        return;
+      }
+
       const { publicKeyJwk, stars, signedAtIso, signature } = body;
       if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
         send(response, 400, { error: "invalid-rating", message: "Stars must be 1..5." });
         return;
       }
 
-      const payload = `rate|${entry.mapId}|${stars}|${signedAtIso}`;
-      if (!(await verifySignature(publicKeyJwk, payload, signature))) {
-        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
-        return;
-      }
+      let keyId;
+      if (v2Session === null) {
+        const payload = `rate|${entry.mapId}|${stars}|${signedAtIso}`;
+        if (!(await verifySignature(publicKeyJwk, payload, signature))) {
+          send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+          return;
+        }
 
-      const keyId = await keyFingerprint(publicKeyJwk);
+        keyId = await keyFingerprint(publicKeyJwk);
+      } else {
+        keyId = v2Session.accountId;
+      }
       entry.ratings[keyId] = stars;
       saveStore(store);
       send(response, 200, { rating: averageRating(entry), ratingCount: Object.keys(entry.ratings).length });
@@ -361,11 +454,19 @@ export const server = createServer(async (request, response) => {
       }
 
       const body = JSON.parse((await readBody(request)) || "{}");
-      const { publicKeyJwk, signedAtIso, signature } = body;
-      const payload = `played|${entry.mapId}|${signedAtIso}`;
-      if (!(await verifySignature(publicKeyJwk, payload, signature))) {
-        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+      const v2Session = v2SessionFromRequest(request);
+      if (request.headers.authorization !== undefined && v2Session === null) {
+        sendBadV2Session(response);
         return;
+      }
+
+      const { publicKeyJwk, signedAtIso, signature } = body;
+      if (v2Session === null) {
+        const payload = `played|${entry.mapId}|${signedAtIso}`;
+        if (!(await verifySignature(publicKeyJwk, payload, signature))) {
+          send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+          return;
+        }
       }
 
       entry.timesPlayed = (entry.timesPlayed ?? 0) + 1;
@@ -384,14 +485,25 @@ export const server = createServer(async (request, response) => {
       }
 
       const body = JSON.parse((await readBody(request)) || "{}");
-      const { publicKeyJwk, signedAtIso, signature } = body;
-      const payload = `report|${entry.mapId}|${signedAtIso}`;
-      if (!(await verifySignature(publicKeyJwk, payload, signature))) {
-        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+      const v2Session = v2SessionFromRequest(request);
+      if (request.headers.authorization !== undefined && v2Session === null) {
+        sendBadV2Session(response);
         return;
       }
 
-      const keyId = await keyFingerprint(publicKeyJwk);
+      const { publicKeyJwk, signedAtIso, signature } = body;
+      let keyId;
+      if (v2Session === null) {
+        const payload = `report|${entry.mapId}|${signedAtIso}`;
+        if (!(await verifySignature(publicKeyJwk, payload, signature))) {
+          send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+          return;
+        }
+
+        keyId = await keyFingerprint(publicKeyJwk);
+      } else {
+        keyId = v2Session.accountId;
+      }
       entry.reports[keyId] = new Date().toISOString();
       if (Object.keys(entry.reports).length >= reportQuarantineThreshold) {
         entry.quarantined = true;
@@ -412,14 +524,25 @@ export const server = createServer(async (request, response) => {
       }
 
       const body = JSON.parse((await readBody(request)) || "{}");
-      const { publicKeyJwk, signedAtIso, signature } = body;
-      const payload = `delete|${entry.mapId}|${signedAtIso}`;
-      if (!(await verifySignature(publicKeyJwk, payload, signature))) {
-        send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+      const v2Session = v2SessionFromRequest(request);
+      if (request.headers.authorization !== undefined && v2Session === null) {
+        sendBadV2Session(response);
         return;
       }
 
-      const keyId = await keyFingerprint(publicKeyJwk);
+      const { publicKeyJwk, signedAtIso, signature } = body;
+      let keyId;
+      if (v2Session === null) {
+        const payload = `delete|${entry.mapId}|${signedAtIso}`;
+        if (!(await verifySignature(publicKeyJwk, payload, signature))) {
+          send(response, 401, { error: "bad-signature", message: "The signature does not verify." });
+          return;
+        }
+
+        keyId = await keyFingerprint(publicKeyJwk);
+      } else {
+        keyId = v2Session.accountId;
+      }
       if (entry.map.meta.authorKeyId !== keyId) {
         send(response, 403, { error: "not-author", message: "Only the author may delete a map." });
         return;

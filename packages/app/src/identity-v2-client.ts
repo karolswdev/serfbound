@@ -12,14 +12,16 @@ export type IdentityV2Credential =
       readonly credentialId: string;
       readonly provider: "apple" | "google" | "meta";
       readonly email: string | null;
-      readonly emailVerifiedAtIso: string | null;
+      readonly emailVerified: boolean;
       readonly linkedAtIso: string;
       readonly lastUsedAtIso: string;
     }
   | {
       readonly kind: "passkey";
       readonly credentialId: string;
+      readonly signCount: number;
       readonly transports: readonly string[];
+      readonly userHandle: string;
       readonly linkedAtIso: string;
       readonly lastUsedAtIso: string;
     };
@@ -30,10 +32,25 @@ export type IdentityV2Account = {
   readonly createdAtIso: string;
   readonly updatedAtIso: string;
   readonly credentials: readonly IdentityV2Credential[];
+  readonly legacyStandingClaim?: {
+    readonly legacyKeyId: string;
+    readonly claimedAtIso: string;
+    readonly migrationBatchId: string;
+  };
   readonly recovery?: {
     readonly configuredAtIso: string;
     readonly recoveryAlgorithm: string;
   };
+  readonly session?: IdentityV2Session;
+};
+
+export type IdentityV2Session = {
+  readonly kind: "identity-v2-session";
+  readonly token: string;
+  readonly accountId: string;
+  readonly displayName: string;
+  readonly issuedAtIso: string;
+  readonly expiresAtIso: string;
 };
 
 export class IdentityV2ServiceError extends Error {
@@ -72,6 +89,12 @@ export async function signInPasswordIdentityV2(
     email: options.email,
     password: options.password,
   });
+}
+
+export function identityV2AuthorizationHeaders(
+  session: IdentityV2Session,
+): Record<string, string> {
+  return { authorization: `Bearer ${session.token}` };
 }
 
 async function requestIdentityV2Json(

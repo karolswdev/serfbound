@@ -99,6 +99,22 @@
     "forbiddenFields": ["recoveryCode", "plainRecoveryCode", "passwordResetToken"],
     "plaintextSecrets": false
   },
+  "sessionProof": {
+    "kind": "identity-v2-session",
+    "format": "sbv2.<base64url-json-payload>.<base64url-hmac-sha256>",
+    "issuedWhenConfiguredBy": "SERFBOUND_IDENTITY_V2_SESSION_SECRET",
+    "storedFields": [],
+    "payloadFields": [
+      "schemaVersion",
+      "audience",
+      "accountId",
+      "displayName",
+      "issuedAtIso",
+      "expiresAtIso"
+    ],
+    "acceptedBy": ["mailbox", "maps", "rating"],
+    "forbiddenFields": ["providerToken", "idToken", "accessToken", "refreshToken", "deviceKey"]
+  },
   "mailboxChallenge": {
     "requiresChallengerName": true,
     "lobbyFields": ["challengeId", "terms", "challengerName", "challengerKeyId", "openedAtIso"],

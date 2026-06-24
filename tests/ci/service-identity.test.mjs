@@ -28,6 +28,10 @@ let storePath;
 
 const oidcAssertionSecret =
   process.env.SERFBOUND_IDENTITY_OIDC_ASSERTION_SECRET ?? "service-identity-test-oidc";
+const localIdentityService = process.env.SERFBOUND_IDENTITY_URL === undefined;
+const v2SessionSecret =
+  process.env.SERFBOUND_IDENTITY_V2_SESSION_SECRET ??
+  (localIdentityService ? "service-identity-test-v2-session" : "");
 
 before(async () => {
   // SB-29-02: with SERFBOUND_IDENTITY_URL set, the same contract suite
@@ -40,6 +44,7 @@ before(async () => {
   storeDir = mkdtempSync(join(tmpdir(), "serfbound-identity-"));
   process.env.SERFBOUND_IDENTITY_AUTOSTART = "0";
   process.env.SERFBOUND_IDENTITY_OIDC_ASSERTION_SECRET = oidcAssertionSecret;
+  process.env.SERFBOUND_IDENTITY_V2_SESSION_SECRET = v2SessionSecret;
   storePath = join(storeDir, "accounts.json");
   process.env.SERFBOUND_IDENTITY_STORE = storePath;
   ({ server } = await import("../../services/identity/server.mjs"));
@@ -101,6 +106,7 @@ test("v2 password accounts store hashes, recover by hash, and redact secrets", a
   }, 201);
   assert.match(created.accountId, /^acct_[0-9a-f]{32}$/);
   assert.equal(created.displayName, "KAROL");
+  assertV2Session(created);
   assert.equal(created.credentials[0].kind, "password");
   assert.equal(created.credentials[0].email, "karol@example.com");
   assert.equal("passwordHash" in created.credentials[0], false, "password hashes never leave the service");
@@ -114,6 +120,7 @@ test("v2 password accounts store hashes, recover by hash, and redact secrets", a
     password: "long-enough-password",
   });
   assert.equal(signedIn.accountId, created.accountId);
+  assertV2Session(signedIn);
 
   const bad = await fetch(`${serviceUrl}/v2/sessions/password`, {
     method: "POST",
@@ -151,6 +158,7 @@ test("v2 password accounts store hashes, recover by hash, and redact secrets", a
     assert.notEqual(passwordCredential.passwordHash.includes("new-long-enough-password"), true);
     assert.equal(JSON.stringify(stored).includes("backup-code-123"), false);
     assert.equal(stored.recovery.recoveryAlgorithm, "scrypt");
+    assert.equal(JSON.stringify(stored).includes(created.session?.token ?? "not-issued"), false);
   }
 });
 
@@ -168,6 +176,7 @@ test("v2 OIDC accounts accept configured provider assertions without storing tok
     { "x-serfbound-oidc-assertion": oidcAssertionSecret },
   );
   assert.equal(created.displayName, "SETTLER");
+  assertV2Session(created);
   assert.equal(created.credentials[0].kind, "oidc");
   assert.equal(created.credentials[0].provider, "google");
   assert.equal(created.credentials[0].emailVerified, true);
@@ -185,6 +194,7 @@ test("v2 OIDC accounts accept configured provider assertions without storing tok
     { "x-serfbound-oidc-assertion": oidcAssertionSecret },
   );
   assert.equal(repeated.accountId, created.accountId, "provider subject signs into the same v2 account");
+  assertV2Session(repeated);
 
   const tokenLeak = await fetch(`${serviceUrl}/v2/accounts/oidc`, {
     method: "POST",
@@ -224,6 +234,7 @@ test("v2 passkey accounts verify public-key proofs and advance sign counts", asy
     signature,
   }, 201);
   assert.equal(created.displayName, "SHIELD");
+  assertV2Session(created);
   assert.equal(created.credentials[0].kind, "passkey");
   assert.equal(created.credentials[0].signCount, 1);
   assert.equal("publicKeyJwk" in created.credentials[0], false, "passkey public key is not exposed in account reads");
@@ -240,6 +251,7 @@ test("v2 passkey accounts verify public-key proofs and advance sign counts", asy
     signature: nextSignature,
   });
   assert.equal(signedIn.accountId, created.accountId);
+  assertV2Session(signedIn);
   assert.equal(signedIn.credentials[0].signCount, 2);
 
   const replay = await fetch(`${serviceUrl}/v2/sessions/passkey`, {
@@ -361,6 +373,23 @@ async function postJson(path, body, expectedStatus = 200, headers = {}) {
   const payload = await response.json();
   assert.equal(response.status, expectedStatus, `${path} returned ${response.status}: ${JSON.stringify(payload)}`);
   return payload;
+}
+
+function assertV2Session(account) {
+  if (v2SessionSecret === "") {
+    assert.equal(account.session, undefined, "external service did not advertise v2 session issuance");
+    return;
+  }
+
+  assert.equal(account.session.kind, "identity-v2-session");
+  assert.equal(account.session.accountId, account.accountId);
+  assert.equal(account.session.displayName, account.displayName);
+  assert.match(account.session.token, /^sbv2\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  assert.equal(
+    Date.parse(account.session.expiresAtIso) > Date.parse(account.session.issuedAtIso),
+    true,
+    "session expiry is after issuance",
+  );
 }
 
 function readStoredV2Account(accountId) {
