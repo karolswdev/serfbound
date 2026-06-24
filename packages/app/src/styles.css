@@ -502,6 +502,76 @@ h1 {
   animation: sb-badge-pulse calc(var(--sb-dur-slow) * 2) var(--sb-ease) 1;
 }
 
+/* Identity v2 arrives as a compact moment inside Online: controls,
+   not another framed card, so accountless play remains the louder path. */
+.signin-moment {
+  display: grid;
+  gap: var(--sb-space-3);
+  border-top: 1px solid var(--sb-line-soft);
+  border-bottom: 1px solid var(--sb-line-soft);
+  padding: var(--sb-space-3) 0;
+}
+
+.signin-methods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sb-space-2);
+}
+
+.signin-method {
+  min-height: 44px;
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-sm);
+  padding: 0 var(--sb-space-2);
+  color: var(--sb-parchment);
+  background: var(--sb-parchment-faint);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--sb-text-xs);
+  font-weight: var(--sb-weight-black);
+  overflow-wrap: anywhere;
+}
+
+.signin-method:hover:not(:disabled),
+.signin-method.is-active {
+  color: var(--sb-on-gold);
+  background: var(--sb-gold);
+}
+
+.signin-pane {
+  display: grid;
+  gap: var(--sb-space-2);
+}
+
+.signin-field {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-sm);
+  padding: 0 var(--sb-space-3);
+  color: var(--sb-parchment);
+  background: var(--sb-surface);
+  font: inherit;
+}
+
+.signin-field::placeholder {
+  color: var(--sb-moss);
+  opacity: 1;
+}
+
+.signin-accountless {
+  border-left: var(--sb-space-1) solid var(--sb-meadow);
+  padding-left: var(--sb-space-2);
+  color: var(--sb-parchment);
+}
+
+.legacy-online-bridge {
+  display: grid;
+  gap: var(--sb-space-1);
+  border-top: 1px solid var(--sb-line-soft);
+  padding-top: var(--sb-space-3);
+}
+
 @keyframes sb-badge-pulse {
   50% {
     background: var(--sb-meadow);
@@ -1032,6 +1102,8 @@ input.secondary-action {
 
 .import-input:focus-visible + .import-control,
 .import-control:focus-visible,
+.signin-field:focus-visible,
+.signin-method:focus-visible,
 .secondary-action:focus-visible,
 .primary-action:focus-visible {
   outline: 3px solid var(--sb-steel);

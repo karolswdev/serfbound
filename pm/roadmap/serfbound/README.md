@@ -34,7 +34,8 @@ Remaining: realtime WebRTC online play (27), product experience
 (32 — at the maintainer gate), and the social realm (33 — in progress:
 SB-33-01 accepted the identity v2 schema/privacy posture and retired the
 Phase 25 four-field ceiling as a limit; SB-33-02 shipped the v2 account
-service contract; SB-33-03 is the next sign-in UX slice).
+service contract; SB-33-03 shipped the player-facing sign-in moment with
+live email v2 readiness; SB-33-04 defines the social experience next).
 
 ## Vision
 

@@ -37,6 +37,12 @@ import {
 import { resolveOnlineConfig } from "./online-config.js";
 import { SerfboundOnlineSurface } from "./online-surface.js";
 import { SerfboundOnlineMatch } from "./online-match.js";
+import {
+  IdentityV2ServiceError,
+  createPasswordIdentityV2Account,
+  signInPasswordIdentityV2,
+  type IdentityV2Account,
+} from "./identity-v2-client.js";
 import type { MailboxMatchView } from "./mailbox-client.js";
 import { digestLines } from "./recap.js";
 import { getUiLanguage, setUiLanguage, uiText } from "./strings.js";
@@ -202,6 +208,7 @@ export * from "./map-thumbnail.js";
 export * from "./online-config.js";
 export * from "./online-surface.js";
 export * from "./online-match.js";
+export * from "./identity-v2-client.js";
 export * from "./identity-art.js";
 export * from "./profile-stats.js";
 export * from "./achievements.js";
@@ -941,17 +948,97 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
           </div>
           <p class="status-panel__detail" data-testid="online-detail">Optional: play correspondence matches over the internet. Local play never needs this.</p>
           <p class="status-panel__detail">Online identity is optional. Sign-in stores only the credential data required for the method you choose and the public name you play under. Your game data never uploads.</p>
+          <div class="signin-moment" data-testid="signin-moment">
+            <p class="status-panel__label">Sign in</p>
+            <div class="signin-methods" role="group" aria-label="Sign-in method">
+              <button
+                class="signin-method is-active"
+                data-testid="signin-method-email"
+                data-signin-method="email"
+                type="button"
+                aria-pressed="true"
+              >Email</button>
+              <button
+                class="signin-method"
+                data-testid="signin-method-passkey"
+                data-signin-method="passkey"
+                type="button"
+                aria-pressed="false"
+              >Passkey</button>
+              <button
+                class="signin-method"
+                data-testid="signin-method-google"
+                data-signin-method="google"
+                type="button"
+                aria-pressed="false"
+              >Google</button>
+              <button
+                class="signin-method"
+                data-testid="signin-method-apple"
+                data-signin-method="apple"
+                type="button"
+                aria-pressed="false"
+              >Apple</button>
+              <button
+                class="signin-method"
+                data-testid="signin-method-meta"
+                data-signin-method="meta"
+                type="button"
+                aria-pressed="false"
+              >Meta</button>
+            </div>
+            <div class="signin-pane" data-signin-panel="email" data-testid="signin-email-form">
+              <input
+                class="signin-field"
+                data-testid="signin-email-input"
+                type="email"
+                autocomplete="email"
+                placeholder="settler@example.com"
+                aria-label="Email"
+              />
+              <input
+                class="signin-field"
+                data-testid="signin-password-input"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Password"
+                aria-label="Password"
+              />
+              <button
+                class="secondary-action"
+                data-testid="signin-email-submit"
+                type="button"
+              >Continue with email</button>
+            </div>
+            <div class="signin-pane" data-signin-panel="passkey" data-testid="signin-passkey-prompt" hidden>
+              <p class="status-panel__detail">Use a passkey when this browser can prove it owns the credential. No private key leaves this device.</p>
+              <button
+                class="secondary-action"
+                data-testid="signin-passkey-button"
+                type="button"
+              >Use a passkey</button>
+            </div>
+            <div class="signin-pane" data-signin-panel="provider" data-testid="signin-provider-note" hidden>
+              <p class="status-panel__detail">Continue with <span data-testid="signin-provider-name">Google</span>. Serfbound stores the provider, provider account id, optional email metadata, and your public name.</p>
+            </div>
+            <p class="status-panel__detail" data-testid="signin-moment-state">Choose a sign-in method when you want the social realm; local play stays open.</p>
+            <p class="status-panel__detail signin-accountless" data-testid="signin-accountless-note">Start game stays accountless: no registration, no sign-in, no network.</p>
+          </div>
           <p class="online-badge" data-testid="online-your-turn" hidden>Your turn in 0 matches</p>
           <div class="match-strip" data-testid="online-match-strip" hidden>
             <p class="status-panel__label">Current match</p>
             <p class="status-panel__value" data-testid="online-match-line">—</p>
+          </div>
+          <div class="legacy-online-bridge">
+            <p class="status-panel__label">Correspondence bridge</p>
+            <p class="status-panel__detail">For now, correspondence matches still use a local match key.</p>
           </div>
           <div class="panel-group__actions">
             <button
               class="secondary-action"
               data-testid="online-signin-button"
               type="button"
-            >Sign in (device key)</button>
+            >Use local match key</button>
             <button
               class="secondary-action"
               data-testid="online-refresh-button"
@@ -3240,6 +3327,29 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   const onlineMatchStrip = root.querySelector<HTMLElement>("[data-testid='online-match-strip']");
   const onlineMatchLine = root.querySelector<HTMLElement>("[data-testid='online-match-line']");
   const onlineSealLabel = root.querySelector<HTMLElement>("[data-testid='online-seal-label']");
+  type SignInMethod = "email" | "passkey" | "google" | "apple" | "meta";
+  type SignInMomentStatus = "idle" | "working" | "ready" | "unavailable";
+  const providerSignInMethods = new Set<SignInMethod>(["google", "apple", "meta"]);
+  let signInMethod: SignInMethod = "email";
+  let signInMomentStatus: SignInMomentStatus = "idle";
+  let signInMomentMessage =
+    "Choose a sign-in method when you want the social realm; local play stays open.";
+  let identityV2Account: IdentityV2Account | undefined;
+  const signInMethodButtons = [
+    ...root.querySelectorAll<HTMLButtonElement>("[data-signin-method]"),
+  ];
+  const signInPanels = [...root.querySelectorAll<HTMLElement>("[data-signin-panel]")];
+  const signInMomentState = root.querySelector<HTMLElement>("[data-testid='signin-moment-state']");
+  const signInProviderName = root.querySelector<HTMLElement>("[data-testid='signin-provider-name']");
+  const signInEmailInput = root.querySelector<HTMLInputElement>(
+    "[data-testid='signin-email-input']",
+  );
+  const signInPasswordInput = root.querySelector<HTMLInputElement>(
+    "[data-testid='signin-password-input']",
+  );
+  const signInEmailSubmit = root.querySelector<HTMLButtonElement>(
+    "[data-testid='signin-email-submit']",
+  );
   const mapsStateElement = root.querySelector<HTMLElement>("[data-testid='maps-state']");
   const mapsDetailElement = root.querySelector<HTMLElement>("[data-testid='maps-detail']");
   const mapsTitleInput = root.querySelector<HTMLInputElement>("[data-testid='maps-title-input']");
@@ -3612,6 +3722,112 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       syncCommunityMapsState();
     }
   };
+  const syncSignInMoment = () => {
+    root.dataset.serfboundSigninMethod = signInMethod;
+    root.dataset.serfboundSigninStatus = signInMomentStatus;
+    if (identityV2Account !== undefined) {
+      root.dataset.serfboundIdentityV2AccountId = identityV2Account.accountId;
+    }
+
+    for (const button of signInMethodButtons) {
+      const active = button.dataset["signinMethod"] === signInMethod;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    }
+
+    for (const panel of signInPanels) {
+      const panelKind = panel.dataset["signinPanel"];
+      panel.hidden =
+        (panelKind === "email" && signInMethod !== "email") ||
+        (panelKind === "passkey" && signInMethod !== "passkey") ||
+        (panelKind === "provider" && !providerSignInMethods.has(signInMethod));
+    }
+
+    if (signInProviderName !== null && providerSignInMethods.has(signInMethod)) {
+      signInProviderName.textContent =
+        signInMethod === "meta" ? "Meta" : signInMethod === "apple" ? "Apple" : "Google";
+    }
+
+    if (signInMomentState !== null) {
+      signInMomentState.textContent = signInMomentMessage;
+    }
+
+    if (signInEmailSubmit !== null) {
+      signInEmailSubmit.disabled = signInMomentStatus === "working";
+    }
+  };
+  const selectSignInMethod = (method: SignInMethod) => {
+    signInMethod = method;
+    signInMomentStatus = identityV2Account === undefined ? "idle" : "ready";
+    if (method === "email") {
+      signInMomentMessage =
+        identityV2Account === undefined
+          ? "Email sign-in creates or opens a v2 account. Local play stays open."
+          : `V2 account ready for ${identityV2Account.displayName}. Local play stays open.`;
+    } else if (method === "passkey") {
+      signInMomentMessage =
+        "Passkey sign-in is ready for the browser ceremony; local play stays open.";
+    } else {
+      const provider = method === "meta" ? "Meta" : method === "apple" ? "Apple" : "Google";
+      signInMomentMessage = `${provider} sign-in waits for provider registration. Local play stays open.`;
+    }
+
+    syncSignInMoment();
+  };
+  const signInWithEmailV2 = async () => {
+    if (signInEmailInput === null || signInPasswordInput === null) {
+      return;
+    }
+
+    const email = signInEmailInput.value.trim();
+    const password = signInPasswordInput.value;
+    if (email === "" || password.length < 8) {
+      signInMomentStatus = "unavailable";
+      signInMomentMessage = "Enter an email and at least 8 password characters.";
+      syncSignInMoment();
+      return;
+    }
+
+    signInMomentStatus = "working";
+    signInMomentMessage = "Opening the account door.";
+    syncSignInMoment();
+    try {
+      identityV2Account = await createPasswordIdentityV2Account(onlineConfig.identityUrl, {
+        email,
+        password,
+        displayName: currentProfile.name,
+      });
+    } catch (error) {
+      if (error instanceof IdentityV2ServiceError && error.reason === "credential-exists") {
+        try {
+          identityV2Account = await signInPasswordIdentityV2(onlineConfig.identityUrl, {
+            email,
+            password,
+          });
+        } catch (signInError) {
+          signInMomentStatus = "unavailable";
+          signInMomentMessage =
+            signInError instanceof IdentityV2ServiceError
+              ? signInError.message
+              : "Sign-in failed. Local play stays open.";
+          syncSignInMoment();
+          return;
+        }
+      } else {
+        signInMomentStatus = "unavailable";
+        signInMomentMessage =
+          error instanceof IdentityV2ServiceError
+            ? error.message
+            : "Sign-in failed. Local play stays open.";
+        syncSignInMoment();
+        return;
+      }
+    }
+
+    signInMomentStatus = "ready";
+    signInMomentMessage = `V2 account ready for ${identityV2Account.displayName}. Local play stays open.`;
+    syncSignInMoment();
+  };
   void loadCommunityLibrary();
   let lastYourTurnCount = 0;
   const syncOnlineState = () => {
@@ -3882,6 +4098,41 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     });
     syncOnlineState();
   };
+  for (const button of signInMethodButtons) {
+    button.addEventListener("click", () => {
+      const method = button.dataset["signinMethod"];
+      if (
+        method === "email" ||
+        method === "passkey" ||
+        method === "google" ||
+        method === "apple" ||
+        method === "meta"
+      ) {
+        selectSignInMethod(method);
+      }
+    });
+  }
+
+  signInEmailSubmit?.addEventListener("click", () => {
+    void signInWithEmailV2();
+  });
+  for (const input of [signInEmailInput, signInPasswordInput]) {
+    input?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        void signInWithEmailV2();
+      }
+    });
+  }
+
+  root
+    .querySelector<HTMLButtonElement>("[data-testid='signin-passkey-button']")
+    ?.addEventListener("click", () => {
+      signInMomentStatus = identityV2Account === undefined ? "idle" : "ready";
+      signInMomentMessage =
+        "Passkey ceremonies come next; this screen already keeps accountless play open.";
+      syncSignInMoment();
+    });
+  syncSignInMoment();
   root
     .querySelector<HTMLButtonElement>("[data-testid='online-signin-button']")
     ?.addEventListener("click", () => signInOnline());

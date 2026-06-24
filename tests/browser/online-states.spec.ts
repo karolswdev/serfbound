@@ -6,9 +6,9 @@ import { expect, test } from "@playwright/test";
 
 import { createDecodableGeneratedPaArchive } from "@serfbound/test-support";
 
-// SB-32-04: the competitive surfaces are designed states, not raw
-// text — the sign-in explainer, the quiet lobby, the challenge card,
-// and the chronicle.
+// SB-32-04/SB-33-03: the competitive surfaces are designed states,
+// not raw text — the sign-in moment, the quiet lobby, the challenge
+// card, and the chronicle.
 
 const identityPort = 43281;
 const mailboxPort = 43282;
@@ -57,16 +57,50 @@ test.afterAll(() => {
   rmSync(storeDir, { recursive: true, force: true });
 });
 
-test("sign-in, the quiet lobby, the challenge card, the chronicle", async ({ page }) => {
+test("sign-in moment, the quiet lobby, the challenge card, the chronicle", async ({ page }) => {
   await page.goto(
     `/?seed=6235842872325272&window=512` +
       `&identityApi=http://127.0.0.1:${identityPort}` +
       `&mailboxApi=http://127.0.0.1:${mailboxPort}`,
   );
+  const app = page.locator("#app");
 
   // The privacy posture is presented, not buried.
   await expect(page.locator(".panel-group--online")).toContainText(
     "stores only the credential data required",
+  );
+  await expect(page.getByTestId("signin-accountless-note")).toContainText(
+    "no registration, no sign-in, no network",
+  );
+  await expect(app).toHaveAttribute("data-serfbound-signin-method", "email");
+  await expect(app).toHaveAttribute("data-serfbound-signin-status", "idle");
+  await expect(page.getByTestId("signin-email-form")).toBeVisible();
+  await expect(page.getByTestId("signin-passkey-prompt")).toBeHidden();
+  await expect(page.getByTestId("signin-provider-note")).toBeHidden();
+
+  await page.getByTestId("signin-method-passkey").click();
+  await expect(app).toHaveAttribute("data-serfbound-signin-method", "passkey");
+  await expect(page.getByTestId("signin-passkey-prompt")).toBeVisible();
+  await expect(page.getByTestId("signin-moment-state")).toContainText("Passkey sign-in");
+
+  await page.getByTestId("signin-method-google").click();
+  await expect(app).toHaveAttribute("data-serfbound-signin-method", "google");
+  await expect(page.getByTestId("signin-provider-note")).toBeVisible();
+  await expect(page.getByTestId("signin-provider-name")).toHaveText("Google");
+
+  await page.getByTestId("signin-method-email").click();
+  const profileInput = page.getByTestId("profile-name-input");
+  await profileInput.fill("HERALD");
+  await profileInput.blur();
+  await page.getByTestId("signin-email-input").fill("herald@example.com");
+  await page.getByTestId("signin-password-input").fill("long-enough-password");
+  await page.getByTestId("signin-email-submit").click();
+  await expect(app).toHaveAttribute("data-serfbound-signin-status", "ready", {
+    timeout: 15_000,
+  });
+  await expect(app).toHaveAttribute("data-serfbound-identity-v2-account-id", /^acct_[0-9a-f]+$/);
+  await expect(page.getByTestId("signin-moment-state")).toContainText(
+    "V2 account ready for HERALD",
   );
   await expect(page.getByTestId("profile-chronicle")).toHaveText("No matches yet");
 
@@ -83,11 +117,8 @@ test("sign-in, the quiet lobby, the challenge card, the chronicle", async ({ pag
     mimeType: "application/octet-stream",
     buffer: Buffer.from(createDecodableGeneratedPaArchive()),
   });
-  await expect(page.getByTestId("data-state")).toHaveText("Data imported");
+  await expect(page.getByTestId("data-state")).toHaveText("Data imported", { timeout: 15_000 });
 
-  const profileInput = page.getByTestId("profile-name-input");
-  await profileInput.fill("HERALD");
-  await profileInput.blur();
   await page.getByTestId("online-signin-button").click();
   await expect(page.getByTestId("online-state")).toHaveText("Signed in as HERALD", {
     timeout: 15_000,
