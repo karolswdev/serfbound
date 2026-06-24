@@ -91,6 +91,48 @@ export async function signInPasswordIdentityV2(
   });
 }
 
+export async function createPasskeyIdentityV2Account(
+  serviceUrl: string,
+  options: {
+    readonly displayName: string;
+    readonly credentialId: string;
+    readonly publicKeyJwk: JsonWebKey;
+    readonly signCount: number;
+    readonly transports: readonly string[];
+    readonly userHandle: string;
+    readonly signedAtIso: string;
+    readonly signature: string;
+  },
+): Promise<IdentityV2Account> {
+  return requestIdentityV2Json(`${serviceUrl}/v2/accounts/passkey`, {
+    displayName: options.displayName,
+    credentialId: options.credentialId,
+    publicKeyJwk: options.publicKeyJwk,
+    signCount: options.signCount,
+    transports: [...options.transports],
+    userHandle: options.userHandle,
+    signedAtIso: options.signedAtIso,
+    signature: options.signature,
+  });
+}
+
+export async function signInPasskeyIdentityV2(
+  serviceUrl: string,
+  options: {
+    readonly credentialId: string;
+    readonly signCount: number;
+    readonly signedAtIso: string;
+    readonly signature: string;
+  },
+): Promise<IdentityV2Account> {
+  return requestIdentityV2Json(`${serviceUrl}/v2/sessions/passkey`, {
+    credentialId: options.credentialId,
+    signCount: options.signCount,
+    signedAtIso: options.signedAtIso,
+    signature: options.signature,
+  });
+}
+
 export function identityV2AuthorizationHeaders(
   session: IdentityV2Session,
 ): Record<string, string> {
@@ -99,7 +141,7 @@ export function identityV2AuthorizationHeaders(
 
 async function requestIdentityV2Json(
   url: string,
-  body: Record<string, string>,
+  body: Record<string, unknown>,
 ): Promise<IdentityV2Account> {
   let response: Response;
   try {

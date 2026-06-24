@@ -230,3 +230,172 @@ test("email v2 session publishes, rates, reports, and counts play without device
     expect(body["signedAtIso"]).toBeUndefined();
   }
 });
+
+test("passkey v2 session persists and signs map writes without device keys", async ({ page }) => {
+  test.setTimeout(180_000);
+  const app = page.locator("#app");
+  const identityPosts: {
+    readonly path: string;
+    readonly body: string | null;
+  }[] = [];
+  const mapWrites: {
+    readonly path: string;
+    readonly authorization: string | null;
+    readonly body: string | null;
+  }[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.origin === `http://127.0.0.1:${identityPort}` && request.method() === "POST") {
+      identityPosts.push({ path: url.pathname, body: request.postData() });
+      return;
+    }
+
+    if (
+      url.origin !== `http://127.0.0.1:${mapsPort}` ||
+      request.method() !== "POST" ||
+      !(
+        url.pathname === "/maps" ||
+        url.pathname.endsWith("/rate") ||
+        url.pathname.endsWith("/report") ||
+        url.pathname.endsWith("/played")
+      )
+    ) {
+      return;
+    }
+
+    mapWrites.push({
+      path: url.pathname,
+      authorization: request.headers()["authorization"] ?? null,
+      body: request.postData(),
+    });
+  });
+
+  const appUrl =
+    `/?dev=1&seed=6235842872325272` +
+    `&identityApi=http://127.0.0.1:${identityPort}` +
+    `&mailboxApi=http://127.0.0.1:9` +
+    `&mapsApi=http://127.0.0.1:${mapsPort}`;
+  await page.goto(appUrl);
+
+  const profileInput = page.getByTestId("profile-name-input");
+  await profileInput.fill("PASSMAP");
+  await profileInput.blur();
+  await page.getByTestId("signin-method-passkey").click();
+  await page.getByTestId("signin-passkey-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-signin-status", "ready", {
+    timeout: 15_000,
+  });
+  await expect(app).toHaveAttribute("data-serfbound-identity-v2-session", "true");
+  await expect(app).toHaveAttribute("data-serfbound-online-auth", "identity-v2");
+  const accountId = await app.getAttribute("data-serfbound-identity-v2-account-id");
+  expect(accountId).toMatch(/^acct_[0-9a-f]+$/);
+
+  await page.reload();
+  await page.getByTestId("signin-method-passkey").click();
+  await page.getByTestId("signin-passkey-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-signin-status", "ready", {
+    timeout: 15_000,
+  });
+  await expect(app).toHaveAttribute(
+    "data-serfbound-identity-v2-account-id",
+    accountId as string,
+  );
+  await expect(page.getByTestId("online-state")).toHaveText("Signed in as PASSMAP");
+  const storedCredential = await page.evaluate(async () => {
+    const open = indexedDB.open("serfbound-identity-v2", 1);
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      open.onsuccess = () => resolve(open.result);
+      open.onerror = () => reject(open.error ?? new Error("Could not open identity v2 store."));
+    });
+    try {
+      const transaction = database.transaction("passkeys", "readonly");
+      const request = transaction.objectStore("passkeys").get("current-passkey");
+      const record = await new Promise<Record<string, unknown>>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result as Record<string, unknown>);
+        request.onerror = () =>
+          reject(request.error ?? new Error("Could not read passkey credential."));
+      });
+      const privateKey = record["privateKey"] as CryptoKey | undefined;
+      return {
+        credentialId: record["credentialId"],
+        hasPrivateKeyJwk: "privateKeyJwk" in record,
+        privateKeyExtractable: privateKey?.extractable,
+        privateKeyType: privateKey?.type,
+        privateKeyUsages: privateKey?.usages ?? [],
+        serviceUrl: record["serviceUrl"],
+        signCount: record["signCount"],
+      };
+    } finally {
+      database.close();
+    }
+  });
+  expect(storedCredential).toMatchObject({
+    hasPrivateKeyJwk: false,
+    privateKeyExtractable: false,
+    privateKeyType: "private",
+    serviceUrl: `http://127.0.0.1:${identityPort}`,
+    signCount: 2,
+  });
+  expect(storedCredential.privateKeyUsages).toContain("sign");
+
+  expect(identityPosts.map((entry) => entry.path)).toEqual([
+    "/v2/accounts/passkey",
+    "/v2/sessions/passkey",
+  ]);
+  for (const post of identityPosts) {
+    const body = JSON.parse(post.body ?? "{}") as Record<string, unknown>;
+    expect(body["privateKeyJwk"]).toBeUndefined();
+    expect(body["idToken"]).toBeUndefined();
+    expect(body["accessToken"]).toBeUndefined();
+  }
+
+  await page.getByTestId("data-import-input").setInputFiles({
+    name: "SPAU.PA",
+    mimeType: "application/octet-stream",
+    buffer: Buffer.from(createDecodableGeneratedPaArchive()),
+  });
+  await expect(page.getByTestId("data-state")).toHaveText("Data imported");
+
+  await page.getByTestId("open-editor-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-chrome", "editor");
+  await page.getByTestId("maps-title-input").fill("PASSKEY MAP");
+  await expect(page.getByTestId("maps-publish-button")).toBeEnabled();
+  await page.getByTestId("maps-publish-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-maps-status", "published", {
+    timeout: 15_000,
+  });
+  await expect(page.getByTestId("maps-gallery")).toContainText("PASSKEY MAP");
+  const passkeyMapCard = page.locator(".community-map-card").filter({ hasText: "PASSKEY MAP" });
+
+  await passkeyMapCard.getByTestId("maps-rate-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-maps-status", "rated", {
+    timeout: 15_000,
+  });
+  await passkeyMapCard.getByTestId("maps-report-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-maps-status", "reported", {
+    timeout: 15_000,
+  });
+  await passkeyMapCard.getByTestId("maps-download-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-maps-status", "downloaded", {
+    timeout: 15_000,
+  });
+  await page.getByTestId("maps-library-play-button").click();
+  await expect(page.getByTestId("game-state")).toHaveText("Running", { timeout: 15_000 });
+  await expect(app).toHaveAttribute("data-serfbound-maps-status", "playing");
+
+  await expect
+    .poll(() => mapWrites.some((entry) => entry.path.endsWith("/played")))
+    .toBe(true);
+  expect(mapWrites).toHaveLength(4);
+  expect(mapWrites[0]?.path).toBe("/maps");
+  expect(mapWrites[1]?.path).toMatch(/\/rate$/);
+  expect(mapWrites[2]?.path).toMatch(/\/report$/);
+  expect(mapWrites[3]?.path).toMatch(/\/played$/);
+  for (const write of mapWrites) {
+    expect(write.authorization).toMatch(/^Bearer sbv2\./);
+    const body = JSON.parse(write.body ?? "{}") as Record<string, unknown>;
+    expect(body["publicKeyJwk"]).toBeUndefined();
+    expect(body["signature"]).toBeUndefined();
+    expect(body["signedAtIso"]).toBeUndefined();
+  }
+});

@@ -3,7 +3,7 @@
 **Last updated:** 2026-06-24.
 **Status:** in progress (SB-33-01 through SB-33-04 complete; SB-33-05 has
 started with accountless zero-network proof, the v2 service auth adapter, and
-email-v2 browser map plus rated-match paths).
+email-v2 browser map/rated-match paths plus passkey browser map persistence).
 
 ## Goal
 
@@ -99,11 +99,16 @@ authorization instead of device-key payloads. The browser correspondence path
 now also lets two email v2 accounts post/accept a challenge, exchange mailbox
 moves, dual-attest, and rate on the ladder with `Bearer sbv2` writes and no
 device-key payloads. The Phase 25 bridge remains available for legacy sign-in,
-but email v2 no longer mints or uses a device key for these social writes. The
-full gate is still open: browser passkey ceremony and persistence, live
-provider handoff, provider/passkey social-write and rated-match coverage, and
-the complete sign-in-method-to-rated-match e2e remain required before SB-33-05
-can close.
+but email v2 no longer mints or uses a device key for these social writes.
+
+The browser passkey path now creates a service-compatible v2 passkey proof
+credential, stores the private key locally as a non-extractable `CryptoKey`,
+reuses it across reloads through `/v2/sessions/passkey`, and proves community
+map publish/rate/report/play-count writes with `Bearer sbv2` authorization
+instead of device-key payloads. The full gate is still open: passkey rated
+correspondence, live provider handoff, provider social-write/rated-match
+coverage, native provider/WebAuthn handoff decisions, and the complete
+sign-in-method-to-rated-match e2e remain required before SB-33-05 can close.
 
 ## Active risks
 
@@ -150,6 +155,10 @@ can close.
   post/accept challenges, exchange correspondence moves, dual-attest, and rate
   matches without device-key payloads; provider/passkey coverage remains
   before gate closure.
+- 2026-06-24 — SB-33-05 browser passkey proof: the passkey sign-in path creates
+  and persists a v2 credential locally, signs back in after reload, and proves
+  community-map writes with v2 bearer authorization instead of device-key
+  payloads.
 
 ## Decisions deferred
 

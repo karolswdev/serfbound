@@ -37,8 +37,9 @@ Phase 25 four-field ceiling as a limit; SB-33-02 shipped the v2 account
 service contract; SB-33-03 shipped the player-facing sign-in moment with
 live email v2 readiness; SB-33-04 accepted the social-experience definition;
 SB-33-05 is in progress with the accountless zero-network gate slice, v2
-service auth adapter, and readiness tracker; full closure waits on browser
-passkeys, live provider handoff, and browser v2 mailbox/rating integration).
+service auth adapter, email/passkey map proofs, and email rated
+correspondence; full closure waits on passkey rated correspondence, live
+provider handoff, and the per-method browser v2 mailbox/rating gate).
 
 ## Vision
 

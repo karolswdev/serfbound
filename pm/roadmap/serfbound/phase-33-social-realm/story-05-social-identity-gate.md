@@ -33,11 +33,14 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
   use an email v2 session proof without device-key payloads.
 - [x] Browser email v2 accounts can reach a correspondence match, dual
   attestation, and a rated ladder result without device-key payloads.
-- [ ] Browser passkey ceremony and persistence are implemented and gate-tested.
+- [x] Browser passkey proof and local persistence are implemented and
+  gate-tested for community-map social writes without device-key payloads.
+- [ ] Browser passkey accounts can reach a correspondence match, dual
+  attestation, and a rated ladder result without device-key payloads.
 - [ ] Live provider handoff is configured for at least one provider and
   gate-tested without accepting raw provider tokens in the browser.
 - [ ] The browser mailbox/maps/rating journey uses v2 identity for provider
-  and passkey accounts, with no device key as a v2 credential.
+  accounts, with no device key as a v2 credential.
 - [ ] Full opt-in journey e2e passes: each sign-in method -> correspondence
   match -> dual attestation -> rated result.
 
@@ -47,8 +50,8 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
   - `tests/browser/social-identity-gate.spec.ts` — accountless zero-network
     regression.
   - `tests/browser/community-maps.spec.ts` — existing device-key map flow plus
-    email v2 session map publish/rate/report/play-count writes without device
-    keys.
+    email and passkey v2 session map publish/rate/report/play-count writes
+    without device keys.
   - `tests/browser/online-play.spec.ts` — existing device-key rated match plus
     email v2 session correspondence/rating without device keys.
   - `tests/browser/online-states.spec.ts` — v2 email shell moment + legacy
@@ -62,9 +65,10 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
     attestation, and rated ladder identity without device keys.
   - `tests/ci/service-maps.test.mjs` — v2 session publish, rate, report,
     play count, and delete without device keys.
-- Remaining before closure: browser passkey, live provider handoff,
-  provider/passkey coverage for social writes and rated matches, and full
-  sign-in-method-to-rated-match e2e.
+- Remaining before closure: passkey rated correspondence, live provider
+  handoff, provider coverage for social writes and rated matches, native
+  provider/WebAuthn handoff decisions, and full sign-in-method-to-rated-match
+  e2e.
 
 ## Notes / open questions
 

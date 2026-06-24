@@ -40,9 +40,17 @@ import { SerfboundOnlineMatch } from "./online-match.js";
 import {
   IdentityV2ServiceError,
   createPasswordIdentityV2Account,
+  createPasskeyIdentityV2Account,
+  signInPasskeyIdentityV2,
   signInPasswordIdentityV2,
   type IdentityV2Account,
 } from "./identity-v2-client.js";
+import {
+  BrowserIndexedDbIdentityV2PasskeyStore,
+  createIdentityV2PasskeyCredential,
+  signIdentityV2PasskeyPayload,
+  withIdentityV2PasskeySignCount,
+} from "./identity-v2-passkey-store.js";
 import type { MailboxMatchView } from "./mailbox-client.js";
 import { digestLines } from "./recap.js";
 import { getUiLanguage, setUiLanguage, uiText } from "./strings.js";
@@ -467,6 +475,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   const licensedAssetPackageStore =
     options.licensedAssetPackageStore ?? new BrowserIndexedDbLicensedAssetPackageStore();
   const communityMapLibraryStore = new BrowserIndexedDbCommunityMapLibraryStore();
+  const identityV2PasskeyStore = new BrowserIndexedDbIdentityV2PasskeyStore();
   const queryLicensedAssetDelivery = resolveLicensedAssetDeliveryConfig();
   const licensedAssetDelivery =
     options.licensedAssetDelivery === undefined
@@ -3357,6 +3366,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   const signInEmailSubmit = root.querySelector<HTMLButtonElement>(
     "[data-testid='signin-email-submit']",
   );
+  const signInPasskeyButton = root.querySelector<HTMLButtonElement>(
+    "[data-testid='signin-passkey-button']",
+  );
   const mapsStateElement = root.querySelector<HTMLElement>("[data-testid='maps-state']");
   const mapsDetailElement = root.querySelector<HTMLElement>("[data-testid='maps-detail']");
   const mapsTitleInput = root.querySelector<HTMLInputElement>("[data-testid='maps-title-input']");
@@ -3813,6 +3825,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     if (signInEmailSubmit !== null) {
       signInEmailSubmit.disabled = signInMomentStatus === "working";
     }
+    if (signInPasskeyButton !== null) {
+      signInPasskeyButton.disabled = signInMomentStatus === "working";
+    }
   };
   const selectSignInMethod = (method: SignInMethod) => {
     signInMethod = method;
@@ -3884,6 +3899,102 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
     signInMomentStatus = "ready";
     signInMomentMessage = `V2 account ready for ${identityV2Account.displayName}. Local play stays open.`;
+    if (identityV2Account.session !== undefined) {
+      onlineSurface.useIdentityV2Session(identityV2Account.session);
+    }
+
+    syncSignInMoment();
+    syncCommunityMapsState();
+    syncOnlineState();
+  };
+  const identityV2PasskeySignCount = (
+    account: IdentityV2Account,
+    credentialId: string,
+    fallback: number,
+  ): number => {
+    const credential = account.credentials.find(
+      (candidate) => candidate.kind === "passkey" && candidate.credentialId === credentialId,
+    );
+    return credential?.kind === "passkey" ? credential.signCount : fallback;
+  };
+  const signInWithPasskeyV2 = async () => {
+    if (globalThis.crypto?.subtle === undefined || globalThis.indexedDB === undefined) {
+      signInMomentStatus = "unavailable";
+      signInMomentMessage =
+        "This browser cannot store a passkey credential. Local play stays open.";
+      syncSignInMoment();
+      return;
+    }
+
+    signInMomentStatus = "working";
+    signInMomentMessage = "Opening the passkey.";
+    syncSignInMoment();
+    try {
+      const stored = await identityV2PasskeyStore.load(onlineConfig.identityUrl);
+      if (stored === null) {
+        const credential = await createIdentityV2PasskeyCredential(
+          onlineConfig.identityUrl,
+          currentProfile.name,
+        );
+        const signedAtIso = new Date().toISOString();
+        const signature = await signIdentityV2PasskeyPayload(
+          credential,
+          `passkey-register|${credential.credentialId}|${credential.userHandle}|${currentProfile.name}|${signedAtIso}`,
+        );
+        identityV2Account = await createPasskeyIdentityV2Account(onlineConfig.identityUrl, {
+          displayName: currentProfile.name,
+          credentialId: credential.credentialId,
+          publicKeyJwk: credential.publicKeyJwk,
+          signCount: credential.signCount,
+          transports: credential.transports,
+          userHandle: credential.userHandle,
+          signedAtIso,
+          signature,
+        });
+        await identityV2PasskeyStore.save(
+          withIdentityV2PasskeySignCount(
+            credential,
+            identityV2PasskeySignCount(
+              identityV2Account,
+              credential.credentialId,
+              credential.signCount,
+            ),
+            identityV2Account.displayName,
+          ),
+        );
+      } else {
+        const nextSignCount = stored.signCount + 1;
+        const signedAtIso = new Date().toISOString();
+        const signature = await signIdentityV2PasskeyPayload(
+          stored,
+          `passkey-signin|${stored.credentialId}|${nextSignCount}|${signedAtIso}`,
+        );
+        identityV2Account = await signInPasskeyIdentityV2(onlineConfig.identityUrl, {
+          credentialId: stored.credentialId,
+          signCount: nextSignCount,
+          signedAtIso,
+          signature,
+        });
+        await identityV2PasskeyStore.save(
+          withIdentityV2PasskeySignCount(
+            stored,
+            identityV2PasskeySignCount(identityV2Account, stored.credentialId, nextSignCount),
+            identityV2Account.displayName,
+          ),
+        );
+      }
+    } catch (error) {
+      signInMomentStatus = "unavailable";
+      signInMomentMessage =
+        error instanceof IdentityV2ServiceError
+          ? error.message
+          : "Passkey sign-in failed. Local play stays open.";
+      syncSignInMoment();
+      return;
+    }
+
+    signInMomentStatus = "ready";
+    signInMomentMessage = `Passkey ready for ${identityV2Account.displayName}. Local play stays open.`;
     if (identityV2Account.session !== undefined) {
       onlineSurface.useIdentityV2Session(identityV2Account.session);
     }
@@ -4216,14 +4327,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     });
   }
 
-  root
-    .querySelector<HTMLButtonElement>("[data-testid='signin-passkey-button']")
-    ?.addEventListener("click", () => {
-      signInMomentStatus = identityV2Account === undefined ? "idle" : "ready";
-      signInMomentMessage =
-        "Passkey ceremonies come next; this screen already keeps accountless play open.";
-      syncSignInMoment();
-    });
+  signInPasskeyButton?.addEventListener("click", () => {
+    void signInWithPasskeyV2();
+  });
   syncSignInMoment();
   onlineSignInButton?.addEventListener("click", () => signInOnline());
   root
