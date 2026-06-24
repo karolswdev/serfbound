@@ -37,10 +37,13 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
   gate-tested for community-map social writes without device-key payloads.
 - [x] Browser passkey accounts can reach a correspondence match, dual
   attestation, and a rated ladder result without device-key payloads.
+- [x] Configured provider handoff is browser-gate-tested without accepting raw
+  provider tokens or provider subjects in browser payloads.
+- [x] Browser provider-handoff accounts can publish/rate/report/play community
+  maps and reach a correspondence match, dual attestation, and rated ladder
+  result through v2 identity without device-key payloads.
 - [ ] Live provider handoff is configured for at least one provider and
   gate-tested without accepting raw provider tokens in the browser.
-- [ ] The browser mailbox/maps/rating journey uses v2 identity for provider
-  accounts, with no device key as a v2 credential.
 - [ ] Full opt-in journey e2e passes: each sign-in method -> correspondence
   match -> dual attestation -> rated result.
 
@@ -50,10 +53,11 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
   - `tests/browser/social-identity-gate.spec.ts` — accountless zero-network
     regression.
   - `tests/browser/community-maps.spec.ts` — existing device-key map flow plus
-    email and passkey v2 session map publish/rate/report/play-count writes
-    without device keys.
+    email, passkey, and configured provider-handoff v2 session map
+    publish/rate/report/play-count writes without device keys.
   - `tests/browser/online-play.spec.ts` — existing device-key rated match plus
-    email and passkey v2 session correspondence/rating without device keys.
+    email, passkey, and configured provider-handoff v2 session
+    correspondence/rating without device keys.
   - `tests/browser/online-states.spec.ts` — v2 email shell moment + legacy
     correspondence bridge state.
   - `tests/browser/gamification-gate.spec.ts` — current rated-match gamification
@@ -65,9 +69,9 @@ The full opt-in journey e2e (each sign-in method to a rated match) plus the acco
     attestation, and rated ladder identity without device keys.
   - `tests/ci/service-maps.test.mjs` — v2 session publish, rate, report,
     play count, and delete without device keys.
-- Remaining before closure: live provider handoff, provider coverage for social
-  writes and rated matches, native provider/WebAuthn handoff decisions, and
-  full sign-in-method-to-rated-match e2e.
+- Remaining before closure: live provider registration/gateway configuration,
+  native provider/WebAuthn handoff decisions, and the final
+  sign-in-method-to-rated-match e2e.
 
 ## Notes / open questions
 

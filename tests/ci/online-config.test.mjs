@@ -11,6 +11,7 @@ test("defaults to the deployed backbone with the gateway path split", () => {
   assert.equal(config.identityUrl, `${defaultOnlineApiBase}/identity`);
   assert.equal(config.mailboxUrl, `${defaultOnlineApiBase}/mailbox`);
   assert.equal(config.mapsUrl, `${defaultOnlineApiBase}/maps`);
+  assert.equal(config.providerHandoffUrl, null);
 });
 
 test("?api= overrides the base and trims trailing slashes", () => {
@@ -27,6 +28,19 @@ test("explicit per-service params win (tests run split local ports)", () => {
   assert.equal(config.identityUrl, "http://127.0.0.1:4310");
   assert.equal(config.mailboxUrl, "http://127.0.0.1:4320");
   assert.equal(config.mapsUrl, "http://127.0.0.1:4330");
+  assert.equal(config.providerHandoffUrl, null);
+});
+
+test("provider handoff is explicit so browsers do not call the assertion endpoint directly", () => {
+  const config = resolveOnlineConfig(
+    "?providerHandoffApi=http://127.0.0.1:4340/provider-handoff/",
+  );
+  assert.equal(config.providerHandoffUrl, "http://127.0.0.1:4340/provider-handoff");
+});
+
+test("blank provider handoff param keeps provider sign-in unconfigured", () => {
+  const config = resolveOnlineConfig("?providerHandoffApi=");
+  assert.equal(config.providerHandoffUrl, null);
 });
 
 test("a persisted base applies when no param overrides it", () => {

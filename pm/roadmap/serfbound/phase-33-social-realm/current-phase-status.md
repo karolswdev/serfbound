@@ -3,7 +3,7 @@
 **Last updated:** 2026-06-24.
 **Status:** in progress (SB-33-01 through SB-33-04 complete; SB-33-05 has
 started with accountless zero-network proof, the v2 service auth adapter, and
-email/passkey browser map and rated-match paths).
+email/passkey/provider-handoff browser map and rated-match paths).
 
 ## Goal
 
@@ -108,9 +108,19 @@ map publish/rate/report/play-count writes with `Bearer sbv2` authorization
 instead of device-key payloads. The browser correspondence path now also lets
 two passkey v2 accounts post/accept a challenge, exchange mailbox moves,
 dual-attest, and rate on the ladder with `Bearer sbv2` writes and no
-device-key payloads. The full gate is still open: live provider handoff,
-provider social-write/rated-match coverage, native provider/WebAuthn handoff
-decisions, and the complete sign-in-method-to-rated-match e2e remain required
+device-key payloads.
+
+The browser provider path now requires an explicit `providerHandoffApi`
+instead of calling the identity assertion endpoint directly. The browser sends
+only the selected provider and display name to that configured handoff; the
+handoff performs the server-side identity assertion with
+`x-serfbound-oidc-assertion`. Browser coverage proves a Google handoff account
+can publish, rate, report, and play-count community maps, and that two provider
+handoff accounts can post/accept a challenge, exchange moves, dual-attest, and
+rate on the ladder with `Bearer sbv2` writes and no raw provider tokens,
+provider subjects, or device-key payloads. The full gate is still open: live
+provider registration/gateway configuration, native provider/WebAuthn ceremony
+decisions, and the final sign-in-method-to-rated-match closure remain required
 before SB-33-05 can close.
 
 ## Active risks
@@ -156,8 +166,8 @@ before SB-33-05 can close.
   the legacy correspondence surface remains a separate bridge.
 - 2026-06-24 — SB-33-05 browser correspondence adapter: email v2 sessions can
   post/accept challenges, exchange correspondence moves, dual-attest, and rate
-  matches without device-key payloads; provider/passkey coverage remains
-  before gate closure.
+  matches without device-key payloads; later browser slices extended the same
+  proof to passkey and configured provider-handoff accounts.
 - 2026-06-24 — SB-33-05 browser passkey proof: the passkey sign-in path creates
   and persists a v2 credential locally, signs back in after reload, and proves
   community-map writes with v2 bearer authorization instead of device-key
@@ -165,6 +175,10 @@ before SB-33-05 can close.
 - 2026-06-24 — SB-33-05 browser passkey correspondence: two passkey v2
   accounts can post/accept challenges, exchange correspondence moves,
   dual-attest, and rate matches without device-key payloads.
+- 2026-06-24 — SB-33-05 provider handoff harness: browser provider sign-in is
+  explicit through `providerHandoffApi`, never sends provider tokens or
+  provider subjects, and proves community-map writes plus correspondence
+  ratings through v2 bearer authorization.
 
 ## Decisions deferred
 

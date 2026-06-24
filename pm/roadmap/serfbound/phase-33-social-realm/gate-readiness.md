@@ -17,8 +17,9 @@ zero-network.
 | Email sign-in shell | `tests/browser/online-states.spec.ts` proves the browser can create or open a v2 email/password account through the configured identity service. | proven |
 | V2 social authorization adapter | `tests/ci/service-mailbox.test.mjs` and `tests/ci/service-maps.test.mjs` prove identity-issued v2 session proofs authorize mailbox, maps, and rating writes without device keys while the Phase 25 bridge remains available. | proven at service level |
 | Browser passkey proof and persistence | `tests/browser/community-maps.spec.ts` proves the passkey path creates a local v2 credential, signs in again after reload through `/v2/sessions/passkey`, and never stores a private key as JWK. | proven for service-compatible passkey proof |
-| Browser v2 community-map writes | `tests/browser/community-maps.spec.ts` proves email and passkey v2 sessions can publish, rate, report, and count a played map without device-key payloads. | proven for email and passkey maps |
-| Browser v2 rated correspondence | `tests/browser/online-play.spec.ts` proves email and passkey v2 accounts can post/accept a challenge, exchange moves, dual-attest, and rate without device-key payloads. | proven for email and passkey v2 |
+| Configured provider handoff harness | `tests/browser/provider-handoff-server.ts`, `tests/browser/community-maps.spec.ts`, and `tests/browser/online-play.spec.ts` prove the browser uses an explicit `providerHandoffApi`, sends only provider + display name to the handoff, and never posts provider tokens or provider subjects. | proven for harnessed Google handoff |
+| Browser v2 community-map writes | `tests/browser/community-maps.spec.ts` proves email, passkey, and configured provider-handoff v2 sessions can publish, rate, report, and count a played map without device-key payloads. | proven for email, passkey, and provider-handoff maps |
+| Browser v2 rated correspondence | `tests/browser/online-play.spec.ts` proves email, passkey, and configured provider-handoff v2 accounts can post/accept a challenge, exchange moves, dual-attest, and rate without device-key payloads. | proven for email, passkey, and provider-handoff v2 |
 | Current rated-match path | `tests/browser/online-play.spec.ts` and `tests/browser/gamification-gate.spec.ts` prove the existing correspondence/rating path through the temporary Phase 25 local match key bridge. | proven as bridge |
 
 ## Not yet gate-complete
@@ -26,10 +27,8 @@ zero-network.
 | Gap | Why it blocks closure |
 |---|---|
 | Native WebAuthn/provider ceremony decision | The browser now has a persisted service-compatible passkey proof; if launch requires OS/browser WebAuthn attestation, that handoff still needs implementation and coverage. |
-| Live provider handoff | At least one real provider registration and OIDC gateway handoff must be configured and tested without accepting raw provider tokens in browser payloads. |
-| Provider v2 correspondence/rating journey | Email and passkey v2 are wired in-browser, but provider accounts still need browser coverage for correspondence matches and rated results. |
-| Provider social-write coverage | Email and passkey maps are proven in-browser; provider accounts still need browser coverage for the same social-write boundary. |
-| Full journey e2e | The gate needs one end-to-end browser proof per sign-in method: sign in -> correspondence match -> dual attestation -> rated result. |
+| Live provider registration/gateway | The harness proves the browser boundary, but at least one real provider registration and production OIDC gateway handoff must be configured and tested before claiming live provider readiness. |
+| Full journey e2e | The gate needs the final end-to-end sign-in-method sweep against the launch configuration: sign in -> correspondence match -> dual attestation -> rated result. |
 
 ## Stop signals
 
@@ -43,10 +42,8 @@ zero-network.
 
 ## Next sequence
 
-1. Add a provider handoff harness for the first configured provider assertion.
-2. Extend the browser v2 social-write and rated-match proofs across provider
-   accounts.
-3. Decide whether the launch gate requires native WebAuthn attestation beyond
+1. Configure and test the first live provider registration/gateway.
+2. Decide whether the launch gate requires native WebAuthn attestation beyond
    the current service-compatible passkey proof.
-4. Land the full sign-in-method-to-rated-match e2e gate and only then close
+3. Land the full sign-in-method-to-rated-match e2e gate and only then close
    SB-33-05.

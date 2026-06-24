@@ -53,6 +53,8 @@ export type IdentityV2Session = {
   readonly expiresAtIso: string;
 };
 
+export type IdentityV2Provider = "apple" | "google" | "meta";
+
 export class IdentityV2ServiceError extends Error {
   readonly reason: string;
 
@@ -130,6 +132,19 @@ export async function signInPasskeyIdentityV2(
     signCount: options.signCount,
     signedAtIso: options.signedAtIso,
     signature: options.signature,
+  });
+}
+
+export async function signInProviderIdentityV2(
+  providerHandoffUrl: string,
+  options: {
+    readonly provider: IdentityV2Provider;
+    readonly displayName: string;
+  },
+): Promise<IdentityV2Account> {
+  return requestIdentityV2Json(providerHandoffUrl, {
+    provider: options.provider,
+    displayName: options.displayName,
   });
 }
 

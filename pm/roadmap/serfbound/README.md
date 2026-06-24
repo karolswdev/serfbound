@@ -1,6 +1,6 @@
 # Serfbound — Roadmap
 
-**Last updated:** 2026-06-23.
+**Last updated:** 2026-06-24.
 **Current phase:** [33 — The Social Realm](./phase-33-social-realm/)
 **Status:** Phases 0–23 complete; Serfbound v0.1.0 shipped launch-ready
 (see [phase-20-launch-operations/final-summary.md](./phase-20-launch-operations/final-summary.md)).
@@ -37,9 +37,10 @@ Phase 25 four-field ceiling as a limit; SB-33-02 shipped the v2 account
 service contract; SB-33-03 shipped the player-facing sign-in moment with
 live email v2 readiness; SB-33-04 accepted the social-experience definition;
 SB-33-05 is in progress with the accountless zero-network gate slice, v2
-service auth adapter, email/passkey map proofs, and email/passkey rated
-correspondence; full closure waits on live provider handoff and the provider
-browser v2 mailbox/rating gate).
+service auth adapter, email/passkey/provider-handoff map proofs, and
+email/passkey/provider-handoff rated correspondence; full closure waits on
+live provider registration/gateway configuration and the native
+provider/WebAuthn ceremony decision).
 
 ## Vision
 

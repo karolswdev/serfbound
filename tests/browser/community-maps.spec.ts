@@ -2,9 +2,11 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Server } from "node:http";
 import { expect, test } from "@playwright/test";
 
 import { createDecodableGeneratedPaArchive } from "@serfbound/test-support";
+import { startProviderHandoffServer } from "./provider-handoff-server.js";
 
 // SB-43-07: the browser shell owns the community-map flow end to end.
 // Services are local instances of the deployed code: the test signs in
@@ -14,9 +16,12 @@ import { createDecodableGeneratedPaArchive } from "@serfbound/test-support";
 
 const identityPort = 43291;
 const mapsPort = 43293;
+const providerHandoffPort = 43294;
 const identityV2SessionSecret = "playwright-community-maps-v2-session-secret";
+const oidcAssertionSecret = "playwright-community-maps-oidc-assertion-secret";
 let identityService: ChildProcess;
 let mapsService: ChildProcess;
+let providerHandoffService: Server;
 let storeDir: string;
 
 async function waitForHttp(url: string): Promise<void> {
@@ -40,6 +45,7 @@ test.beforeAll(async () => {
       SERFBOUND_IDENTITY_PORT: String(identityPort),
       SERFBOUND_IDENTITY_STORE: join(storeDir, "accounts.json"),
       SERFBOUND_IDENTITY_V2_SESSION_SECRET: identityV2SessionSecret,
+      SERFBOUND_IDENTITY_OIDC_ASSERTION_SECRET: oidcAssertionSecret,
     },
     stdio: "ignore",
   });
@@ -54,11 +60,18 @@ test.beforeAll(async () => {
   });
   await waitForHttp(`http://127.0.0.1:${identityPort}`);
   await waitForHttp(`http://127.0.0.1:${mapsPort}/maps`);
+  providerHandoffService = await startProviderHandoffServer({
+    port: providerHandoffPort,
+    identityUrl: `http://127.0.0.1:${identityPort}`,
+    oidcAssertionSecret,
+    subjectPrefix: "community-maps",
+  });
 });
 
 test.afterAll(() => {
   identityService?.kill();
   mapsService?.kill();
+  providerHandoffService?.close();
   rmSync(storeDir, { recursive: true, force: true });
 });
 
@@ -213,6 +226,135 @@ test("email v2 session publishes, rates, reports, and counts play without device
   await expect(app).toHaveAttribute("data-serfbound-maps-status", "playing");
   await expect(app).toHaveAttribute("data-serfbound-online-status", "signed-in");
   await expect(app).toHaveAttribute("data-serfbound-online-auth", "identity-v2");
+
+  await expect
+    .poll(() => mapWrites.some((entry) => entry.path.endsWith("/played")))
+    .toBe(true);
+  expect(mapWrites).toHaveLength(4);
+  expect(mapWrites[0]?.path).toBe("/maps");
+  expect(mapWrites[1]?.path).toMatch(/\/rate$/);
+  expect(mapWrites[2]?.path).toMatch(/\/report$/);
+  expect(mapWrites[3]?.path).toMatch(/\/played$/);
+  for (const write of mapWrites) {
+    expect(write.authorization).toMatch(/^Bearer sbv2\./);
+    const body = JSON.parse(write.body ?? "{}") as Record<string, unknown>;
+    expect(body["publicKeyJwk"]).toBeUndefined();
+    expect(body["signature"]).toBeUndefined();
+    expect(body["signedAtIso"]).toBeUndefined();
+  }
+});
+
+test("provider handoff session signs map writes without browser token payloads", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const app = page.locator("#app");
+  const providerRequests: {
+    readonly path: string;
+    readonly body: string | null;
+  }[] = [];
+  const identityPosts: string[] = [];
+  const mapWrites: {
+    readonly path: string;
+    readonly authorization: string | null;
+    readonly body: string | null;
+  }[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.origin === `http://127.0.0.1:${providerHandoffPort}` && request.method() === "POST") {
+      providerRequests.push({ path: url.pathname, body: request.postData() });
+      return;
+    }
+
+    if (url.origin === `http://127.0.0.1:${identityPort}` && request.method() === "POST") {
+      identityPosts.push(url.pathname);
+      return;
+    }
+
+    if (
+      url.origin !== `http://127.0.0.1:${mapsPort}` ||
+      request.method() !== "POST" ||
+      !(
+        url.pathname === "/maps" ||
+        url.pathname.endsWith("/rate") ||
+        url.pathname.endsWith("/report") ||
+        url.pathname.endsWith("/played")
+      )
+    ) {
+      return;
+    }
+
+    mapWrites.push({
+      path: url.pathname,
+      authorization: request.headers()["authorization"] ?? null,
+      body: request.postData(),
+    });
+  });
+
+  await page.goto(
+    `/?dev=1&seed=6235842872325272` +
+      `&identityApi=http://127.0.0.1:${identityPort}` +
+      `&mailboxApi=http://127.0.0.1:9` +
+      `&mapsApi=http://127.0.0.1:${mapsPort}` +
+      `&providerHandoffApi=http://127.0.0.1:${providerHandoffPort}/provider-handoff`,
+  );
+
+  await page.getByTestId("data-import-input").setInputFiles({
+    name: "SPAU.PA",
+    mimeType: "application/octet-stream",
+    buffer: Buffer.from(createDecodableGeneratedPaArchive()),
+  });
+  await expect(page.getByTestId("data-state")).toHaveText("Data imported");
+
+  const profileInput = page.getByTestId("profile-name-input");
+  await profileInput.fill("PROVIDERMAP");
+  await profileInput.blur();
+  await page.getByTestId("signin-method-google").click();
+  await page.getByTestId("signin-provider-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-signin-status", "ready", {
+    timeout: 15_000,
+  });
+  await expect(app).toHaveAttribute("data-serfbound-identity-v2-session", "true");
+  await expect(app).toHaveAttribute("data-serfbound-maps-auth", "identity-v2");
+  await expect(app).toHaveAttribute("data-serfbound-online-auth", "identity-v2");
+  await expect(page.getByTestId("online-state")).toHaveText("Signed in as PROVIDERMAP");
+
+  expect(identityPosts).toEqual([]);
+  expect(providerRequests.map((entry) => entry.path)).toEqual(["/provider-handoff"]);
+  const providerBody = JSON.parse(providerRequests[0]?.body ?? "{}") as Record<string, unknown>;
+  expect(providerBody).toMatchObject({ provider: "google", displayName: "PROVIDERMAP" });
+  expect(providerBody["providerSubject"]).toBeUndefined();
+  expect(providerBody["idToken"]).toBeUndefined();
+  expect(providerBody["accessToken"]).toBeUndefined();
+  expect(providerBody["refreshToken"]).toBeUndefined();
+  expect(providerBody["authorizationCode"]).toBeUndefined();
+
+  await page.getByTestId("open-editor-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-chrome", "editor");
+  await page.getByTestId("maps-title-input").fill("PROVIDER MAP");
+  await expect(page.getByTestId("maps-publish-button")).toBeEnabled();
+  await page.getByTestId("maps-publish-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-maps-status", "published", {
+    timeout: 15_000,
+  });
+  await expect(page.getByTestId("maps-gallery")).toContainText("PROVIDER MAP");
+  const providerMapCard = page.locator(".community-map-card").filter({ hasText: "PROVIDER MAP" });
+
+  await providerMapCard.getByTestId("maps-rate-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-maps-status", "rated", {
+    timeout: 15_000,
+  });
+  await providerMapCard.getByTestId("maps-report-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-maps-status", "reported", {
+    timeout: 15_000,
+  });
+  await providerMapCard.getByTestId("maps-download-button").click();
+  await expect(app).toHaveAttribute("data-serfbound-maps-status", "downloaded", {
+    timeout: 15_000,
+  });
+  await page.getByTestId("maps-library-play-button").click();
+  await expect(page.getByTestId("game-state")).toHaveText("Running", { timeout: 15_000 });
+  await expect(app).toHaveAttribute("data-serfbound-maps-status", "playing");
 
   await expect
     .poll(() => mapWrites.some((entry) => entry.path.endsWith("/played")))

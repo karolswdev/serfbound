@@ -7,6 +7,7 @@ export type OnlineConfig = {
   readonly identityUrl: string;
   readonly mailboxUrl: string;
   readonly mapsUrl: string;
+  readonly providerHandoffUrl: string | null;
 };
 
 export const defaultOnlineApiBase = "https://api.serfbound.com";
@@ -34,10 +35,15 @@ export function resolveOnlineConfig(search: string, storage?: StorageLike): Onli
   }
 
   const base = trimBase(params.get("api") ?? storedBase ?? defaultOnlineApiBase);
+  const providerHandoffParam = params.get("providerHandoffApi");
   return {
     identityUrl: trimBase(params.get("identityApi") ?? `${base}/identity`),
     mailboxUrl: trimBase(params.get("mailboxApi") ?? `${base}/mailbox`),
     mapsUrl: trimBase(params.get("mapsApi") ?? `${base}/maps`),
+    providerHandoffUrl:
+      providerHandoffParam === null || providerHandoffParam.trim() === ""
+        ? null
+        : trimBase(providerHandoffParam),
   };
 }
 

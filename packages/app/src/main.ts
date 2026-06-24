@@ -41,9 +41,11 @@ import {
   IdentityV2ServiceError,
   createPasswordIdentityV2Account,
   createPasskeyIdentityV2Account,
+  signInProviderIdentityV2,
   signInPasskeyIdentityV2,
   signInPasswordIdentityV2,
   type IdentityV2Account,
+  type IdentityV2Provider,
 } from "./identity-v2-client.js";
 import {
   BrowserIndexedDbIdentityV2PasskeyStore,
@@ -1033,6 +1035,11 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
             </div>
             <div class="signin-pane" data-signin-panel="provider" data-testid="signin-provider-note" hidden>
               <p class="status-panel__detail">Continue with <span data-testid="signin-provider-name">Google</span>. Serfbound stores the provider, provider account id, optional email metadata, and your public name.</p>
+              <button
+                class="secondary-action"
+                data-testid="signin-provider-button"
+                type="button"
+              >Continue</button>
             </div>
             <p class="status-panel__detail" data-testid="signin-moment-state">Choose a sign-in method when you want the social realm; local play stays open.</p>
             <p class="status-panel__detail signin-accountless" data-testid="signin-accountless-note">Start game stays accountless: no registration, no sign-in, no network.</p>
@@ -3343,9 +3350,13 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   const onlineMatchStrip = root.querySelector<HTMLElement>("[data-testid='online-match-strip']");
   const onlineMatchLine = root.querySelector<HTMLElement>("[data-testid='online-match-line']");
   const onlineSealLabel = root.querySelector<HTMLElement>("[data-testid='online-seal-label']");
-  type SignInMethod = "email" | "passkey" | "google" | "apple" | "meta";
+  type SignInMethod = "email" | "passkey" | IdentityV2Provider;
   type SignInMomentStatus = "idle" | "working" | "ready" | "unavailable";
-  const providerSignInMethods = new Set<SignInMethod>(["google", "apple", "meta"]);
+  const providerSignInMethods = new Set<IdentityV2Provider>(["google", "apple", "meta"]);
+  const isProviderSignInMethod = (method: SignInMethod): method is IdentityV2Provider =>
+    method !== "email" && method !== "passkey" && providerSignInMethods.has(method);
+  const providerDisplayName = (method: IdentityV2Provider): string =>
+    method === "meta" ? "Meta" : method === "apple" ? "Apple" : "Google";
   let signInMethod: SignInMethod = "email";
   let signInMomentStatus: SignInMomentStatus = "idle";
   let signInMomentMessage =
@@ -3357,6 +3368,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   const signInPanels = [...root.querySelectorAll<HTMLElement>("[data-signin-panel]")];
   const signInMomentState = root.querySelector<HTMLElement>("[data-testid='signin-moment-state']");
   const signInProviderName = root.querySelector<HTMLElement>("[data-testid='signin-provider-name']");
+  const signInProviderButton = root.querySelector<HTMLButtonElement>(
+    "[data-testid='signin-provider-button']",
+  );
   const signInEmailInput = root.querySelector<HTMLInputElement>(
     "[data-testid='signin-email-input']",
   );
@@ -3810,12 +3824,11 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       panel.hidden =
         (panelKind === "email" && signInMethod !== "email") ||
         (panelKind === "passkey" && signInMethod !== "passkey") ||
-        (panelKind === "provider" && !providerSignInMethods.has(signInMethod));
+        (panelKind === "provider" && !isProviderSignInMethod(signInMethod));
     }
 
-    if (signInProviderName !== null && providerSignInMethods.has(signInMethod)) {
-      signInProviderName.textContent =
-        signInMethod === "meta" ? "Meta" : signInMethod === "apple" ? "Apple" : "Google";
+    if (signInProviderName !== null && isProviderSignInMethod(signInMethod)) {
+      signInProviderName.textContent = providerDisplayName(signInMethod);
     }
 
     if (signInMomentState !== null) {
@@ -3827,6 +3840,13 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     }
     if (signInPasskeyButton !== null) {
       signInPasskeyButton.disabled = signInMomentStatus === "working";
+    }
+    if (signInProviderButton !== null) {
+      signInProviderButton.disabled =
+        signInMomentStatus === "working" || !isProviderSignInMethod(signInMethod);
+      signInProviderButton.textContent = isProviderSignInMethod(signInMethod)
+        ? `Continue with ${providerDisplayName(signInMethod)}`
+        : "Continue";
     }
   };
   const selectSignInMethod = (method: SignInMethod) => {
@@ -3841,8 +3861,11 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       signInMomentMessage =
         "Passkey sign-in is ready for the browser ceremony; local play stays open.";
     } else {
-      const provider = method === "meta" ? "Meta" : method === "apple" ? "Apple" : "Google";
-      signInMomentMessage = `${provider} sign-in waits for provider registration. Local play stays open.`;
+      const provider = providerDisplayName(method);
+      signInMomentMessage =
+        onlineConfig.providerHandoffUrl === null
+          ? `${provider} sign-in waits for provider registration. Local play stays open.`
+          : `${provider} sign-in is ready through the configured provider handoff. Local play stays open.`;
     }
 
     syncSignInMoment();
@@ -3899,6 +3922,48 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
     signInMomentStatus = "ready";
     signInMomentMessage = `V2 account ready for ${identityV2Account.displayName}. Local play stays open.`;
+    if (identityV2Account.session !== undefined) {
+      onlineSurface.useIdentityV2Session(identityV2Account.session);
+    }
+
+    syncSignInMoment();
+    syncCommunityMapsState();
+    syncOnlineState();
+  };
+  const signInWithProviderV2 = async () => {
+    if (!isProviderSignInMethod(signInMethod)) {
+      return;
+    }
+
+    const provider = signInMethod;
+    const providerName = providerDisplayName(provider);
+    if (onlineConfig.providerHandoffUrl === null) {
+      signInMomentStatus = "unavailable";
+      signInMomentMessage = `${providerName} sign-in is not configured. Local play stays open.`;
+      syncSignInMoment();
+      return;
+    }
+
+    signInMomentStatus = "working";
+    signInMomentMessage = `Opening ${providerName}.`;
+    syncSignInMoment();
+    try {
+      identityV2Account = await signInProviderIdentityV2(onlineConfig.providerHandoffUrl, {
+        provider,
+        displayName: currentProfile.name,
+      });
+    } catch (error) {
+      signInMomentStatus = "unavailable";
+      signInMomentMessage =
+        error instanceof IdentityV2ServiceError
+          ? error.message
+          : `${providerName} sign-in failed. Local play stays open.`;
+      syncSignInMoment();
+      return;
+    }
+
+    signInMomentStatus = "ready";
+    signInMomentMessage = `${providerName} account ready for ${identityV2Account.displayName}. Local play stays open.`;
     if (identityV2Account.session !== undefined) {
       onlineSurface.useIdentityV2Session(identityV2Account.session);
     }
@@ -4329,6 +4394,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
   signInPasskeyButton?.addEventListener("click", () => {
     void signInWithPasskeyV2();
+  });
+  signInProviderButton?.addEventListener("click", () => {
+    void signInWithProviderV2();
   });
   syncSignInMoment();
   onlineSignInButton?.addEventListener("click", () => signInOnline());

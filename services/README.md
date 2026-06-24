@@ -22,6 +22,12 @@ For identity v2 provider handoff tests or a real OIDC gateway, set
 returns `oidc-not-configured` instead of accepting unverifiable provider
 claims.
 
+Browser provider sign-in uses an explicitly configured `providerHandoffApi`.
+That endpoint must verify the real provider server-side, then call
+`/v2/accounts/oidc` with `x-serfbound-oidc-assertion`. Browser payloads must
+not include `providerSubject`, `idToken`, `accessToken`, `refreshToken`, or
+`authorizationCode`.
+
 For identity v2 sessions that can authorize mailbox/maps/rating without device
 keys, set the same `SERFBOUND_IDENTITY_V2_SESSION_SECRET` on identity,
 mailbox, and maps. Identity then issues short-lived `sbv2` HMAC bearer proofs
