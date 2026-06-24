@@ -36,7 +36,9 @@ SB-33-01 accepted the identity v2 schema/privacy posture and retired the
 Phase 25 four-field ceiling as a limit; SB-33-02 shipped the v2 account
 service contract; SB-33-03 shipped the player-facing sign-in moment with
 live email v2 readiness; SB-33-04 accepted the social-experience definition;
-SB-33-05 is the identity gate next).
+SB-33-05 is in progress with the accountless zero-network gate slice and
+readiness tracker; full closure waits on browser passkeys, live provider
+handoff, and v2 mailbox/rating integration).
 
 ## Vision
 

@@ -1,8 +1,8 @@
 # Phase 33 — The Social Realm
 
 **Last updated:** 2026-06-23.
-**Status:** in progress (SB-33-01 through SB-33-04 complete; the social
-identity gate starts at SB-33-05).
+**Status:** in progress (SB-33-01 through SB-33-04 complete; SB-33-05 has
+started with the accountless zero-network gate slice).
 
 ## Goal
 
@@ -49,7 +49,7 @@ stated plainly where players see it.
 | SB-33-02 | Accounts v2: credentials, providers, passkeys, migration | done | story-02-accounts-v2-service.md | evidence-story-02.md |
 | SB-33-03 | The sign-in moment | done | story-03-sign-in-moment.md | evidence-story-03.md |
 | SB-33-04 | The social experience, defined | done | story-04-social-experience-definition.md | evidence-story-04.md |
-| SB-33-05 | Social identity gate | backlog | story-05-social-identity-gate.md | — |
+| SB-33-05 | Social identity gate | in progress | story-05-social-identity-gate.md | — |
 
 ## Where we are
 
@@ -79,10 +79,16 @@ provider tokens, analytics/tracking ids, address books, browser fingerprints,
 exact presence history, or device keys as v2 credentials. A CI guard now keeps
 that boundary from drifting.
 
-Next practical start: SB-33-05, the social identity gate. OAuth provider
-registrations (Apple Developer, Google Cloud, Meta) and browser passkey
-ceremonies remain maintainer/platform prerequisites; the service refuses
-provider claims unless an OIDC assertion handoff secret is configured.
+SB-33-05 has started as an honest gate slice. `gate-readiness.md` now tracks
+what is proven versus still blocking closure, and
+`tests/browser/social-identity-gate.spec.ts` proves accountless import -> start
+-> save emits zero online requests even when online endpoints are configured.
+The service contract and shell coverage already prove v2 email readiness,
+provider/passkey service boundaries, and the current rated-match bridge.
+
+The full gate is still open: browser passkey ceremony and persistence, live
+provider handoff, v2 mailbox/maps/rating authorization, and the complete
+sign-in-method-to-rated-match e2e remain required before SB-33-05 can close.
 
 ## Active risks
 
@@ -115,6 +121,9 @@ provider claims unless an OIDC assertion handoff secret is configured.
   `../adoption/social-experience-definition.md` as the social realm boundary:
   friends, guilds, presence, and hub are later phases; accountless local play
   remains outside the social dependency graph.
+- 2026-06-23 — SB-33-05 gate split: accountless zero-network proof is
+  executable now; full closure waits for browser passkeys, live provider
+  handoff, and v2 mailbox/maps/rating authorization.
 
 ## Decisions deferred
 
