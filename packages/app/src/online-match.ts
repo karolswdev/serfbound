@@ -7,7 +7,15 @@ import {
 } from "@serfbound/engine";
 import { createRecapDriver, type RecapDriver } from "./recap.js";
 import type { IdentityKeys } from "./identity-client.js";
-import { fetchMatch, postMove, submitResult, type MailboxMatchView } from "./mailbox-client.js";
+import type { IdentityV2Session } from "./identity-v2-client.js";
+import {
+  fetchMatch,
+  postMove,
+  postMoveWithIdentityV2,
+  submitResult,
+  submitResultWithIdentityV2,
+  type MailboxMatchView,
+} from "./mailbox-client.js";
 
 // Online correspondence (SB-29-04): the Phase 23 trustless window flow
 // with the deployed mailbox as transport. Same shape as the loopback
@@ -43,7 +51,8 @@ export class SerfboundOnlineMatch {
   readonly matchId: string;
   readonly localPlayer: number;
   readonly mailboxUrl: string;
-  #keys: IdentityKeys;
+  #keys: IdentityKeys | undefined;
+  #identityV2Session: IdentityV2Session | undefined;
   #match: CorrespondenceMatch;
   #mode: OnlineMatchMode;
   #outboundMove: CorrespondenceWindowMove | null = null;
@@ -60,7 +69,8 @@ export class SerfboundOnlineMatch {
   constructor(options: {
     view: MailboxMatchView;
     seat: number;
-    keys: IdentityKeys;
+    keys?: IdentityKeys;
+    identityV2Session?: IdentityV2Session;
     mailboxUrl: string;
     data: NonNullable<SerfboundLocalGameStartOptions["data"]>;
     onEnded?: (view: MailboxMatchView) => void;
@@ -69,6 +79,7 @@ export class SerfboundOnlineMatch {
     this.localPlayer = options.seat;
     this.mailboxUrl = options.mailboxUrl;
     this.#keys = options.keys;
+    this.#identityV2Session = options.identityV2Session;
     this.#onEnded = options.onEnded;
     this.#opponentName = options.view.players[1 - options.seat]?.name ?? null;
     const terms = options.view.terms;
@@ -198,14 +209,29 @@ export class SerfboundOnlineMatch {
     }
 
     try {
-      const view = await submitResult(
-        this.mailboxUrl,
-        this.#keys,
-        this.matchId,
-        this.localPlayer,
-        winnerSeat,
-        finalChecksum,
-      );
+      let view: MailboxMatchView;
+      if (this.#identityV2Session !== undefined) {
+        view = await submitResultWithIdentityV2(
+          this.mailboxUrl,
+          this.#identityV2Session,
+          this.matchId,
+          this.localPlayer,
+          winnerSeat,
+          finalChecksum,
+        );
+      } else if (this.#keys !== undefined) {
+        view = await submitResult(
+          this.mailboxUrl,
+          this.#keys,
+          this.matchId,
+          this.localPlayer,
+          winnerSeat,
+          finalChecksum,
+        );
+      } else {
+        return false;
+      }
+
       this.#apply(view);
       return true;
     } catch {
@@ -221,7 +247,19 @@ export class SerfboundOnlineMatch {
 
     this.#posting = true;
     try {
-      const view = await postMove(this.mailboxUrl, this.#keys, this.matchId, move);
+      let view: MailboxMatchView;
+      if (this.#identityV2Session !== undefined) {
+        view = await postMoveWithIdentityV2(
+          this.mailboxUrl,
+          this.#identityV2Session,
+          this.matchId,
+          move,
+        );
+      } else if (this.#keys !== undefined) {
+        view = await postMove(this.mailboxUrl, this.#keys, this.matchId, move);
+      } else {
+        return;
+      }
       this.#outboundMove = null;
       if (this.#mode === "posting") {
         this.#mode = "awaiting-move";

@@ -180,7 +180,8 @@ test("email v2 session publishes, rates, reports, and counts play without device
   });
   await expect(app).toHaveAttribute("data-serfbound-identity-v2-session", "true");
   await expect(app).toHaveAttribute("data-serfbound-maps-auth", "identity-v2");
-  await expect(page.getByTestId("online-state")).toHaveText("Signed out");
+  await expect(app).toHaveAttribute("data-serfbound-online-auth", "identity-v2");
+  await expect(page.getByTestId("online-state")).toHaveText("Signed in as V2MAPPER");
 
   await page.getByTestId("open-editor-button").click();
   await expect(app).toHaveAttribute("data-serfbound-chrome", "editor");
@@ -210,7 +211,8 @@ test("email v2 session publishes, rates, reports, and counts play without device
   await page.getByTestId("maps-library-play-button").click();
   await expect(page.getByTestId("game-state")).toHaveText("Running", { timeout: 15_000 });
   await expect(app).toHaveAttribute("data-serfbound-maps-status", "playing");
-  await expect(app).toHaveAttribute("data-serfbound-online-status", "signed-out");
+  await expect(app).toHaveAttribute("data-serfbound-online-status", "signed-in");
+  await expect(app).toHaveAttribute("data-serfbound-online-auth", "identity-v2");
 
   await expect
     .poll(() => mapWrites.some((entry) => entry.path.endsWith("/played")))

@@ -3319,6 +3319,9 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   const onlineDetailElement = root.querySelector<HTMLElement>("[data-testid='online-detail']");
   const onlineLobbyElement = root.querySelector<HTMLElement>("[data-testid='online-lobby']");
   const onlineBadgeElement = root.querySelector<HTMLElement>("[data-testid='online-your-turn']");
+  const onlineSignInButton = root.querySelector<HTMLButtonElement>(
+    "[data-testid='online-signin-button']",
+  );
   const onlineChallengeButton = root.querySelector<HTMLButtonElement>(
     "[data-testid='online-challenge-button']",
   );
@@ -3881,13 +3884,19 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
 
     signInMomentStatus = "ready";
     signInMomentMessage = `V2 account ready for ${identityV2Account.displayName}. Local play stays open.`;
+    if (identityV2Account.session !== undefined) {
+      onlineSurface.useIdentityV2Session(identityV2Account.session);
+    }
+
     syncSignInMoment();
     syncCommunityMapsState();
+    syncOnlineState();
   };
   void loadCommunityLibrary();
   let lastYourTurnCount = 0;
   const syncOnlineState = () => {
     root.dataset.serfboundOnlineStatus = onlineSurface.status;
+    root.dataset.serfboundOnlineAuth = onlineSurface.authMode;
     root.dataset.serfboundOnlineYourTurn = String(onlineSurface.yourTurnCount);
     root.dataset.serfboundOnlineLobbyCount = String(onlineSurface.lobby.length);
     if (onlineStateElement !== null) {
@@ -3906,6 +3915,13 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
         onlineSurface.status === "unavailable"
           ? "The online service is unreachable. Local play is unaffected; use Refresh online to retry."
           : "Optional: play correspondence matches over the internet. Local play never needs this.";
+    }
+
+    if (onlineSignInButton !== null) {
+      onlineSignInButton.disabled =
+        onlineSurface.identityV2Session !== undefined ||
+        onlineSurface.status === "signed-in" ||
+        onlineSurface.status === "signing-in";
     }
 
     if (onlineChallengeButton !== null) {
@@ -4101,14 +4117,25 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
   };
   const startOnlineMatch = (view: MailboxMatchView, seat: number) => {
     const keys = onlineSurface.keys;
-    if (currentImportedDataSource === undefined || currentWorld !== undefined || keys === undefined) {
+    const identityV2Session = onlineSurface.identityV2Session;
+    const auth =
+      identityV2Session !== undefined
+        ? { identityV2Session }
+        : keys !== undefined
+          ? { keys }
+          : undefined;
+    if (
+      currentImportedDataSource === undefined ||
+      currentWorld !== undefined ||
+      auth === undefined
+    ) {
       return;
     }
 
     currentOnline = new SerfboundOnlineMatch({
       view,
       seat,
-      keys,
+      ...auth,
       mailboxUrl: onlineConfig.mailboxUrl,
       data: currentImportedDataSource,
       onEnded: (endedView) => {
@@ -4145,6 +4172,15 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
     renderCurrentScene();
   };
   const signInOnline = (options: { readonly refreshMailbox?: boolean } = {}) => {
+    if (onlineSurface.status === "signed-in" || onlineSurface.identityV2Session !== undefined) {
+      if (options.refreshMailbox !== false) {
+        void onlineSurface.refresh().then(syncOnlineState);
+      }
+
+      syncOnlineState();
+      return;
+    }
+
     void onlineSurface.signIn(currentProfile.name).then(async (ok) => {
       if (ok && options.refreshMailbox !== false) {
         await onlineSurface.refresh();
@@ -4189,9 +4225,7 @@ export function mountSerfbound(root: HTMLElement, options: MountSerfboundOptions
       syncSignInMoment();
     });
   syncSignInMoment();
-  root
-    .querySelector<HTMLButtonElement>("[data-testid='online-signin-button']")
-    ?.addEventListener("click", () => signInOnline());
+  onlineSignInButton?.addEventListener("click", () => signInOnline());
   root
     .querySelector<HTMLButtonElement>("[data-testid='online-refresh-button']")
     ?.addEventListener("click", () => {

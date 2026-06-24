@@ -3,7 +3,7 @@
 **Last updated:** 2026-06-24.
 **Status:** in progress (SB-33-01 through SB-33-04 complete; SB-33-05 has
 started with accountless zero-network proof, the v2 service auth adapter, and
-an email-v2 browser community-map write path).
+email-v2 browser map plus rated-match paths).
 
 ## Goal
 
@@ -95,10 +95,13 @@ delete without device keys as v2 credentials.
 
 The browser community-map path now uses the same v2 session proof for an email
 v2 account: publish, rate, report, and played-count writes carry `Bearer sbv2`
-authorization instead of device-key payloads, and the legacy correspondence
-surface remains signed out. The full gate is still open: browser passkey
-ceremony and persistence, live provider handoff, browser v2
-correspondence/rated-match wiring, provider/passkey social-write coverage, and
+authorization instead of device-key payloads. The browser correspondence path
+now also lets two email v2 accounts post/accept a challenge, exchange mailbox
+moves, dual-attest, and rate on the ladder with `Bearer sbv2` writes and no
+device-key payloads. The Phase 25 bridge remains available for legacy sign-in,
+but email v2 no longer mints or uses a device key for these social writes. The
+full gate is still open: browser passkey ceremony and persistence, live
+provider handoff, provider/passkey social-write and rated-match coverage, and
 the complete sign-in-method-to-rated-match e2e remain required before SB-33-05
 can close.
 
@@ -143,6 +146,10 @@ can close.
 - 2026-06-24 — SB-33-05 browser maps adapter: email v2 sessions can publish,
   rate, report, and count played community maps without device-key payloads;
   the legacy correspondence surface remains a separate bridge.
+- 2026-06-24 — SB-33-05 browser correspondence adapter: email v2 sessions can
+  post/accept challenges, exchange correspondence moves, dual-attest, and rate
+  matches without device-key payloads; provider/passkey coverage remains
+  before gate closure.
 
 ## Decisions deferred
 

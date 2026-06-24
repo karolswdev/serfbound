@@ -16,6 +16,7 @@ import { createDecodableGeneratedPaArchive } from "@serfbound/test-support";
 
 const identityPort = 43271;
 const mailboxPort = 43272;
+const identityV2SessionSecret = "playwright-online-v2-session-secret";
 let identityService: ChildProcess;
 let mailboxService: ChildProcess;
 let storeDir: string;
@@ -40,6 +41,7 @@ test.beforeAll(async () => {
       ...process.env,
       SERFBOUND_IDENTITY_PORT: String(identityPort),
       SERFBOUND_IDENTITY_STORE: join(storeDir, "accounts.json"),
+      SERFBOUND_IDENTITY_V2_SESSION_SECRET: identityV2SessionSecret,
     },
     stdio: "ignore",
   });
@@ -48,6 +50,7 @@ test.beforeAll(async () => {
       ...process.env,
       SERFBOUND_MAILBOX_PORT: String(mailboxPort),
       SERFBOUND_MAILBOX_STORE: join(storeDir, "matches.json"),
+      SERFBOUND_IDENTITY_V2_SESSION_SECRET: identityV2SessionSecret,
     },
     stdio: "ignore",
   });
@@ -76,6 +79,62 @@ async function openShell(page: Page, name: string): Promise<void> {
   const profileInput = page.getByTestId("profile-name-input");
   await profileInput.fill(name);
   await profileInput.blur();
+}
+
+type RecordedWrite = {
+  readonly path: string;
+  readonly authorization: string | null;
+  readonly body: string | null;
+};
+
+function recordMailboxWrites(page: Page, writes: RecordedWrite[]): void {
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (
+      url.origin !== `http://127.0.0.1:${mailboxPort}` ||
+      request.method() !== "POST" ||
+      !(
+        url.pathname === "/challenges" ||
+        url.pathname.endsWith("/accept") ||
+        url.pathname.endsWith("/moves") ||
+        url.pathname.endsWith("/results")
+      )
+    ) {
+      return;
+    }
+
+    writes.push({
+      path: url.pathname,
+      authorization: request.headers()["authorization"] ?? null,
+      body: request.postData(),
+    });
+  });
+}
+
+function recordIdentityPosts(page: Page, paths: string[]): void {
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.origin === `http://127.0.0.1:${identityPort}` && request.method() === "POST") {
+      paths.push(url.pathname);
+    }
+  });
+}
+
+async function signInEmailV2(page: Page, name: string, email: string): Promise<void> {
+  const app = page.locator("#app");
+  await openShell(page, name);
+  await page.getByTestId("signin-email-input").fill(email);
+  await page.getByTestId("signin-password-input").fill("long-enough-password");
+  await page.getByTestId("signin-email-submit").click();
+  await expect(app).toHaveAttribute("data-serfbound-signin-status", "ready", {
+    timeout: 15_000,
+  });
+  await expect(app).toHaveAttribute("data-serfbound-identity-v2-session", "true");
+  await expect(app).toHaveAttribute("data-serfbound-online-auth", "identity-v2");
+  await expect(page.getByTestId("online-state")).toHaveText(`Signed in as ${name}`, {
+    timeout: 15_000,
+  });
+  await expect(page.getByTestId("online-signin-button")).toBeDisabled();
 }
 
 test("two devices play an online match to dual attestation", async ({ browser }) => {
@@ -174,6 +233,96 @@ test("two devices play an online match to dual attestation", async ({ browser })
   await expect(ownRow).toContainText("1516");
   await expect(alice.locator(".ladder__row").nth(1)).toContainText("1484");
   await expect(alice.getByTestId("online-ladder-note")).toBeHidden();
+
+  await aliceContext.close();
+  await bobContext.close();
+});
+
+test("two email v2 accounts play and rate without device-key payloads", async ({ browser }) => {
+  test.setTimeout(180_000);
+  const aliceContext = await browser.newContext();
+  const bobContext = await browser.newContext();
+  const alice = await aliceContext.newPage();
+  const bob = await bobContext.newPage();
+  const mailboxWrites: RecordedWrite[] = [];
+  const identityPosts: string[] = [];
+  recordMailboxWrites(alice, mailboxWrites);
+  recordMailboxWrites(bob, mailboxWrites);
+  recordIdentityPosts(alice, identityPosts);
+  recordIdentityPosts(bob, identityPosts);
+
+  await signInEmailV2(alice, "ALICEV2", "alice-v2-browser@example.com");
+  await signInEmailV2(bob, "BOBV2", "bob-v2-browser@example.com");
+  const aliceApp = alice.locator("#app");
+  const bobApp = bob.locator("#app");
+
+  await alice.getByTestId("online-challenge-button").click();
+  await expect(aliceApp).toHaveAttribute("data-serfbound-online-lobby-count", "1", {
+    timeout: 15_000,
+  });
+  await bob.getByTestId("online-refresh-button").click();
+  await expect(bob.getByTestId("online-accept-button")).toBeVisible({ timeout: 15_000 });
+  await bob.getByTestId("online-accept-button").click();
+
+  await expect(bob.getByTestId("game-state")).toHaveText("Running", { timeout: 15_000 });
+  await expect(bobApp).toHaveAttribute("data-serfbound-cor-player", "1");
+  await expect(alice.getByTestId("game-state")).toHaveText("Running", { timeout: 30_000 });
+  await expect(aliceApp).toHaveAttribute("data-serfbound-cor-player", "0");
+  await expect(aliceApp).toHaveAttribute("data-serfbound-cor-mode", "your-window", {
+    timeout: 15_000,
+  });
+
+  await expect(aliceApp).toHaveAttribute("data-serfbound-cor-mode", "awaiting-move", {
+    timeout: 30_000,
+  });
+  await expect(bobApp).toHaveAttribute("data-serfbound-cor-mode", "move-arrived", {
+    timeout: 15_000,
+  });
+  await bob.keyboard.press("Enter");
+  await expect(bobApp).toHaveAttribute("data-serfbound-cor-mode", "your-window", {
+    timeout: 30_000,
+  });
+  await expect(bobApp).not.toHaveAttribute("data-serfbound-cor-failure", /.+/);
+
+  await expect(aliceApp).toHaveAttribute("data-serfbound-cor-mode", "move-arrived", {
+    timeout: 45_000,
+  });
+  await alice.keyboard.press("Enter");
+  await expect(aliceApp).toHaveAttribute("data-serfbound-cor-mode", "your-window", {
+    timeout: 30_000,
+  });
+  const aliceBoundary = await aliceApp.getAttribute("data-serfbound-cor-boundary");
+  expect(aliceBoundary).not.toBeNull();
+  await expect(bobApp).toHaveAttribute("data-serfbound-cor-boundary", aliceBoundary as string);
+
+  await alice.getByTestId("online-attest-win-button").click();
+  await bob.getByTestId("online-attest-loss-button").click();
+  await expect(aliceApp).toHaveAttribute("data-serfbound-online-match-outcome", "ended:won", {
+    timeout: 15_000,
+  });
+  await expect(bobApp).toHaveAttribute("data-serfbound-online-match-outcome", "ended:lost", {
+    timeout: 15_000,
+  });
+
+  await alice.getByTestId("online-ladder").locator("summary").click();
+  await expect(alice.locator(".ladder__row--own")).toContainText("ALICEV2 (you)", {
+    timeout: 15_000,
+  });
+  await expect(alice.locator(".ladder__row--own")).toContainText("1516");
+
+  await expect.poll(() => mailboxWrites.length).toBe(6);
+  expect(mailboxWrites.filter((entry) => entry.path === "/challenges")).toHaveLength(1);
+  expect(mailboxWrites.filter((entry) => entry.path.endsWith("/accept"))).toHaveLength(1);
+  expect(mailboxWrites.filter((entry) => entry.path.endsWith("/moves"))).toHaveLength(2);
+  expect(mailboxWrites.filter((entry) => entry.path.endsWith("/results"))).toHaveLength(2);
+  for (const write of mailboxWrites) {
+    expect(write.authorization).toMatch(/^Bearer sbv2\./);
+    const body = JSON.parse(write.body ?? "{}") as Record<string, unknown>;
+    expect(body["publicKeyJwk"]).toBeUndefined();
+    expect(body["signature"]).toBeUndefined();
+    expect(body["signedAtIso"]).toBeUndefined();
+  }
+  expect(identityPosts).toEqual(["/v2/accounts/password", "/v2/accounts/password"]);
 
   await aliceContext.close();
   await bobContext.close();

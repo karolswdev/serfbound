@@ -16,7 +16,8 @@ zero-network.
 | Identity v2 service contracts | `tests/ci/service-identity.test.mjs` covers password accounts, OIDC assertion handoff, passkey proof/sign count, session proofs, recovery, and one-time legacy standing claims without storing device keys as v2 credentials. | proven |
 | Email sign-in shell | `tests/browser/online-states.spec.ts` proves the browser can create or open a v2 email/password account through the configured identity service. | proven |
 | V2 social authorization adapter | `tests/ci/service-mailbox.test.mjs` and `tests/ci/service-maps.test.mjs` prove identity-issued v2 session proofs authorize mailbox, maps, and rating writes without device keys while the Phase 25 bridge remains available. | proven at service level |
-| Browser v2 community-map writes | `tests/browser/community-maps.spec.ts` proves an email v2 session can publish, rate, report, and count a played map without device-key payloads while the legacy online surface remains signed out. | proven for email v2 maps |
+| Browser v2 community-map writes | `tests/browser/community-maps.spec.ts` proves an email v2 session can publish, rate, report, and count a played map without device-key payloads. | proven for email v2 maps |
+| Browser v2 rated correspondence | `tests/browser/online-play.spec.ts` proves two email v2 accounts can post/accept a challenge, exchange moves, dual-attest, and rate without device-key payloads. | proven for email v2 |
 | Current rated-match path | `tests/browser/online-play.spec.ts` and `tests/browser/gamification-gate.spec.ts` prove the existing correspondence/rating path through the temporary Phase 25 local match key bridge. | proven as bridge |
 
 ## Not yet gate-complete
@@ -25,7 +26,7 @@ zero-network.
 |---|---|
 | Browser passkey ceremony and persistence | The service contract exists, but the browser still needs a real WebAuthn ceremony, local credential persistence, and regression coverage. |
 | Live provider handoff | At least one real provider registration and OIDC gateway handoff must be configured and tested without accepting raw provider tokens in browser payloads. |
-| Browser v2 correspondence/rating journey | The services now accept v2 session proofs and the browser maps email-v2 path is wired, but correspondence matches and rated results still need to use the v2 session after email, provider, and passkey sign-in. |
+| Provider/passkey v2 correspondence/rating journey | Email v2 is wired in-browser, but provider and passkey accounts still need browser coverage for correspondence matches and rated results. |
 | Provider/passkey social-write coverage | Email v2 maps are proven in-browser; provider and passkey accounts still need browser coverage for the same social-write boundary. |
 | Full journey e2e | The gate needs one end-to-end browser proof per sign-in method: sign in -> correspondence match -> dual attestation -> rated result. |
 
@@ -41,10 +42,10 @@ zero-network.
 
 ## Next sequence
 
-1. Wire the browser correspondence/rating surface to the identity v2 session
-   after sign-in, while preserving accountless zero-network play.
-2. Implement browser passkey ceremony and persistence with WebAuthn-backed
+1. Implement browser passkey ceremony and persistence with WebAuthn-backed
    tests.
-3. Add a provider handoff harness for the first configured provider assertion.
+2. Add a provider handoff harness for the first configured provider assertion.
+3. Extend the browser v2 social-write and rated-match proofs across provider
+   and passkey accounts.
 4. Land the full sign-in-method-to-rated-match e2e gate and only then close
    SB-33-05.

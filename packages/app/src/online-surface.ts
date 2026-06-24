@@ -7,14 +7,18 @@ import {
 } from "./identity-client.js";
 import {
   acceptChallenge,
+  acceptChallengeWithIdentityV2,
   createChallenge,
+  createChallengeWithIdentityV2,
   fetchLadder,
   listChallenges,
   listMatchesForKey,
+  listMatchesForIdentityV2,
   type LadderEntry,
   type MailboxMatchView,
   type MatchTerms,
 } from "./mailbox-client.js";
+import type { IdentityV2Session } from "./identity-v2-client.js";
 import type { StoredProfileAccount } from "./profile-store.js";
 
 // The shell online surface (SB-29-04): device-key sign-in, the
@@ -38,6 +42,7 @@ export class SerfboundOnlineSurface {
   readonly mailboxUrl: string;
   #status: OnlineSurfaceStatus = "signed-out";
   #keys: IdentityKeys | undefined;
+  #identityV2Session: IdentityV2Session | undefined;
   #accountId: string | undefined;
   #accountName: string | undefined;
   #lobby: readonly OnlineLobbyEntry[] = [];
@@ -70,6 +75,18 @@ export class SerfboundOnlineSurface {
 
   get keys(): IdentityKeys | undefined {
     return this.#keys;
+  }
+
+  get identityV2Session(): IdentityV2Session | undefined {
+    return this.#identityV2Session;
+  }
+
+  get authMode(): "signed-out" | "device-key" | "identity-v2" {
+    if (this.#identityV2Session !== undefined) {
+      return "identity-v2";
+    }
+
+    return this.#keys === undefined ? "signed-out" : "device-key";
   }
 
   get lobby(): readonly OnlineLobbyEntry[] {
@@ -133,10 +150,25 @@ export class SerfboundOnlineSurface {
   // A previously linked account (from the stored profile) signs back
   // in without any network round-trip — the keypair IS the account.
   restore(account: StoredProfileAccount, name: string): void {
+    if (this.#identityV2Session !== undefined) {
+      return;
+    }
+
     this.#keys = { publicKeyJwk: account.publicKeyJwk, privateKeyJwk: account.privateKeyJwk };
     this.#accountId = account.accountId;
     this.#accountName = name;
     this.#status = "signed-in";
+  }
+
+  // Identity v2 sessions are response-only bearer proofs from the
+  // identity service. They unlock the social mailbox without minting a
+  // device key or storing one as a v2 credential.
+  useIdentityV2Session(session: IdentityV2Session): void {
+    this.#identityV2Session = session;
+    this.#accountId = session.accountId;
+    this.#accountName = session.displayName;
+    this.#status = "signed-in";
+    this.#lastError = null;
   }
 
   async signIn(name: string): Promise<boolean> {
@@ -172,7 +204,9 @@ export class SerfboundOnlineSurface {
   async refresh(): Promise<boolean> {
     try {
       this.#lobby = await listChallenges(this.mailboxUrl);
-      if (this.#accountId !== undefined) {
+      if (this.#identityV2Session !== undefined) {
+        this.#myMatches = await listMatchesForIdentityV2(this.mailboxUrl, this.#identityV2Session);
+      } else if (this.#accountId !== undefined) {
         this.#myMatches = await listMatchesForKey(this.mailboxUrl, this.#accountId);
       }
 
@@ -187,17 +221,27 @@ export class SerfboundOnlineSurface {
   }
 
   async postChallenge(terms: MatchTerms): Promise<string | null> {
-    if (this.#keys === undefined || this.#accountName === undefined) {
+    if (
+      this.#identityV2Session === undefined &&
+      (this.#keys === undefined || this.#accountName === undefined)
+    ) {
       return null;
     }
 
     try {
-      const challengeId = await createChallenge(
-        this.mailboxUrl,
-        this.#keys,
-        this.#accountName,
-        terms,
-      );
+      let challengeId: string;
+      if (this.#identityV2Session !== undefined) {
+        challengeId = await createChallengeWithIdentityV2(
+          this.mailboxUrl,
+          this.#identityV2Session,
+          terms,
+        );
+      } else if (this.#keys !== undefined && this.#accountName !== undefined) {
+        challengeId = await createChallenge(this.mailboxUrl, this.#keys, this.#accountName, terms);
+      } else {
+        return null;
+      }
+
       await this.refresh();
       return challengeId;
     } catch (error) {
@@ -207,17 +251,27 @@ export class SerfboundOnlineSurface {
   }
 
   async accept(challengeId: string): Promise<MailboxMatchView | null> {
-    if (this.#keys === undefined || this.#accountName === undefined) {
+    if (
+      this.#identityV2Session === undefined &&
+      (this.#keys === undefined || this.#accountName === undefined)
+    ) {
       return null;
     }
 
     try {
-      const match = await acceptChallenge(
-        this.mailboxUrl,
-        this.#keys,
-        this.#accountName,
-        challengeId,
-      );
+      let match: MailboxMatchView;
+      if (this.#identityV2Session !== undefined) {
+        match = await acceptChallengeWithIdentityV2(
+          this.mailboxUrl,
+          this.#identityV2Session,
+          challengeId,
+        );
+      } else if (this.#keys !== undefined && this.#accountName !== undefined) {
+        match = await acceptChallenge(this.mailboxUrl, this.#keys, this.#accountName, challengeId);
+      } else {
+        return null;
+      }
+
       await this.refresh();
       return match;
     } catch (error) {
