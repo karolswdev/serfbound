@@ -87,6 +87,9 @@ const requiredText = new Map([
       "evidence-story-{n}.md",
       "Copy error report",
       "good first issue",
+      "Good First Issue Walkthrough",
+      "docs-only maintenance issue",
+      ".github/pull_request_template.md",
     ],
   ],
   [

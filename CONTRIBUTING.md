@@ -103,6 +103,32 @@ rendering, storage, audio, input, network, packaging, or local data.
 Good starter tasks are tracked with the `good first issue` label:
 https://github.com/karolswdev/serfbound/labels/good%20first%20issue
 
+## Good First Issue Walkthrough
+
+Use this path for a tiny documentation PR:
+
+1. Pick one issue from the `good first issue` label and read its pointers.
+2. Create a narrow branch, for example
+   `docs/good-first-issue-walkthrough`.
+3. Make the smallest docs edit that satisfies the issue.
+4. Run the focused docs gate:
+
+   ```bash
+   npm run test:docs
+   ```
+
+5. Before committing, create `.tmp/CONTRACT.md` from the template in
+   `pm/roadmap/PMO-CONTRACT.md`, honestly check every applicable box, and let
+   the `.githooks/pre-commit` hook run normally.
+6. Open the PR and fill out `.github/pull_request_template.md`, including the
+   verification command output.
+
+For a small docs-only maintenance change, you usually do not need to flip a
+roadmap story status or add `evidence-story-{n}.md`. In the PR template's
+`PMO Story` section, say that the change is a docs-only maintenance issue and
+does not mark a roadmap story as shipped. If the issue asks you to complete a
+specific roadmap story, follow the full PMO story flow instead.
+
 ## Pull Requests
 
 Before opening a PR:
